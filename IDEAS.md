@@ -229,6 +229,7 @@ Sketch of persisted representation...
     type PartitionID uint16
     type Seq         uint64
 
+    // A Loc represents a the location of a byte range persisted to storage log file.
     type Loc struct {
          Type     uint8
          Flags    uint8
@@ -236,12 +237,13 @@ Sketch of persisted representation...
          Size     uint32
          Offset   uint64 // 0 offset means not persisted yet.
 
-         buf []byte
+         buf []byte // Non-nil when loaded into memory.
     }
 
-    LocTypeCollections
-    LocTypeNode
-    LocTypeVal
+    Loc.Type enum...
+      LocTypeCollections
+      LocTypeNode
+      LocTypeVal
 
     Loc.Flags are reserved; perhaps a future LocFlagsCompressed?
 
