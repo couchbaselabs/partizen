@@ -4,7 +4,7 @@ A potential copy-on-write btree design with partition and sequence
 number awareness.  Partitions can be independently rolled back to a
 previous sequence number in O(1) time.
 
-Status: thinking about the design
+Status: thinking about the design / draft.
 
 ------------------------------------------------------------
 ADT...
