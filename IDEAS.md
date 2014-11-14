@@ -1,8 +1,8 @@
 partizen
 
-A potential copy-on-write btree design partition and sequence number
-awareness.  Partitions can be independently rolled back to a previous
-sequence number in O(1) time.
+A potential copy-on-write btree design with partition and sequence
+number awareness.  Partitions can be independently rolled back to a
+previous sequence number in O(1) time.
 
 Status: thinking about the design
 
@@ -61,116 +61,6 @@ ADT...
                                key []byte, seq Seq, value []byte) bool) error
 
       Rewind(partition PartitionID, seq Seq, exact bool) error
-
-------------------------------------------------------------
-Sketch of persisted representation...
-
-    type Header struct {
-         Magic      uint64
-         UUID       uint64
-         VersionLen uint32
-         VersionVal []byte
-         ExtrasLen  uint32
-         ExtrasVal  []byte
-    }
-
-    type Store struct {
-         Magic               uint64 // Same as Header.Magic.
-         UUID                uint64 // Same as Header.UUID.
-         StoreManifestLoc    Loc    // Pointer to StoreManifest.
-         CollectionRootNodes []Loc  // Length is StoreManifest.NumCollections.
-    }
-
-    type StoreManifest struct {
-         Flags          uint32 // Reserved.
-         ExtrasLen      uint32
-         ExtrasVal      []byte
-         NumCollections uint32
-         Collections    []Collection // Length is NumCollections.
-    }
-
-    type Collection struct {
-         NameLen            uint32
-         Name               []byte
-         CompareFuncNameLen uint32
-         CompareFuncName    []byte
-         ExtrasLen          uint32
-         ExtrasVal          []byte
-    }
-
-    // A Node of a partizen btree has its child pointers first ordered by
-    // PartitionID, then secondarily ordered by Key.
-    type Node struct {
-         // These Partition arrays all have the same length of NumPartitions.
-         // For example PartitionIdxs[4] and Partitions[4] are both about
-         // PartitionIdxs[4].PartitionID.  They are ordered by PartitionID.
-         NumPartitions  uint16
-         PartitionIdxs  []NodePartitionIdx
-         Partitions     []NodePartition
-
-         // Locs are ordered by Loc.Offset and are kept separate
-         // as multiple NodePartitions might be pointing to the same Loc.
-         NumLocs uint8 // Max fan-out of 256.
-         Locs    []Loc
-    }
-
-    type NodePartitionIdx struct {
-         PartitionID PartitionID
-         Offset      uint32 // Start byte offset of corresponding NodePartition
-                            // in Node.Partitions array, starting from the 0th
-                            // Node.Partition[0] byte position.
-    }
-
-    type NodePartition {
-         TotKeys     uint64 // TotKeys - TotVals equals number of deletions.
-         TotVals     uint64
-         TotKeyBytes uint64
-         TotValBytes uint64
-
-         NumKeySeqIdxs uint8 // Max fan-out of 256.
-         KeySeqIdxs    []KeySeqIdx
-
-         // FUTURE: Aggregates might be maintained here per NodePartition.
-    }
-
-    type KeySeqIdx struct {
-         KeyLen uint16
-         Key    Key
-         Seq    Seq   // If this points to a Node, this is the Node's max Seq for a Partition.
-         Idx    uint8 // An index into Node.Locs; an Idx of uint8(0xff) means a deleted item.
-    }
-
-    type Key         []byte
-    type Val         []byte
-    type PartitionID uint16
-    type Seq         uint64
-
-    type Loc struct {
-         Type     uint8
-         Flags    uint8
-         CheckSum uint16
-         Size     uint32
-         Offset   uint64 // 0 offset means not persisted yet.
-
-         buf []byte
-    }
-
-    LocTypeCollections
-    LocTypeNode
-    LocTypeVal
-
-    Loc.Flags are reserved; perhaps a future LocFlagsCompressed?
-
-------------------------------------------------------------
-More ideas / TODO...
-
-- B+tree, except for perhaps the root node, which might have data
-  pointers, perhaps to help with time-series data.
-
-- Possible for insertion of min key or max key to be O(1) until the
-  root node needs to split.
-
-- Per-partition aggregates should be supportable.
 
 ------------------------------------------------------------
 Some ascii notation/digrams...
@@ -250,4 +140,119 @@ Scans and partition/key lookups of the data structure might also
 ignore partitions during interior node visits, which may be able to
 increase performance if candidate tree descendents are able to be
 pruned away early.
+
+------------------------------------------------------------
+Sketch of persisted representation...
+
+    // Stored a 0th byte of the log file.
+    type Header struct {
+         Magic      uint64
+         UUID       uint64
+         VersionLen uint32
+         VersionVal []byte
+         ExtrasLen  uint32
+         ExtrasVal  []byte
+    }
+
+    // The "footer" appended to the log file whenever there's a Commit().
+    type Store struct {
+         Magic               uint64 // Same as Header.Magic.
+         UUID                uint64 // Same as Header.UUID.
+         StoreManifestLoc    Loc    // Pointer to StoreManifest.
+         CollectionRootNodes []Loc  // Length is StoreManifest.NumCollections.
+    }
+
+    // We keep slow changing data separate from the Store footer.
+    // Perhaps just make this JSON for ease of debugging.
+    type StoreManifest struct {
+         Flags          uint32 // Reserved.
+         ExtrasLen      uint32
+         ExtrasVal      []byte
+         NumCollections uint32
+         Collections    []Collection // Length is NumCollections.
+    }
+
+    type Collection struct {
+         NameLen            uint32
+         Name               []byte
+         CompareFuncNameLen uint32
+         CompareFuncName    []byte
+         ExtrasLen          uint32
+         ExtrasVal          []byte
+    }
+
+    // A Node of a partizen btree has its child pointers first ordered by
+    // PartitionID, then secondarily ordered by Key.
+    type Node struct {
+         // Locs are ordered by ChildLoc.Offset and are kept separate
+         // as multiple NodePartitions might be pointing to the same Loc.
+         NumLocs   uint8 // Max fan-out of 256.
+         ChildLocs []Loc
+
+         // The PartitionIdxs and Partitions arrays have length of NumPartitions
+         // and are ordered by PartitionID.  For example PartitionIdxs[4]
+         // and Partitions[4] are both about PartitionIdxs[4].PartitionID.
+         NumPartitions  uint16
+         PartitionIdxs  []NodePartitionIdx
+         Partitions     []NodePartition
+    }
+
+    type NodePartitionIdx struct {
+         PartitionID PartitionID
+         Offset      uint32 // Start byte offset of corresponding NodePartition
+                            // in Node.Partitions array, starting from the 0th
+                            // Node.Partition[0] byte position.
+    }
+
+    type NodePartition {
+         TotKeys     uint64 // TotKeys - TotVals equals number of deletions.
+         TotVals     uint64
+         TotKeyBytes uint64
+         TotValBytes uint64
+
+         NumKeySeqIdxs uint8 // Max fan-out of 256.
+         KeySeqIdxs    []KeySeqIdx
+
+         // FUTURE: Aggregates might be maintained here per NodePartition.
+    }
+
+    type KeySeqIdx struct {
+         KeyLen uint16
+         Key    Key
+         Seq    Seq   // If this points to a Node, this is the Node's max Seq for a Partition.
+         Idx    uint8 // An index into Node.ChildLocs; and, to support ChangesSince(),
+                      // an Idx of uint8(0xff) means a deleted item.
+    }
+
+    type Key         []byte
+    type Val         []byte
+    type PartitionID uint16
+    type Seq         uint64
+
+    type Loc struct {
+         Type     uint8
+         Flags    uint8
+         CheckSum uint16
+         Size     uint32
+         Offset   uint64 // 0 offset means not persisted yet.
+
+         buf []byte
+    }
+
+    LocTypeCollections
+    LocTypeNode
+    LocTypeVal
+
+    Loc.Flags are reserved; perhaps a future LocFlagsCompressed?
+
+------------------------------------------------------------
+More ideas / TODO...
+
+- B+tree, except for perhaps the root node, which might have data
+  pointers, perhaps to help with time-series data.
+
+- Possible for insertion of min key or max key to be O(1) until the
+  root node needs to split.
+
+- Per-partition aggregates should be supportable.
 
