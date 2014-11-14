@@ -1,10 +1,10 @@
 partizen
 
-A prototype copy-on-write btree, ordered Key-Value storage library
-with partition and sequence number awareness.  Partitions can be
-independently rolled back to a previous sequence number in O(1) time.
+A potential copy-on-write btree design partition and sequence number
+awareness.  Partitions can be independently rolled back to a previous
+sequence number in O(1) time.
 
-Status: prototype
+Status: thinking about the design
 
 ------------------------------------------------------------
 ADT...
