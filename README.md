@@ -175,7 +175,7 @@ More ideas / TODO...
 ------------------------------------------------------------
 Some ascii notation/digrams...
 
-An item looks like <[a-z]><seq number>, like...
+An item looks like {[a-z]}{seq-number}, like...
 
     a0
     b0
@@ -186,7 +186,7 @@ consonant or a vowel.  For example, "a0" belongs in the vowel
 partition.  (In real life, you'd have some hash algorithm instead to
 calculate the partition for a key.)
 
-Nodes look like "n.#[pointers to lower nodes or items]n.#", where the
+Nodes look like "n.#[pointers to lower nodes or items]", where the
 pointerw to lower nodes is grouped by partition (consonants, then
 vowels).  For example, drawing the partizen btree sideways, with leaf
 items on the left hand side...
