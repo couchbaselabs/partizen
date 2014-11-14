@@ -1,0 +1,121 @@
+package partizen
+
+type Key []byte
+type Val []byte
+type PartitionID uint16
+type Seq uint64
+
+// A Header is stored at the head (or 0th byte) of the log file.
+type Header struct {
+	Magic      uint64
+	UUID       uint64
+	VersionLen uint32
+	VersionVal []byte
+	ExtrasLen  uint32
+	ExtrasVal  []byte
+}
+
+// A Store is a "footer" is the last record appended to the log file
+// whenever there's a successful Store.Commit().
+type Store struct {
+	Magic       uint64 // Same as Header.Magic.
+	UUID        uint64 // Same as Header.UUID.
+	StoreDefLoc Loc    // Pointer to StoreDef.
+
+	// Pointers to partizen btree root Nodes, 1 per Collection.  The
+	// length of CollectionRootNodes array equals
+	// len(StoreDef.Collections).
+	CollectionRootNodes []Loc
+}
+
+// A StoreDef defines a partizen Store, holding "slow-changing"
+// configuration metadata about a Store.  We keep slow changing
+// metadata separate from the Store footer for efficiency, but use
+// JSON ecoding of the StoreDef for debuggability.
+type StoreDef struct {
+	Collections map[string]*CollectionDef
+}
+
+// A CollectionDef is stored as JSON for debuggability.
+type CollectionDef struct {
+	CompareFuncName string
+}
+
+// A Node of a partizen btree has its child pointers first ordered by
+// PartitionID, then secondarily ordered by Key.
+type Node struct {
+	// Locs are ordered by ChildLoc.Offset and are kept separate from
+	// the NodePartitions because multiple NodePartitions might be
+	// pointing to the same Loc.
+	NumLocs   uint8
+	ChildLocs []Loc // See MAX_CHILD_LOCS_PER_NODE.
+
+	// The PartitionIdxs and Partitions arrays have length of
+	// NumPartitions and are both ordered by PartitionID.  For example
+	// PartitionIdxs[4] and Partitions[4] are both about
+	// PartitionIdxs[4].PartitionID.
+	NumPartitions uint16
+	PartitionIdxs []NodePartitionIdx
+	Partitions    []NodePartition
+}
+
+// Although NumLocs is a uint8, the max fan-out of a Node is 255, not
+// 256, because ChildLoc index 0xff is reserved to mark deletions.
+const MAX_CHILD_LOCS_PER_NODE = 255
+
+type NodePartitionIdx struct {
+	PartitionID PartitionID
+
+	// Offset is the starting byte offset of the corresponding
+	// NodePartition entry in the Node.Partitions array, starting from
+	// the 0th Node.Partition[0] byte position.
+	Offset uint16
+}
+
+type NodePartition struct {
+	TotKeys     uint64 // TotKeys - TotVals equals number of deletions.
+	TotVals     uint64
+	TotKeyBytes uint64
+	TotValBytes uint64
+
+	NumKeySeqIdxs uint8 // Max fan-out of 255.
+	KeySeqIdxs    []KeySeqIdx
+
+	// FUTURE: Aggregates might be also maintained here per NodePartition.
+}
+
+type KeySeqIdx struct {
+	KeyLen uint16
+	Key    Key
+
+	// The meaning of this Seq field depends on the ChildLoc's type...
+	// If this KeySeqIdx points to a Val (or to a deleted Val), this
+	// Seq is for that leaf item.  If this KeySeqIdx points to a Node,
+	// this Seq is the Node's max Seq for a Partition.
+	Seq Seq
+
+	// An index into Node.ChildLocs; and, to support ChangesSince(),
+	// an Idx of uint8(0xff) means a deleted item.
+	Idx uint8
+}
+
+// A Loc represents the location of a byte range persisted or
+// to-be-persisted to the storage file.
+type Loc struct {
+	Type     uint8
+	Flags    uint8 // Currently reserved.
+	CheckSum uint16
+	Size     uint32
+	Offset   uint64 // 0 offset means not persisted yet.
+
+	// Transient; non-nil when the Loc is read into memory
+	// or when the bytes of the Loc are prepared for writing.
+	buf []byte
+}
+
+const (
+	// Allowed values for Loc.Type field...
+	LocTypeCollections = 0x00
+	LocTypeNode        = 0x01
+	LocTypeVal         = 0x02
+)
