@@ -28,8 +28,6 @@ type Footer struct {
 // JSON ecoding of the StoreDef for debuggability.
 type StoreDef struct {
 	Collections []*CollectionDef
-
-	collectionRootNodeLocs []*Loc // Transient.
 }
 
 // A CollectionDef is stored as JSON for debuggability.
@@ -41,9 +39,12 @@ type CollectionDef struct {
 // A Node of a partizen btree has its descendent locations first
 // ordered by PartitionID, then secondarily ordered by Key.
 type Node struct {
-	// Locs are ordered by ChildLoc.Offset and are kept separate from
-	// the NodePartitions because multiple NodePartition.KeySeq's
-	// might be pointing to the same Loc.
+	// ChildLocs are not ordered (or, at least roughly ordered by
+	// append sequence) and are kept separate from the NodePartitions
+	// because multiple NodePartition.KeySeq's may be sharing or
+	// indexing to the same ChildLoc's.
+	//
+	// TODO: Consider ordering ChildLocs by ChildLoc.Offset?
 	NumChildLocs uint8
 	ChildLocs    []Loc // See MAX_CHILD_LOCS_PER_NODE.
 

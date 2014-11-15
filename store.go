@@ -13,8 +13,7 @@ type store struct {
 	storeOptions StoreOptions
 	header       *Header
 	footer       *Footer
-
-	dirtyStoreDef *StoreDef
+	footerDirty  *Footer
 }
 
 func storeOpen(storeFile StoreFile, storeOptions StoreOptions) (Store, error) {
