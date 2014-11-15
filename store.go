@@ -11,10 +11,10 @@ const HEADER_VERSION = "0.0.0"
 type store struct {
 	storeFile    StoreFile
 	storeOptions StoreOptions
+	header       *Header
+	footer       *Footer
 
-	storeDef *StoreDef
-	header   *Header
-	footer   *Footer
+	dirtyStoreDef *StoreDef
 }
 
 func storeOpen(storeFile StoreFile, storeOptions StoreOptions) (Store, error) {
@@ -30,7 +30,6 @@ func storeOpen(storeFile StoreFile, storeOptions StoreOptions) (Store, error) {
 	return &store{
 		storeFile:    storeFile,
 		storeOptions: storeOptions,
-		storeDef:     &StoreDef{Collections: make([]*CollectionDef, 0)},
 		header:       header,
 		footer:       footer,
 	}, nil
@@ -80,11 +79,10 @@ func readHeader(f StoreFile, o *StoreOptions) (*Header, error) {
 func readFooter(f StoreFile, o *StoreOptions, header *Header,
 	startOffset uint64) (*Footer, error) {
 	footer := &Footer{
-		Magic: header.Magic,
-		UUID:  header.UUID,
-
+		Magic:                  header.Magic,
+		UUID:                   header.UUID,
+		StoreDefLoc:            Loc{Type: LocTypeStoreDef},
 		CollectionRootNodeLocs: make([]Loc, 0),
-		storeDef:               &StoreDef{Collections: make([]*CollectionDef, 0)},
 	}
 	// TODO: Actually scan and read the footer from f.
 	return footer, nil

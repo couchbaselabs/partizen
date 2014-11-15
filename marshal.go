@@ -20,8 +20,6 @@ type Footer struct {
 	// Locations of partizen btree root Nodes, 1 per Collection.  The
 	// length of CollectionRootNodes equals len(StoreDef.Collections).
 	CollectionRootNodeLocs []Loc
-
-	storeDef *StoreDef // Transient.
 }
 
 // A StoreDef defines a partizen Store, holding "slow-changing"
@@ -30,6 +28,8 @@ type Footer struct {
 // JSON ecoding of the StoreDef for debuggability.
 type StoreDef struct {
 	Collections []*CollectionDef
+
+	collectionRootNodeLocs []*Loc // Transient.
 }
 
 // A CollectionDef is stored as JSON for debuggability.
