@@ -10,8 +10,8 @@ type Val []byte
 type PartitionID uint16
 type Seq uint64
 
-func Open(sf StoreFile, options StoreOptions) (Store, error) {
-	return nil, nil
+func Open(storeFile StoreFile, storeOptions StoreOptions) (Store, error) {
+	return storeOpen(storeFile, storeOptions)
 }
 
 type StoreFile interface {
@@ -27,8 +27,8 @@ type Store interface {
 	AddCollection(collName string, compareFuncName string) (Collection, error)
 	RemoveCollection(collName string) error
 
-	CommitChanges() (ChangeStats, error)
-	AbortChanges() (ChangeStats, error)
+	CommitChanges(*ChangeStats) error
+	AbortChanges(*ChangeStats) error
 
 	Snapshot() (Store, error)
 
@@ -87,9 +87,9 @@ type Collection interface {
 type StoreOptions struct {
 	CompareFuncs map[string]CompareFunc // Keyed by compareFuncName.
 
-	BufAlloc   func(size int) []byte
-	BufAddRef  func(buf []byte)
-	BufDecRef  func(buf []byte)
+	BufAlloc  func(size int) []byte
+	BufAddRef func(buf []byte)
+	BufDecRef func(buf []byte)
 }
 
 type VisitorFunc func(partition PartitionID, key Key, seq Seq, val Val) bool
@@ -100,10 +100,10 @@ type MergeFunc func(base, a, b []byte) ([]byte, error)
 // and +1 if a > b.  For example: bytes.Compare()
 type CompareFunc func(a, b []byte) int
 
-type ChangeStats struct{
+type ChangeStats struct {
 	// TODO.
 }
 
-type StoreStats struct{
+type StoreStats struct {
 	// TODO.
 }
