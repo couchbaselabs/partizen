@@ -15,9 +15,9 @@ type Header struct {
 	ExtrasVal  []byte
 }
 
-// A Store is a "footer" is the last record appended to the log file
-// whenever there's a successful Store.Commit().
-type Store struct {
+// A Footer is the last record appended to the log file whenever
+// there's a successful Store.Commit().
+type Footer struct {
 	Magic       uint64 // Same as Header.Magic.
 	UUID        uint64 // Same as Header.UUID.
 	StoreDefLoc Loc    // Pointer to StoreDef.
@@ -25,7 +25,7 @@ type Store struct {
 	// Pointers to partizen btree root Nodes, 1 per Collection.  The
 	// length of CollectionRootNodes array equals
 	// len(StoreDef.Collections).
-	CollectionRootNodes []Loc
+	CollectionRootNodeLocs []Loc
 }
 
 // A StoreDef defines a partizen Store, holding "slow-changing"
@@ -48,8 +48,8 @@ type Node struct {
 	// Locs are ordered by ChildLoc.Offset and are kept separate from
 	// the NodePartitions because multiple NodePartitions might be
 	// pointing to the same Loc.
-	NumLocs   uint8
-	ChildLocs []Loc // See MAX_CHILD_LOCS_PER_NODE.
+	NumChildLocs uint8
+	ChildLocs    []Loc // See MAX_CHILD_LOCS_PER_NODE.
 
 	// The PartitionIdxs and Partitions arrays have length of
 	// NumPartitions and are both ordered by PartitionID.  For example
@@ -60,10 +60,10 @@ type Node struct {
 	Partitions    []NodePartition
 }
 
-// MAX_CHILD_LOCS_PER_NODE defines the max number for Node.NumLocs per
-// Node. Although Node.NumLocs is a uint8, the max fan-out of a Node
-// is 255, not 256, because ChildLoc index 0xff is reserved to mark
-// deletions.
+// MAX_CHILD_LOCS_PER_NODE defines the max number for
+// Node.NumChildLocs per Node. Although Node.NumChildLocs is a uint8,
+// the max fan-out of a Node is 255, not 256, because ChildLoc index
+// 0xff is reserved to mark deletions.
 const MAX_CHILD_LOCS_PER_NODE = 255
 
 // A NodePartitionIdx is a fixed-sized struct to allow fast lookup of
@@ -85,26 +85,26 @@ type NodePartition struct {
 	TotKeyBytes uint64
 	TotValBytes uint64
 
-	NumKeySeqIdxs uint8       // Max fan-out of 255.
-	KeySeqIdxs    []KeySeqIdx // KeySeqIdxs is ordered by Key.
+	NumKeySeqs uint8
+	KeySeqs    []KeySeq // KeySeqs is ordered by Key.
 
 	// FUTURE: Aggregates might be also maintained here per NodePartition.
 }
 
 // A KeySeqIdx is a variable-sized struct that tracks a single key.
-type KeySeqIdx struct {
+type KeySeq struct {
 	KeyLen uint16
 	Key    Key
 
 	// The meaning of this Seq field depends on the ChildLoc's type...
 	// If this KeySeqIdx points to a Val (or to a deleted Val), this
-	// Seq is for that leaf item.  If this KeySeqIdx points to a Node,
-	// this Seq is the Node's max Seq for a Partition.
+	// Seq is for that leaf data item.  If this KeySeqIdx points to a
+	// Node, this Seq is the Node's max Seq for a Partition.
 	Seq Seq
 
 	// An index into Node.ChildLocs; and, to support ChangesSince(),
-	// an Idx of uint8(0xff) means a deleted item.
-	Idx uint8
+	// a ChildLocsIdx of uint8(0xff) means a deleted item.
+	ChildLocsIdx uint8
 }
 
 // A Loc represents the location of a byte range persisted or

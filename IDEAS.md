@@ -29,9 +29,9 @@ ADT...
       SnapshotPreviousCommit(numCommitsBack int) => (Store, error)
 
       CollectionNames() ([]string, error)
-      GetCollection(collName) (Collection, error)
-      AddCollection(collName, compareFuncName) (Collection, error)
-      RemoveCollection(collName) error
+      GetCollection(collName string) (Collection, error)
+      AddCollection(collName string, compareFuncName string) (Collection, error)
+      RemoveCollection(collName string) error
 
       Stats(dest) error
 
