@@ -38,7 +38,12 @@ ADT...
     Collection...
       CompareFunc() CompareFunc
 
-      Get(partition PartitionID, key []byte, withValue bool) (seq Seq, value []byte, error)
+      Get(partition PartitionID,
+          key []byte,
+          withValue bool, // When withValue is false, value will be nil.
+          fastSample bool // Return result only if fast / in memory (no disk hit).
+      ) (seq Seq, value []byte, error)
+
       Set(partition PartitionID, key []byte, seq Seq, value []byte) error
       Merge(partition PartitionID, key[]byte, seq Seq, MergeFunc) error
       Del(partition PartitionID, key []byte, seq Seq) error
@@ -46,11 +51,13 @@ ADT...
       Min(withValue bool) (partition PartitionID, key []byte, seq Seq, value []byte, error)
       Max(withValue bool) (partition PartitionID, key []byte, seq Seq, value []byte, error)
 
-      Scan(onlyPartitions []PartitionID, // Use nil for all partitions.
-           fromKeyInclusive []byte,
+      // Scan results will be in fromKey...toKey sequence even when reverse is true.
+      Scan(fromKeyInclusive []byte,
            toKeyExclusive []byte,
-           withValue bool,
-           reverse bool, // When true, fromKey should be > toKey.
+           reverse bool, // When reverse is true, fromKey should be > toKey.
+           partitions []PartitionID, // Focus on subset of partitions; nil for all partitions.
+           withValue bool, // When withValue is false, value will be nil.
+           fastSample bool, // Return result only if fast / in memory (no disk hit).
            visitorFunc(partition PartitionID,
                        key []byte, seq Seq, value []byte) bool) error
 
@@ -101,7 +108,7 @@ So n.2 is the root node of the tree, and n.0 & n.1 are interior nodes.
 
 Here's a more complex tree with more leaf items...
 
-    a0   n.0[b0 c0 d0; a0]n.0   n.3[b-n.0 f-n.1 h-n.2; a-n.0 e-n.1 i-n.2]
+    a0   n.0[b0 c0 d0; a0]   n.3[b-n.0 f-n.1 h-n.2; a-n.0 e-n.1 i-n.2]
     b0
     c0
     d0
@@ -119,11 +126,11 @@ n.5 becomes the most current root node...
 If we update d0 to d2, then we append these records, where n.7 becomes
 the most current root node...
 
-    d2   n.6[b1 c0 d1; a0]   n.7[b-n.6 f-n.1 h-n.2; a-n.6 e-n.1 i-n.2]
+    d2   n.6[b1 c0 d2; a0]   n.7[b-n.6 f-n.1 h-n.2; a-n.6 e-n.1 i-n.2]
 
 Let's do one more update of b1 to b2...
 
-    b3   n.8[b3 c0 d1; a0]   n.9[b-n.8 f-n.1 h-n.2; a-n.8 e-n.1 i-n.2]
+    b3   n.8[b3 c0 d2; a0]   n.9[b-n.8 f-n.1 h-n.2; a-n.8 e-n.1 i-n.2]
 
 So, n.9 is the most current root node.
 
@@ -133,12 +140,15 @@ the log...
 
                              n.10[b-n.4 f-n.1 h-n.2; a-n.8 e-n.1 i-n.2]
 
-So, that's quick rollback of an individual partition (a subset of the
-tree) with no major data reoganizations.
+That new n.10 root node copies the old consonants partition from n.5,
+and the vowels partitions from n.9.
 
-Scans and partition/key lookups of the data structure might also be
-able to prune away non-matching partitions during interior node
-visits, which may be able to increase performance.
+So, that's quick rollback of an individual partition (a subset of the
+tree) with no major data reoganizations, as an O(1) step.
+
+Partition-based key lookups of the partizen btree might also be able
+to prune away non-matching partitions during interior node visits,
+which may be able to increase performance.
 
 ------------------------------------------------------------
 More ideas / TODO...
