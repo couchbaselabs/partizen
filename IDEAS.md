@@ -67,11 +67,11 @@ ADT...
            visitorFunc(partition PartitionID,
                        key []byte, seq Seq, value []byte) bool) error
 
-      ChangesSince(partition PartitionID,
-                   fromSeqExclusive Seq,
-                   withValue bool,
-                   visitorFunc(partition PartitionID,
-                               key []byte, seq Seq, value []byte) bool) error
+      Diff(partition PartitionID,
+           fromSeqExclusive Seq,
+           withValue bool,
+           visitorFunc(partition PartitionID,
+                       key []byte, seq Seq, value []byte) bool) error
 
       // Rollback rewindws a partition back to at mox a previous seq
       // number.  If the rollback operation can't hit the exact seq
