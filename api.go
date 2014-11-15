@@ -90,8 +90,6 @@ type StoreOptions struct {
 	BufAlloc   func(size int) []byte
 	BufAddRef  func(buf []byte)
 	BufDecRef  func(buf []byte)
-	BufGetNext func(buf []byte) (bufNext []byte)
-	BufSetNext func(buf, bufNext []byte)
 }
 
 type VisitorFunc func(partition PartitionID, key Key, seq Seq, val Val) bool
@@ -102,6 +100,10 @@ type MergeFunc func(base, a, b []byte) ([]byte, error)
 // and +1 if a > b.  For example: bytes.Compare()
 type CompareFunc func(a, b []byte) int
 
-type ChangeStats struct{}
+type ChangeStats struct{
+	// TODO.
+}
 
-type StoreStats struct{}
+type StoreStats struct{
+	// TODO.
+}
