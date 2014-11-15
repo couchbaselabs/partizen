@@ -2,7 +2,11 @@ package partizen
 
 import (
 	"bytes"
+	"math/rand"
 )
+
+const HEADER_MAGIC = 0xea45113d
+const HEADER_VERSION = "0.0.0"
 
 type store struct {
 	storeFile    StoreFile
@@ -60,7 +64,17 @@ var defaultOptions = StoreOptions{
 }
 
 func readHeader(f StoreFile, o *StoreOptions) (*Header, error) {
-	return nil, nil
+	header := &Header{
+		Magic:      uint64(HEADER_MAGIC),
+		UUID:       uint64(rand.Int63()),
+		VersionLen: uint32(len(HEADER_VERSION)),
+		VersionVal: []byte(HEADER_VERSION),
+	}
+	if f == nil { // Memory only case.
+		return header, nil
+	}
+	// TODO: Actually read the header from f.
+	return header, nil
 }
 
 func readFooter(f StoreFile, o *StoreOptions, header *Header) (*Footer, error) {
