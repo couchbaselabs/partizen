@@ -23,7 +23,7 @@ func storeOpen(storeFile StoreFile, storeOptions StoreOptions) (Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	footer, err := readFooter(storeFile, &storeOptions, header)
+	footer, err := readFooter(storeFile, &storeOptions, header, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -77,8 +77,17 @@ func readHeader(f StoreFile, o *StoreOptions) (*Header, error) {
 	return header, nil
 }
 
-func readFooter(f StoreFile, o *StoreOptions, header *Header) (*Footer, error) {
-	return nil, nil
+func readFooter(f StoreFile, o *StoreOptions, header *Header,
+	startOffset uint64) (*Footer, error) {
+	footer := &Footer{
+		Magic: header.Magic,
+		UUID:  header.UUID,
+
+		CollectionRootNodeLocs: make([]Loc, 0),
+		storeDef:               &StoreDef{Collections: make([]*CollectionDef, 0)},
+	}
+	// TODO: Actually scan and read the footer from f.
+	return footer, nil
 }
 
 func (s *store) CollectionNames() ([]string, error) {

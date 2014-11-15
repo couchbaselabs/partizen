@@ -15,12 +15,13 @@ type Header struct {
 type Footer struct {
 	Magic       uint64 // Same as Header.Magic.
 	UUID        uint64 // Same as Header.UUID.
-	StoreDefLoc Loc    // Pointer to StoreDef.
+	StoreDefLoc Loc    // Location of StoreDef.
 
-	// Pointers to partizen btree root Nodes, 1 per Collection.  The
-	// length of CollectionRootNodes array equals
-	// len(StoreDef.Collections).
+	// Locations of partizen btree root Nodes, 1 per Collection.  The
+	// length of CollectionRootNodes equals len(StoreDef.Collections).
 	CollectionRootNodeLocs []Loc
+
+	storeDef *StoreDef // Transient.
 }
 
 // A StoreDef defines a partizen Store, holding "slow-changing"
@@ -37,8 +38,8 @@ type CollectionDef struct {
 	CompareFuncName string
 }
 
-// A Node of a partizen btree has its child pointers first ordered by
-// PartitionID, then secondarily ordered by Key.
+// A Node of a partizen btree has its descendent locations first
+// ordered by PartitionID, then secondarily ordered by Key.
 type Node struct {
 	// Locs are ordered by ChildLoc.Offset and are kept separate from
 	// the NodePartitions because multiple NodePartition.KeySeq's
