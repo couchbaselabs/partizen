@@ -33,11 +33,12 @@ type Store struct {
 // metadata separate from the Store footer for efficiency, but use
 // JSON ecoding of the StoreDef for debuggability.
 type StoreDef struct {
-	Collections map[string]*CollectionDef
+	Collections []*CollectionDef
 }
 
 // A CollectionDef is stored as JSON for debuggability.
 type CollectionDef struct {
+	Name            string
 	CompareFuncName string
 }
 
@@ -59,10 +60,14 @@ type Node struct {
 	Partitions    []NodePartition
 }
 
-// Although NumLocs is a uint8, the max fan-out of a Node is 255, not
-// 256, because ChildLoc index 0xff is reserved to mark deletions.
+// MAX_CHILD_LOCS_PER_NODE defines the max number for Node.NumLocs per
+// Node. Although Node.NumLocs is a uint8, the max fan-out of a Node
+// is 255, not 256, because ChildLoc index 0xff is reserved to mark
+// deletions.
 const MAX_CHILD_LOCS_PER_NODE = 255
 
+// A NodePartitionIdx is a fixed-sized struct to allow fast lookup of
+// a PartitionId in a Node (see Node.PartitionIdxs array).
 type NodePartitionIdx struct {
 	PartitionID PartitionID
 
@@ -72,18 +77,21 @@ type NodePartitionIdx struct {
 	Offset uint16
 }
 
+// A NodePartition is a variable-sized struct that holds keys of
+// direct descendants of a Partition for a Node.
 type NodePartition struct {
 	TotKeys     uint64 // TotKeys - TotVals equals number of deletions.
 	TotVals     uint64
 	TotKeyBytes uint64
 	TotValBytes uint64
 
-	NumKeySeqIdxs uint8 // Max fan-out of 255.
-	KeySeqIdxs    []KeySeqIdx
+	NumKeySeqIdxs uint8       // Max fan-out of 255.
+	KeySeqIdxs    []KeySeqIdx // KeySeqIdxs is ordered by Key.
 
 	// FUTURE: Aggregates might be also maintained here per NodePartition.
 }
 
+// A KeySeqIdx is a variable-sized struct that tracks a single key.
 type KeySeqIdx struct {
 	KeyLen uint16
 	Key    Key
@@ -100,7 +108,7 @@ type KeySeqIdx struct {
 }
 
 // A Loc represents the location of a byte range persisted or
-// to-be-persisted to the storage file.
+// soon-to-be-persisted to the storage file.
 type Loc struct {
 	Type     uint8
 	Flags    uint8 // Currently reserved.
