@@ -1,10 +1,5 @@
 package partizen
 
-type Key []byte
-type Val []byte
-type PartitionID uint16
-type Seq uint64
-
 // A Header is stored at the head (or 0th byte) of the log file.
 type Header struct {
 	Magic      uint64
@@ -46,8 +41,8 @@ type CollectionDef struct {
 // PartitionID, then secondarily ordered by Key.
 type Node struct {
 	// Locs are ordered by ChildLoc.Offset and are kept separate from
-	// the NodePartitions because multiple NodePartitions might be
-	// pointing to the same Loc.
+	// the NodePartitions because multiple NodePartition.KeySeq's
+	// might be pointing to the same Loc.
 	NumChildLocs uint8
 	ChildLocs    []Loc // See MAX_CHILD_LOCS_PER_NODE.
 
