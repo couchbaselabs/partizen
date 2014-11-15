@@ -22,19 +22,19 @@ type StoreFile interface {
 }
 
 type Store interface {
+	CollectionNames() ([]string, error)
+	GetCollection(collName string) (Collection, error)
+	AddCollection(collName string, compareFuncName string) (Collection, error)
+	RemoveCollection(collName string) error
+
 	CommitChanges() (ChangeStats, error)
 	AbortChanges() (ChangeStats, error)
-
-	CopyTo(StoreFile, keepCommitsTo interface{}) error
 
 	Snapshot() (Store, error)
 
 	SnapshotPreviousCommit(numCommitsBack int) (Store, error)
 
-	CollectionNames() ([]string, error)
-	GetCollection(collName string) (Collection, error)
-	AddCollection(collName string, compareFuncName string) (Collection, error)
-	RemoveCollection(collName string) error
+	CopyTo(StoreFile, keepCommitsTo interface{}) error
 
 	Stats(dest *StoreStats) error
 }
@@ -105,4 +105,3 @@ type CompareFunc func(a, b []byte) int
 type ChangeStats struct{}
 
 type StoreStats struct{}
-
