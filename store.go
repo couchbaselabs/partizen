@@ -87,6 +87,10 @@ func readFooter(f StoreFile, o *StoreOptions, header *Header,
 	return footer, nil
 }
 
+func (s *store) HasChanges() bool {
+	return s.footer != s.footerDirty
+}
+
 func (s *store) CollectionNames() ([]string, error) {
 	return nil, nil
 }

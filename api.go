@@ -27,6 +27,7 @@ type Store interface {
 	AddCollection(collName string, compareFuncName string) (Collection, error)
 	RemoveCollection(collName string) error
 
+	HasChanges() bool
 	CommitChanges(*ChangeStats) error
 	AbortChanges(*ChangeStats) error
 
