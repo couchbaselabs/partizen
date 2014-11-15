@@ -84,7 +84,7 @@ ADT...
 ------------------------------------------------------------
 Some ascii notation/digrams...
 
-An item looks like {[a-z]}{seq-number}, like...
+An item looks like {[a-z]}{seq-number}.  Here are 3 sample items...
 
     a0
     b0
@@ -94,10 +94,10 @@ For the purposes of this simplified explanation, let's say our
 partitioning "hash" function is whether a key starts with a consonant
 or a vowel.  For example, "a0" hashes to the vowel partition; and,
 "b0" & "c0" hash to the consonant partition.  In real life, you'd
-instead have some real hash algorithm to calculate the partition
-number for a key.
+instead have a real hash function to calculate a real partition number
+for a key.
 
-Nodes look like "n.#[pointers to lower nodes or items]", where the
+Nodes look like "n.{number}[pointers to lower nodes or items]", where the
 pointers to lower nodes are grouped by their partition (consonants
 first, then vowels).  For example, drawing the partizen btree
 sideways, with leaf items on the left hand side and the root node on
@@ -117,6 +117,15 @@ A two level partizen btree might look like..
     c0   n.1[c0;]
 
 So n.2 is the root node of the tree, and n.0 & n.1 are interior nodes.
+
+The descendent pointers in node n.2 is recorded as...
+
+  [b-n.0 c-n.1; a-n.0]
+
+This means that in the consonants partition, you can find key range
+["b"..."c") at node n.0.  And, you can find key range ["c"...TOP) at
+node n.1.  Then, in the vowels partitions (after the ";" separator
+character), you can find key range ["a"...TOP) at node n.0.
 
 Here's a more complex tree with more leaf items...
 
