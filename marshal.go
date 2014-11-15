@@ -123,7 +123,7 @@ type Loc struct {
 
 const (
 	// Allowed values for Loc.Type field...
-	LocTypeCollections = 0x00
-	LocTypeNode        = 0x01
-	LocTypeVal         = 0x02
+	LocTypeStoreDef = 0x00
+	LocTypeNode     = 0x01
+	LocTypeVal      = 0x02
 )
