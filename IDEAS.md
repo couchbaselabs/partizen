@@ -56,14 +56,14 @@ ADT...
       Min(withValue bool) (partition PartitionID, key []byte, seq Seq, value []byte, error)
       Max(withValue bool) (partition PartitionID, key []byte, seq Seq, value []byte, error)
 
-      // Scan provides results in fromKey...toKey sequence,
+      // Scan provides range results in [fromKeyInclusive...toKeyExclusive) sequence,
       // even when the reverse flag is true.
       Scan(fromKeyInclusive []byte,
            toKeyExclusive []byte,
            reverse bool, // When reverse flag is true, fromKey should be greater than toKey.
            partitions []PartitionID, // Focus on subset of partitions; nil for all partitions.
            withValue bool, // When withValue is false, value will be nil.
-           fastSample bool, // Return result only if fast / in memory (no disk hit).
+           fastSample bool, // Return subset of range that's fast / in memory (no disk hit).
            visitorFunc(partition PartitionID,
                        key []byte, seq Seq, value []byte) bool) error
 
