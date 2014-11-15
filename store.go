@@ -7,6 +7,29 @@ import (
 type store struct {
 	storeFile    StoreFile
 	storeOptions StoreOptions
+
+	storeDef *StoreDef
+	header   *Header
+	footer   *Footer
+}
+
+func storeOpen(storeFile StoreFile, storeOptions StoreOptions) (Store, error) {
+	storeOptions = initStoreOptions(storeOptions)
+	header, err := readHeader(storeFile, &storeOptions)
+	if err != nil {
+		return nil, err
+	}
+	footer, err := readFooter(storeFile, &storeOptions, header)
+	if err != nil {
+		return nil, err
+	}
+	return &store{
+		storeFile:    storeFile,
+		storeOptions: storeOptions,
+		storeDef:     &StoreDef{Collections: make([]*CollectionDef, 0)},
+		header:       header,
+		footer:       footer,
+	}, nil
 }
 
 func initStoreOptions(o StoreOptions) StoreOptions {
@@ -36,11 +59,12 @@ var defaultOptions = StoreOptions{
 	},
 }
 
-func storeOpen(storeFile StoreFile, storeOptions StoreOptions) (Store, error) {
-	return &store{
-		storeFile:    storeFile,
-		storeOptions: initStoreOptions(storeOptions),
-	}, nil
+func readHeader(f StoreFile, o *StoreOptions) (*Header, error) {
+	return nil, nil
+}
+
+func readFooter(f StoreFile, o *StoreOptions, header *Header) (*Footer, error) {
+	return nil, nil
 }
 
 func (s *store) CollectionNames() ([]string, error) {
