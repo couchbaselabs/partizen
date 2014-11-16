@@ -5,8 +5,7 @@ type Header struct {
 	Magic0     uint64
 	Magic1     uint64
 	UUID       uint64
-	VersionLen uint32
-	VersionVal []byte
+	Version    [48]byte
 	ExtrasLen  uint32
 	ExtrasVal  []byte
 }
@@ -24,6 +23,17 @@ type Footer struct {
 	// length of CollectionRootNodes equals len(StoreDef.Collections).
 	CollectionRootNodeLocs []Loc
 }
+
+var (
+	sizeofUint8  = 1
+	sizeofUint64 = 8
+
+	OffsetFooterMagic0      = 0
+	OffsetFooterMagic1      = OffsetFooterMagic0 + sizeofUint64
+	OffsetFooterUUID        = OffsetFooterMagic1 + sizeofUint64
+	OffsetFooterStoreDefLoc = OffsetFooterUUID + sizeofUint64
+	OffsetFooterWALTailLoc  = OffsetFooterStoreDefLoc + sizeofUint64
+)
 
 // A StoreDef defines a partizen Store, holding "slow-changing"
 // configuration metadata about a Store.  We keep slow changing

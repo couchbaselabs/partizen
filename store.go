@@ -80,8 +80,6 @@ func readHeader(f StoreFile, o *StoreOptions) (*Header, error) {
 		Magic0:     uint64(HEADER_MAGIC0),
 		Magic1:     uint64(HEADER_MAGIC1),
 		UUID:       uint64(rand.Int63()),
-		VersionLen: uint32(len(HEADER_VERSION)),
-		VersionVal: []byte(HEADER_VERSION),
 	}
 	if f == nil { // Memory only case.
 		return header, nil
