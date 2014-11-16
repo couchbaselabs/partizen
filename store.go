@@ -10,6 +10,8 @@ const HEADER_MAGIC0 = 0xea45113d
 const HEADER_MAGIC1 = 0xc03c1b04
 const HEADER_VERSION = "0.0.0"
 
+const maxUint64 = uint64(0xffffffffffffffff)
+
 type store struct {
 	// These fields are immutable.
 	storeFile    StoreFile
@@ -19,14 +21,7 @@ type store struct {
 	// These fields are mutable, protected by the m lock.
 	m       sync.Mutex
 	footer  *Footer
-	changes *changes
-}
-
-// A footer (lowercase) is a transient, in-memory representation of a
-// Footer, and is potentially not yet persisted (dirty).
-type changes struct {
-	isDirty  bool
-	storeDef *StoreDef
+	changes *Footer // Unpersisted changes to a store.
 }
 
 func storeOpen(storeFile StoreFile, storeOptions StoreOptions) (Store, error) {
@@ -35,7 +30,7 @@ func storeOpen(storeFile StoreFile, storeOptions StoreOptions) (Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	footer, changes, err := readFooter(storeFile, &storeOptions, header, 0)
+	footer, err := readFooter(storeFile, &storeOptions, header, maxUint64)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +39,7 @@ func storeOpen(storeFile StoreFile, storeOptions StoreOptions) (Store, error) {
 		storeOptions: storeOptions,
 		header:       header,
 		footer:       footer,
-		changes:      changes,
+		changes:      footer,
 	}, nil
 }
 
@@ -89,7 +84,7 @@ func readHeader(f StoreFile, o *StoreOptions) (*Header, error) {
 }
 
 func readFooter(f StoreFile, o *StoreOptions, header *Header,
-	startOffset uint64) (*Footer, *changes, error) {
+	startOffset uint64) (*Footer, error) {
 	footer := &Footer{
 		Magic0:                 header.Magic0,
 		Magic1:                 header.Magic1,
@@ -100,20 +95,17 @@ func readFooter(f StoreFile, o *StoreOptions, header *Header,
 	footer.StoreDefLoc.Type = LocTypeStoreDef
 
 	// TODO: Actually scan and read the footer from f, and initialize changes.
-	// TODO: Read WALEntry log and apply.
-	changes := &changes{
-	// TODO.
-	}
+	// TODO: Read WALEntry log and apply to footer.
 
-	return footer, changes, nil
+	return footer, nil
 }
 
-func (f *changes) getStoreDef() (*StoreDef, error) {
-	return nil, nil
+func (f *Footer) getStoreDef() (*StoreDef, error) {
+	return f.StoreDefLoc.storeDef, nil // TODO.
 }
 
 func (s *store) HasChanges() bool {
-	return s.changes.isDirty
+	return s.changes != s.footer
 }
 
 func (s *store) CollectionNames() ([]string, error) {
