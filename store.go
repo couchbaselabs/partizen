@@ -19,12 +19,13 @@ type store struct {
 	// These fields are mutable, protected by the m lock.
 	m           sync.Mutex
 	footer      *Footer
-	footerDirty *footer
+	changes     *changes
 }
 
 // A footer (lowercase) is a transient, in-memory representation of a
 // Footer, and is potentially not yet persisted (dirty).
-type footer struct {
+type changes struct {
+	isDirty  bool
 	storeDef *StoreDef
 }
 
@@ -34,7 +35,7 @@ func storeOpen(storeFile StoreFile, storeOptions StoreOptions) (Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	footer, footerClean, err := readFooter(storeFile, &storeOptions, header, 0)
+	footer, changes, err := readFooter(storeFile, &storeOptions, header, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +44,7 @@ func storeOpen(storeFile StoreFile, storeOptions StoreOptions) (Store, error) {
 		storeOptions: storeOptions,
 		header:       header,
 		footer:       footer,
-		footerDirty:  footerClean,
+		changes:      changes,
 	}, nil
 }
 
@@ -89,21 +90,21 @@ func readHeader(f StoreFile, o *StoreOptions) (*Header, error) {
 }
 
 func readFooter(f StoreFile, o *StoreOptions, header *Header,
-	startOffset uint64) (*Footer, *footer, error) {
-	ft := &Footer{
+	startOffset uint64) (*Footer, *changes, error) {
+	footer := &Footer{
 		Magic:                  header.Magic,
 		UUID:                   header.UUID,
 		StoreDefLoc:            Loc{Type: LocTypeStoreDef},
 		CollectionRootNodeLocs: make([]Loc, 0),
 	}
-	ftClean := &footer{
+	// TODO: Actually scan and read the footer from f, and changes.
+	changes := &changes{
 	// TODO.
 	}
-	// TODO: Actually scan and read the footer from f.
-	return ft, ftClean, nil
+	return footer, changes, nil
 }
 
-func (f *footer) getStoreDef() (*StoreDef, error) {
+func (f *changes) getStoreDef() (*StoreDef, error) {
 	return nil, nil
 }
 
