@@ -16,12 +16,11 @@ type Footer struct {
 	Magic       uint64 // Same as Header.Magic.
 	UUID        uint64 // Same as Header.UUID.
 	StoreDefLoc Loc    // Location of StoreDef.
+	WALTailLoc  Loc    // Last entry of write-ahead-log.
 
 	// Locations of partizen btree root Nodes, 1 per Collection.  The
 	// length of CollectionRootNodes equals len(StoreDef.Collections).
 	CollectionRootNodeLocs []Loc
-
-	WALTail Loc // Write-ahead-log.
 }
 
 // A StoreDef defines a partizen Store, holding "slow-changing"
@@ -41,20 +40,21 @@ type CollectionDef struct {
 // A Node of a partizen btree has its descendent locations first
 // ordered by PartitionID, then secondarily ordered by Key.
 type Node struct {
+	NumChildLocs  uint8
+	NumPartitions uint16
+
 	// ChildLocs are not ordered (or, at least roughly ordered by
 	// append sequence) and are kept separate from the NodePartitions
 	// because multiple NodePartition.KeySeq's may be sharing or
 	// indexing to the same ChildLoc's.
 	//
 	// TODO: Consider ordering ChildLocs by ChildLoc.Offset?
-	NumChildLocs uint8
-	ChildLocs    []Loc // See MAX_CHILD_LOCS_PER_NODE.
+	ChildLocs []Loc // See MAX_CHILD_LOCS_PER_NODE.
 
 	// The PartitionIdxs and Partitions arrays have length of
 	// NumPartitions and are both ordered by PartitionID.  For example
 	// PartitionIdxs[4] and Partitions[4] are both about
 	// PartitionIdxs[4].PartitionID.
-	NumPartitions uint16
 	PartitionIdxs []NodePartitionIdx
 	Partitions    []NodePartition
 }
@@ -72,7 +72,7 @@ type NodePartitionIdx struct {
 
 	// Offset is the starting byte offset of the corresponding
 	// NodePartition entry in the Node.Partitions array, starting from
-	// the 0th Node.Partition[0] byte position.
+	// the 0th Node.Partitions[0] byte position.
 	Offset uint16
 }
 
@@ -93,7 +93,6 @@ type NodePartition struct {
 // A KeySeqIdx is a variable-sized struct that tracks a single key.
 type KeySeq struct {
 	KeyLen uint16
-	Key    Key
 
 	// The meaning of this Seq field depends on the ChildLoc's type...
 	// If this KeySeqIdx points to a Val (or to a deleted Val), this
@@ -104,6 +103,9 @@ type KeySeq struct {
 	// An index into Node.ChildLocs; and, to support ChangesSince(),
 	// a ChildLocsIdx of uint8(0xff) means a deleted item.
 	ChildLocsIdx uint8
+
+	// The Key goes last as its variable sized.
+	Key Key
 }
 
 // A Loc represents the location of a byte range persisted or
