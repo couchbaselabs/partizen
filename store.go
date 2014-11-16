@@ -3,7 +3,6 @@ package partizen
 import (
 	"bytes"
 	"math/rand"
-	"reflect"
 	"sync"
 )
 
@@ -17,9 +16,9 @@ type store struct {
 	header       *Header
 
 	// These fields are mutable, protected by the m lock.
-	m           sync.Mutex
-	footer      *Footer
-	changes     *changes
+	m       sync.Mutex
+	footer  *Footer
+	changes *changes
 }
 
 // A footer (lowercase) is a transient, in-memory representation of a
@@ -109,11 +108,11 @@ func (f *changes) getStoreDef() (*StoreDef, error) {
 }
 
 func (s *store) HasChanges() bool {
-	return !reflect.DeepEqual(s.footer, s.footerDirty)
+	return s.changes.isDirty
 }
 
 func (s *store) CollectionNames() ([]string, error) {
-	storeDef, err := s.footerDirty.getStoreDef()
+	storeDef, err := s.changes.getStoreDef()
 	if err != nil {
 		return nil, err
 	}
