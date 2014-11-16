@@ -97,7 +97,7 @@ func readFooter(f StoreFile, o *StoreOptions, header *Header,
 		CollectionRootNodeLocs: make([]Loc, 0),
 	}
 	ftClean := &footer{
-		// TODO.
+	// TODO.
 	}
 	// TODO: Actually scan and read the footer from f.
 	return ft, ftClean, nil
