@@ -2,12 +2,12 @@ package partizen
 
 // A Header is stored at the head (or 0th byte) of the log file.
 type Header struct {
-	Magic0     uint64
-	Magic1     uint64
-	UUID       uint64
-	Version    [48]byte
-	ExtrasLen  uint32
-	ExtrasVal  []byte
+	Magic0    uint64
+	Magic1    uint64
+	UUID      uint64
+	Version   [48]byte
+	ExtrasLen uint32
+	ExtrasVal []byte
 }
 
 // A Footer is the last record appended to the log file whenever
@@ -34,7 +34,7 @@ type StoreDef struct {
 
 type StoreDefLoc struct {
 	*Loc
-	storeDef *StoreDef
+	storeDef *StoreDef // If nil, runtime representation hasn't been loaded.
 }
 
 // A CollectionDef is stored as JSON for debuggability.
@@ -67,7 +67,7 @@ type Node struct {
 
 type NodeLoc struct {
 	*Loc
-	node *Node
+	node *Node // If nil, runtime representation hasn't been loaded.
 }
 
 // MAX_CHILD_LOCS_PER_NODE defines the max number for
@@ -145,9 +145,10 @@ const (
 
 type WALEntry struct {
 	// TODO: some mutation info here.
+	Prev WALEntryLoc
 }
 
 type WALEntryLoc struct {
 	*Loc
-	walEntry *WALEntry
+	walEntry *WALEntry // If nil, runtime representation hasn't been loaded.
 }
