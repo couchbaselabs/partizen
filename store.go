@@ -6,7 +6,8 @@ import (
 	"sync"
 )
 
-const HEADER_MAGIC = 0xea45113d
+const HEADER_MAGIC0 = 0xea45113d
+const HEADER_MAGIC1 = 0xc03c1b04
 const HEADER_VERSION = "0.0.0"
 
 type store struct {
@@ -76,7 +77,8 @@ var defaultOptions = StoreOptions{
 
 func readHeader(f StoreFile, o *StoreOptions) (*Header, error) {
 	header := &Header{
-		Magic:      uint64(HEADER_MAGIC),
+		Magic0:     uint64(HEADER_MAGIC0),
+		Magic1:     uint64(HEADER_MAGIC1),
 		UUID:       uint64(rand.Int63()),
 		VersionLen: uint32(len(HEADER_VERSION)),
 		VersionVal: []byte(HEADER_VERSION),
@@ -91,7 +93,8 @@ func readHeader(f StoreFile, o *StoreOptions) (*Header, error) {
 func readFooter(f StoreFile, o *StoreOptions, header *Header,
 	startOffset uint64) (*Footer, *changes, error) {
 	footer := &Footer{
-		Magic:                  header.Magic,
+		Magic0:                 header.Magic0,
+		Magic1:                 header.Magic1,
 		UUID:                   header.UUID,
 		StoreDefLoc:            Loc{Type: LocTypeStoreDef},
 		CollectionRootNodeLocs: make([]Loc, 0),

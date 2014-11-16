@@ -2,7 +2,8 @@ package partizen
 
 // A Header is stored at the head (or 0th byte) of the log file.
 type Header struct {
-	Magic      uint64
+	Magic0     uint64
+	Magic1     uint64
 	UUID       uint64
 	VersionLen uint32
 	VersionVal []byte
@@ -13,7 +14,8 @@ type Header struct {
 // A Footer is the last record appended to the log file whenever
 // there's a successful Store.Commit().
 type Footer struct {
-	Magic       uint64 // Same as Header.Magic.
+	Magic0      uint64 // Same as Header.Magic0.
+	Magic1      uint64 // Same as Header.Magic1.
 	UUID        uint64 // Same as Header.UUID.
 	StoreDefLoc Loc    // Location of StoreDef.
 	WALTailLoc  Loc    // Last entry of write-ahead-log.
