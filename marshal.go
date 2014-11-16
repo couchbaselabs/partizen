@@ -13,27 +13,16 @@ type Header struct {
 // A Footer is the last record appended to the log file whenever
 // there's a successful Store.Commit().
 type Footer struct {
-	Magic0      uint64 // Same as Header.Magic0.
-	Magic1      uint64 // Same as Header.Magic1.
-	UUID        uint64 // Same as Header.UUID.
-	StoreDefLoc Loc    // Location of StoreDef.
-	WALTailLoc  Loc    // Last entry of write-ahead-log.
+	Magic0      uint64      // Same as Header.Magic0.
+	Magic1      uint64      // Same as Header.Magic1.
+	UUID        uint64      // Same as Header.UUID.
+	StoreDefLoc StoreDefLoc // Location of StoreDef.
+	WALTailLoc  WALEntryLoc // Last entry of write-ahead-log.
 
 	// Locations of partizen btree root Nodes, 1 per Collection.  The
 	// length of CollectionRootNodes equals len(StoreDef.Collections).
-	CollectionRootNodeLocs []Loc
+	CollectionRootNodeLocs []NodeLoc
 }
-
-var (
-	sizeofUint8  = 1
-	sizeofUint64 = 8
-
-	OffsetFooterMagic0      = 0
-	OffsetFooterMagic1      = OffsetFooterMagic0 + sizeofUint64
-	OffsetFooterUUID        = OffsetFooterMagic1 + sizeofUint64
-	OffsetFooterStoreDefLoc = OffsetFooterUUID + sizeofUint64
-	OffsetFooterWALTailLoc  = OffsetFooterStoreDefLoc + sizeofUint64
-)
 
 // A StoreDef defines a partizen Store, holding "slow-changing"
 // configuration metadata about a Store.  We keep slow changing
@@ -41,6 +30,11 @@ var (
 // JSON ecoding of the StoreDef for debuggability.
 type StoreDef struct {
 	Collections []*CollectionDef
+}
+
+type StoreDefLoc struct {
+	*Loc
+	storeDef *StoreDef
 }
 
 // A CollectionDef is stored as JSON for debuggability.
@@ -61,7 +55,7 @@ type Node struct {
 	// indexing to the same ChildLoc's.
 	//
 	// TODO: Consider ordering ChildLocs by ChildLoc.Offset?
-	ChildLocs []Loc // See MAX_CHILD_LOCS_PER_NODE.
+	ChildLocs []NodeLoc // See MAX_CHILD_LOCS_PER_NODE.
 
 	// The PartitionIdxs and Partitions arrays have length of
 	// NumPartitions and are both ordered by PartitionID.  For example
@@ -69,6 +63,11 @@ type Node struct {
 	// PartitionIdxs[4].PartitionID.
 	PartitionIdxs []NodePartitionIdx
 	Partitions    []NodePartition
+}
+
+type NodeLoc struct {
+	*Loc
+	node *Node
 }
 
 // MAX_CHILD_LOCS_PER_NODE defines the max number for
@@ -143,3 +142,12 @@ const (
 	LocTypeNodeLeaf = 0x03 // 0x01 | 0x02
 	LocTypeVal      = 0x04
 )
+
+type WALEntry struct {
+	// TODO: some mutation info here.
+}
+
+type WALEntryLoc struct {
+	*Loc
+	walEntry *WALEntry
+}

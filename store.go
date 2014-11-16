@@ -94,13 +94,17 @@ func readFooter(f StoreFile, o *StoreOptions, header *Header,
 		Magic0:                 header.Magic0,
 		Magic1:                 header.Magic1,
 		UUID:                   header.UUID,
-		StoreDefLoc:            Loc{Type: LocTypeStoreDef},
-		CollectionRootNodeLocs: make([]Loc, 0),
+		StoreDefLoc:            StoreDefLoc{},
+		CollectionRootNodeLocs: make([]NodeLoc, 0),
 	}
-	// TODO: Actually scan and read the footer from f, and changes.
+	footer.StoreDefLoc.Type = LocTypeStoreDef
+
+	// TODO: Actually scan and read the footer from f, and initialize changes.
+	// TODO: Read WALEntry log and apply.
 	changes := &changes{
 	// TODO.
 	}
+
 	return footer, changes, nil
 }
 
