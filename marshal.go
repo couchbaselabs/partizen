@@ -13,9 +13,16 @@ type Header struct {
 // A Footer is the last record appended to the log file whenever
 // there's a successful Store.Commit().
 type Footer struct {
-	Magic0      uint64      // Same as Header.Magic0.
-	Magic1      uint64      // Same as Header.Magic1.
-	UUID        uint64      // Same as Header.UUID.
+	Magic0 uint64 // Same as Header.Magic0.
+	Magic1 uint64 // Same as Header.Magic1.
+	UUID   uint64 // Same as Header.UUID.
+
+	// Size in bytes of the entire Footer and following tree data
+	// write, including the Footer's MagicX, Size, & UUID fields).  We
+	// write changed tree data after the Footer bytes to try to fill
+	// up an entire underlying storage page.
+	Size uint32
+
 	StoreDefLoc StoreDefLoc // Location of StoreDef.
 	WALTailLoc  WALEntryLoc // Last entry of write-ahead-log.
 
