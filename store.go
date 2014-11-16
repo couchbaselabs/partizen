@@ -3,17 +3,29 @@ package partizen
 import (
 	"bytes"
 	"math/rand"
+	"reflect"
+	"sync"
 )
 
 const HEADER_MAGIC = 0xea45113d
 const HEADER_VERSION = "0.0.0"
 
 type store struct {
+	// These fields are immutable.
 	storeFile    StoreFile
 	storeOptions StoreOptions
 	header       *Header
-	footer       *Footer
-	footerDirty  *Footer
+
+	// These fields are mutable, protected by the m lock.
+	m           sync.Mutex
+	footer      *Footer
+	footerDirty *footer
+}
+
+// A footer (lowercase) is a transient, in-memory representation of a
+// Footer, and is potentially not yet persisted (dirty).
+type footer struct {
+	storeDef *StoreDef
 }
 
 func storeOpen(storeFile StoreFile, storeOptions StoreOptions) (Store, error) {
@@ -22,7 +34,7 @@ func storeOpen(storeFile StoreFile, storeOptions StoreOptions) (Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	footer, err := readFooter(storeFile, &storeOptions, header, 0)
+	footer, footerClean, err := readFooter(storeFile, &storeOptions, header, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -31,6 +43,7 @@ func storeOpen(storeFile StoreFile, storeOptions StoreOptions) (Store, error) {
 		storeOptions: storeOptions,
 		header:       header,
 		footer:       footer,
+		footerDirty:  footerClean,
 	}, nil
 }
 
@@ -76,23 +89,38 @@ func readHeader(f StoreFile, o *StoreOptions) (*Header, error) {
 }
 
 func readFooter(f StoreFile, o *StoreOptions, header *Header,
-	startOffset uint64) (*Footer, error) {
-	footer := &Footer{
+	startOffset uint64) (*Footer, *footer, error) {
+	ft := &Footer{
 		Magic:                  header.Magic,
 		UUID:                   header.UUID,
 		StoreDefLoc:            Loc{Type: LocTypeStoreDef},
 		CollectionRootNodeLocs: make([]Loc, 0),
 	}
+	ftClean := &footer{
+		// TODO.
+	}
 	// TODO: Actually scan and read the footer from f.
-	return footer, nil
+	return ft, ftClean, nil
+}
+
+func (f *footer) getStoreDef() (*StoreDef, error) {
+	return nil, nil
 }
 
 func (s *store) HasChanges() bool {
-	return s.footer != s.footerDirty
+	return !reflect.DeepEqual(s.footer, s.footerDirty)
 }
 
 func (s *store) CollectionNames() ([]string, error) {
-	return nil, nil
+	storeDef, err := s.footerDirty.getStoreDef()
+	if err != nil {
+		return nil, err
+	}
+	rv := make([]string, 0, len(storeDef.Collections))
+	for _, coll := range storeDef.Collections {
+		rv = append(rv, coll.Name)
+	}
+	return rv, nil
 }
 
 func (s *store) GetCollection(collName string) (Collection, error) {

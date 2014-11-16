@@ -1,6 +1,6 @@
 partizen
 
-A potential copy-on-write btree design with partition and sequence
+A potential copy-on-write b+tree design with partition and sequence
 number awareness.  Partitions can be independently rolled back to a
 previous sequence number in O(1) time.
 

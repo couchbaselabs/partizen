@@ -20,6 +20,8 @@ type Footer struct {
 	// Locations of partizen btree root Nodes, 1 per Collection.  The
 	// length of CollectionRootNodes equals len(StoreDef.Collections).
 	CollectionRootNodeLocs []Loc
+
+	WALTail Loc // Write-ahead-log.
 }
 
 // A StoreDef defines a partizen Store, holding "slow-changing"
@@ -108,10 +110,12 @@ type KeySeq struct {
 // soon-to-be-persisted to the storage file.
 type Loc struct {
 	Type     uint8
-	Flags    uint8 // Currently reserved.
 	CheckSum uint16
 	Size     uint32
-	Offset   uint64 // 0 offset means not persisted yet.
+
+	// Offset is relative to start of file.
+	// Offset of 0 means not persisted yet.
+	Offset uint64
 
 	// Transient; non-nil when the Loc is read into memory
 	// or when the bytes of the Loc are prepared for writing.
@@ -122,5 +126,6 @@ const (
 	// Allowed values for Loc.Type field...
 	LocTypeStoreDef = 0x00
 	LocTypeNode     = 0x01
-	LocTypeVal      = 0x02
+	LocTypeNodeLeaf = 0x03 // 0x01 | 0x02
+	LocTypeVal      = 0x04
 )
