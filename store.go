@@ -81,7 +81,7 @@ func readHeader(f StoreFile, o *StoreOptions) (*Header, error) {
 		return header, nil
 	}
 	// TODO: Actually read the header from f.
-	return header, nil
+	return nil, fmt.Errorf("unimplemented")
 }
 
 func readFooter(f StoreFile, o *StoreOptions, header *Header,
@@ -105,7 +105,10 @@ func readFooter(f StoreFile, o *StoreOptions, header *Header,
 }
 
 func (f *Footer) getStoreDef() (*StoreDef, error) {
-	return f.StoreDefLoc.storeDef, nil // TODO.
+	if f.StoreDefLoc.storeDef == nil {
+		return nil, fmt.Errorf("unimplemented")
+	}
+	return f.StoreDefLoc.storeDef, nil
 }
 
 func (s *store) CollectionNames() ([]string, error) {
@@ -159,14 +162,15 @@ func (s *store) AddCollection(collName string, compareFuncName string) (Collecti
 		CompareFuncName: compareFuncName,
 		s:               s,
 	}
-	changes.StoreDefLoc.storeDef.CollDefs = append(storeDef.CollDefs, c)
+	changes.StoreDefLoc.storeDef.CollDefs =
+		append(changes.StoreDefLoc.storeDef.CollDefs, c)
 	changes.StoreDefLoc.storeDef.collDefsByName[collName] = c
 	s.changes = &changes
 	return c, nil
 }
 
 func (s *store) RemoveCollection(collName string) error {
-	return nil
+	return fmt.Errorf("unimplemented")
 }
 
 func (s *store) HasChanges() bool {
@@ -174,27 +178,27 @@ func (s *store) HasChanges() bool {
 }
 
 func (s *store) CommitChanges(cs *ChangeStats) error {
-	return nil
+	return fmt.Errorf("unimplemented")
 }
 
 func (s *store) AbortChanges(cs *ChangeStats) error {
-	return nil
+	return fmt.Errorf("unimplemented")
 }
 
 func (s *store) Snapshot() (Store, error) {
-	return nil, nil
+	return nil, fmt.Errorf("unimplemented")
 }
 
 func (s *store) SnapshotPreviousCommit(numCommitsBack int) (Store, error) {
-	return nil, nil
+	return nil, fmt.Errorf("unimplemented")
 }
 
 func (s *store) CopyTo(StoreFile, keepCommitsTo interface{}) error {
-	return nil
+	return fmt.Errorf("unimplemented")
 }
 
 func (s *store) Stats(dest *StoreStats) error {
-	return nil
+	return fmt.Errorf("unimplemented")
 }
 
 // --------------------------------------------
@@ -216,31 +220,31 @@ func (c *CollectionDef) Get(partition PartitionID,
 	withValue bool, // When withValue is false, value will be nil.
 	fastSample bool) ( // Return result only if fast / in memory (no disk hit).
 	seq Seq, val Val, err error) {
-	return 0, nil, nil
+	return 0, nil, fmt.Errorf("unimplemented")
 }
 
 func (c *CollectionDef) Set(partition PartitionID, key Key, seq Seq,
 	val Val) error {
-	return nil
+	return fmt.Errorf("unimplemented")
 }
 
 func (c *CollectionDef) Merge(partition PartitionID, key Key, seq Seq,
 	mergeFunc MergeFunc) error {
-	return nil
+	return fmt.Errorf("unimplemented")
 }
 
 func (c *CollectionDef) Del(partition PartitionID, key Key, seq Seq) error {
-	return nil
+	return fmt.Errorf("unimplemented")
 }
 
 func (c *CollectionDef) Min(withValue bool) (
 	partition PartitionID, key Key, seq Seq, val Val, err error) {
-	return 0, nil, 0, nil, nil
+	return 0, nil, 0, nil, fmt.Errorf("unimplemented")
 }
 
 func (c *CollectionDef) Max(withValue bool) (
 	partition PartitionID, key Key, seq Seq, val Val, err error) {
-	return 0, nil, 0, nil, nil
+	return 0, nil, 0, nil, fmt.Errorf("unimplemented")
 }
 
 func (c *CollectionDef) Scan(fromKeyInclusive Key,
@@ -250,17 +254,17 @@ func (c *CollectionDef) Scan(fromKeyInclusive Key,
 	withValue bool, // When withValue is false, nil value is passed to visitorFunc.
 	fastSample bool, // Return subset of range that's fast / in memory (no disk hit).
 	visitorFunc VisitorFunc) error {
-	return nil
+	return fmt.Errorf("unimplemented")
 }
 
 func (c *CollectionDef) Diff(partition PartitionID,
 	fromSeqExclusive Seq, // Should be a Seq at some past commit point.
 	withValue bool, // When withValue is false, nil value is passed to visitorFunc.
 	visitorFunc VisitorFunc) error {
-	return nil
+	return fmt.Errorf("unimplemented")
 }
 
 func (c *CollectionDef) Rollback(partition PartitionID, seq Seq,
 	exactToSeq bool) error {
-	return nil
+	return fmt.Errorf("unimplemented")
 }
