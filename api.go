@@ -88,7 +88,10 @@ type Collection interface {
 type StoreOptions struct {
 	CompareFuncs map[string]CompareFunc // Keyed by compareFuncName.
 
-	BufAlloc  func(size int) []byte
+	BufAlloc func(size int) []byte
+	BufLen   func(buf []byte) int
+	BufVisit func(buf []byte, from, to int,
+		partVisitor func(partBuf []byte), partFrom, partTo int)
 	BufAddRef func(buf []byte)
 	BufDecRef func(buf []byte)
 }
