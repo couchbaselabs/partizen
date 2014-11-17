@@ -27,8 +27,8 @@ type Footer struct {
 	WALTailLoc  WALEntryLoc // Last entry of write-ahead-log.
 
 	// Locations of partizen btree root Nodes, 1 per Collection.  The
-	// length of CollectionRootNodes equals len(StoreDef.Collections).
-	CollectionRootNodeLocs []NodeLoc
+	// length of CollRootLocs equals len(StoreDef.Collections).
+	CollRootLocs []NodeLoc
 }
 
 // A StoreDef defines a partizen Store, holding "slow-changing"
@@ -36,9 +36,9 @@ type Footer struct {
 // metadata separate from the Store footer for efficiency, but use
 // JSON encoding of the persisted StoreDef for debuggability.
 type StoreDef struct {
-	Collections []*CollectionDef
+	CollDefs []*CollectionDef
 
-	collectionsByName map[string]*CollectionDef
+	collDefsByName map[string]*CollectionDef
 }
 
 type StoreDefLoc struct {

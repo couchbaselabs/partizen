@@ -87,15 +87,15 @@ func readHeader(f StoreFile, o *StoreOptions) (*Header, error) {
 func readFooter(f StoreFile, o *StoreOptions, header *Header,
 	startOffset uint64) (*Footer, error) {
 	footer := &Footer{
-		Magic0:                 header.Magic0,
-		Magic1:                 header.Magic1,
-		UUID:                   header.UUID,
-		StoreDefLoc:            StoreDefLoc{},
-		CollectionRootNodeLocs: make([]NodeLoc, 0),
+		Magic0:       header.Magic0,
+		Magic1:       header.Magic1,
+		UUID:         header.UUID,
+		StoreDefLoc:  StoreDefLoc{},
+		CollRootLocs: make([]NodeLoc, 0),
 	}
 	footer.StoreDefLoc.Type = LocTypeStoreDef
 	footer.StoreDefLoc.storeDef = &StoreDef{
-		collectionsByName: make(map[string]*CollectionDef),
+		collDefsByName: make(map[string]*CollectionDef),
 	}
 
 	// TODO: Actually scan and read the footer from f, and initialize changes.
@@ -113,8 +113,8 @@ func (s *store) CollectionNames() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	rv := make([]string, 0, len(storeDef.Collections))
-	for _, coll := range storeDef.Collections {
+	rv := make([]string, 0, len(storeDef.CollDefs))
+	for _, coll := range storeDef.CollDefs {
 		rv = append(rv, coll.Name)
 	}
 	return rv, nil
@@ -125,7 +125,7 @@ func (s *store) GetCollection(collName string) (Collection, error) {
 	if err != nil {
 		return nil, err
 	}
-	collDef, exists := storeDef.collectionsByName[collName]
+	collDef, exists := storeDef.collDefsByName[collName]
 	if !exists || collDef == nil {
 		return nil, fmt.Errorf("no collection, collName: %s", collName)
 	}
@@ -137,7 +137,7 @@ func (s *store) AddCollection(collName string, compareFuncName string) (Collecti
 	if err != nil {
 		return nil, err
 	}
-	_, exists := storeDef.collectionsByName[collName]
+	_, exists := storeDef.collDefsByName[collName]
 	if exists {
 		return nil, fmt.Errorf("collection exists, collName: %s", collName)
 	}
@@ -150,8 +150,8 @@ func (s *store) AddCollection(collName string, compareFuncName string) (Collecti
 		CompareFuncName: compareFuncName,
 		s:               s,
 	}
-	changes.StoreDefLoc.storeDef.Collections = append(storeDef.Collections, c)
-	changes.StoreDefLoc.storeDef.collectionsByName[collName] = c
+	changes.StoreDefLoc.storeDef.CollDefs = append(storeDef.CollDefs, c)
+	changes.StoreDefLoc.storeDef.collDefsByName[collName] = c
 	return c, nil
 }
 
@@ -191,10 +191,10 @@ func (s *store) Stats(dest *StoreStats) error {
 
 func (sd *StoreDef) Copy() *StoreDef {
 	rv := &StoreDef{}
-	rv.Collections = append(rv.Collections, sd.Collections...)
-	rv.collectionsByName = make(map[string]*CollectionDef)
-	for collName, collDef := range sd.collectionsByName {
-		rv.collectionsByName[collName] = collDef
+	rv.CollDefs = append(rv.CollDefs, sd.CollDefs...)
+	rv.collDefsByName = make(map[string]*CollectionDef)
+	for collName, collDef := range sd.collDefsByName {
+		rv.collDefsByName[collName] = collDef
 	}
 	return rv
 }
