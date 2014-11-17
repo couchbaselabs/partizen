@@ -151,8 +151,7 @@ const (
 	// Allowed values for Loc.Type field...
 	LocTypeStoreDef = 0x00
 	LocTypeNode     = 0x01
-	LocTypeNodeLeaf = 0x03 // 0x01 | 0x02
-	LocTypeVal      = 0x04
+	LocTypeVal      = 0x02
 )
 
 type WALEntry struct {

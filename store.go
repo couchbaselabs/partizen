@@ -98,10 +98,11 @@ func readFooter(f StoreFile, o *StoreOptions, header *Header,
 	footer.StoreDefLoc.storeDef = &StoreDef{
 		collDefsByName: make(map[string]*CollectionDef),
 	}
-
+	if f == nil { // Memory only case.
+		return footer, nil
+	}
 	// TODO: Actually scan and read the footer from f, and initialize changes.
 	// TODO: Read WALEntry log and apply to footer.
-
 	return footer, nil
 }
 
@@ -166,6 +167,7 @@ func (s *store) AddCollection(collName string, compareFuncName string) (Collecti
 	changes.StoreDefLoc.storeDef.CollDefs =
 		append(changes.StoreDefLoc.storeDef.CollDefs, c)
 	changes.StoreDefLoc.storeDef.collDefsByName[collName] = c
+	changes.CollRootLocs = append(changes.CollRootLocs, NodeLoc{})
 	s.changes = &changes
 	return c, nil
 }
