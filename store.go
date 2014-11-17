@@ -2,6 +2,7 @@ package partizen
 
 import (
 	"bytes"
+	"fmt"
 	"math/rand"
 	"sync"
 )
@@ -93,6 +94,9 @@ func readFooter(f StoreFile, o *StoreOptions, header *Header,
 		CollectionRootNodeLocs: make([]NodeLoc, 0),
 	}
 	footer.StoreDefLoc.Type = LocTypeStoreDef
+	footer.StoreDefLoc.storeDef = &StoreDef{
+		collectionsByName: make(map[string]*CollectionDef),
+	}
 
 	// TODO: Actually scan and read the footer from f, and initialize changes.
 	// TODO: Read WALEntry log and apply to footer.
@@ -102,10 +106,6 @@ func readFooter(f StoreFile, o *StoreOptions, header *Header,
 
 func (f *Footer) getStoreDef() (*StoreDef, error) {
 	return f.StoreDefLoc.storeDef, nil // TODO.
-}
-
-func (s *store) HasChanges() bool {
-	return s.changes != s.footer
 }
 
 func (s *store) CollectionNames() ([]string, error) {
@@ -121,15 +121,46 @@ func (s *store) CollectionNames() ([]string, error) {
 }
 
 func (s *store) GetCollection(collName string) (Collection, error) {
-	return nil, nil
+	storeDef, err := s.changes.getStoreDef()
+	if err != nil {
+		return nil, err
+	}
+	collDef, exists := storeDef.collectionsByName[collName]
+	if !exists || collDef == nil {
+		return nil, fmt.Errorf("no collection, collName: %s", collName)
+	}
+	return collDef, nil
 }
 
 func (s *store) AddCollection(collName string, compareFuncName string) (Collection, error) {
-	return nil, nil
+	storeDef, err := s.changes.getStoreDef()
+	if err != nil {
+		return nil, err
+	}
+	_, exists := storeDef.collectionsByName[collName]
+	if exists {
+		return nil, fmt.Errorf("collection exists, collName: %s", collName)
+	}
+
+	changes := *s.changes // Copy.
+	changes.StoreDefLoc = StoreDefLoc{storeDef: storeDef.Copy()}
+	changes.StoreDefLoc.Type = LocTypeStoreDef
+	c := &CollectionDef{
+		Name:            collName,
+		CompareFuncName: compareFuncName,
+		s:               s,
+	}
+	changes.StoreDefLoc.storeDef.Collections = append(storeDef.Collections, c)
+	changes.StoreDefLoc.storeDef.collectionsByName[collName] = c
+	return c, nil
 }
 
 func (s *store) RemoveCollection(collName string) error {
 	return nil
+}
+
+func (s *store) HasChanges() bool {
+	return s.changes != s.footer
 }
 
 func (s *store) CommitChanges(cs *ChangeStats) error {
@@ -153,5 +184,73 @@ func (s *store) CopyTo(StoreFile, keepCommitsTo interface{}) error {
 }
 
 func (s *store) Stats(dest *StoreStats) error {
+	return nil
+}
+
+// --------------------------------------------
+
+func (sd *StoreDef) Copy() *StoreDef {
+	rv := &StoreDef{}
+	rv.Collections = append(rv.Collections, sd.Collections...)
+	rv.collectionsByName = make(map[string]*CollectionDef)
+	for collName, collDef := range sd.collectionsByName {
+		rv.collectionsByName[collName] = collDef
+	}
+	return rv
+}
+
+// --------------------------------------------
+
+func (c *CollectionDef) Get(partition PartitionID,
+	key Key,
+	withValue bool, // When withValue is false, value will be nil.
+	fastSample bool) ( // Return result only if fast / in memory (no disk hit).
+	seq Seq, val Val, err error) {
+	return 0, nil, nil
+}
+
+func (c *CollectionDef) Set(partition PartitionID, key Key, seq Seq,
+	val Val) error {
+	return nil
+}
+
+func (c *CollectionDef) Merge(partition PartitionID, key Key, seq Seq,
+	mergeFunc MergeFunc) error {
+	return nil
+}
+
+func (c *CollectionDef) Del(partition PartitionID, key Key, seq Seq) error {
+	return nil
+}
+
+func (c *CollectionDef) Min(withValue bool) (
+	partition PartitionID, key Key, seq Seq, val Val, err error) {
+	return 0, nil, 0, nil, nil
+}
+
+func (c *CollectionDef) Max(withValue bool) (
+	partition PartitionID, key Key, seq Seq, val Val, err error) {
+	return 0, nil, 0, nil, nil
+}
+
+func (c *CollectionDef) Scan(fromKeyInclusive Key,
+	toKeyExclusive Key,
+	reverse bool, // When reverse flag is true, fromKey should be greater than toKey.
+	partitions []PartitionID, // Scan only these partitions; nil for all partitions.
+	withValue bool, // When withValue is false, nil value is passed to visitorFunc.
+	fastSample bool, // Return subset of range that's fast / in memory (no disk hit).
+	visitorFunc VisitorFunc) error {
+	return nil
+}
+
+func (c *CollectionDef) Diff(partition PartitionID,
+	fromSeqExclusive Seq, // Should be a Seq at some past commit point.
+	withValue bool, // When withValue is false, nil value is passed to visitorFunc.
+	visitorFunc VisitorFunc) error {
+	return nil
+}
+
+func (c *CollectionDef) Rollback(partition PartitionID, seq Seq,
+	exactToSeq bool) error {
 	return nil
 }

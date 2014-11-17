@@ -37,10 +37,13 @@ type Footer struct {
 // JSON encoding of the persisted StoreDef for debuggability.
 type StoreDef struct {
 	Collections []*CollectionDef
+
+	collectionsByName map[string]*CollectionDef
 }
 
 type StoreDefLoc struct {
 	*Loc
+
 	storeDef *StoreDef // If nil, runtime representation hasn't been loaded.
 }
 
@@ -48,6 +51,8 @@ type StoreDefLoc struct {
 type CollectionDef struct {
 	Name            string
 	CompareFuncName string
+
+	s *store // Pointer to parent store.
 }
 
 // A Node of a partizen btree has its descendent locations first
@@ -73,6 +78,7 @@ type Node struct {
 
 type NodeLoc struct {
 	*Loc
+
 	node *Node // If nil, runtime representation hasn't been loaded.
 }
 
@@ -156,5 +162,6 @@ type WALEntry struct {
 
 type WALEntryLoc struct {
 	*Loc
+
 	walEntry *WALEntry // If nil, runtime representation hasn't been loaded.
 }
