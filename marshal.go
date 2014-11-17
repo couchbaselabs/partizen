@@ -17,10 +17,10 @@ type Footer struct {
 	Magic1 uint64 // Same as Header.Magic1.
 	UUID   uint64 // Same as Header.UUID.
 
-	// Size in bytes of the entire Footer and following tree data
-	// write, including the Footer's MagicX, Size, & UUID fields).  We
-	// write changed tree data after the Footer bytes to try to fill
-	// up an entire underlying storage page.
+	// Size in bytes of the entire written Footer and its related
+	// atomic tree data, including the Footer's MagicX, UUID & Size
+	// fields).  We write changed tree data after the Footer bytes to
+	// try to fill up an entire underlying storage page.
 	Size uint32
 
 	StoreDefLoc StoreDefLoc // Location of StoreDef.
@@ -34,7 +34,7 @@ type Footer struct {
 // A StoreDef defines a partizen Store, holding "slow-changing"
 // configuration metadata about a Store.  We keep slow changing
 // metadata separate from the Store footer for efficiency, but use
-// JSON ecoding of the StoreDef for debuggability.
+// JSON encoding of the persisted StoreDef for debuggability.
 type StoreDef struct {
 	Collections []*CollectionDef
 }
@@ -44,7 +44,7 @@ type StoreDefLoc struct {
 	storeDef *StoreDef // If nil, runtime representation hasn't been loaded.
 }
 
-// A CollectionDef is stored as JSON for debuggability.
+// A CollectionDef is persisted as JSON for debuggability.
 type CollectionDef struct {
 	Name            string
 	CompareFuncName string
@@ -56,10 +56,9 @@ type Node struct {
 	NumChildLocs  uint8
 	NumPartitions uint16
 
-	// ChildLocs are not ordered (or, at least roughly ordered by
-	// append sequence) and are kept separate from the NodePartitions
-	// because multiple NodePartition.KeySeq's may be sharing or
-	// indexing to the same ChildLoc's.
+	// ChildLocs are kept separate from Partitions because multiple
+	// NodePartition.KeySeq's may be sharing or indexing to the same
+	// ChildLoc entries.
 	//
 	// TODO: Consider ordering ChildLocs by ChildLoc.Offset?
 	ChildLocs []NodeLoc // See MAX_CHILD_LOCS_PER_NODE.
