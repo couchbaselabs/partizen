@@ -66,23 +66,23 @@ type Collection interface {
 	Scan(fromKeyInclusive Key,
 		toKeyExclusive Key,
 		reverse bool, // When reverse flag is true, fromKey should be greater than toKey.
-		partitions []PartitionID, // Focus on subset of partitions; nil for all partitions.
-		withValue bool, // When withValue is false, value will be nil.
+		partitions []PartitionID, // Scan only these partitions; nil for all partitions.
+		withValue bool, // When withValue is false, nil value is passed to visitorFunc.
 		fastSample bool, // Return subset of range that's fast / in memory (no disk hit).
 		visitorFunc VisitorFunc) error
 
 	Diff(partition PartitionID,
-		fromSeqExclusive Seq,
-		withValue bool,
+		fromSeqExclusive Seq, // Should be a Seq at some past commit point.
+		withValue bool, // When withValue is false, nil value is passed to visitorFunc.
 		visitorFunc VisitorFunc) error
 
 	// Rollback rewindws a partition back to at mox a previous seq
 	// number.  If the rollback operation can't hit the exact seq
-	// number but must go further back into the past, then
-	// if exact is true, the rollback will error; if exact is false
-	// then the rollback may be further into the past than the
+	// number but must go further back into the past, then if
+	// exactToSeq is true, the rollback will error; if exactToSeq is
+	// false then the rollback may be further into the past than the
 	// seq number.
-	Rollback(partition PartitionID, seq Seq, exact bool) error
+	Rollback(partition PartitionID, seq Seq, exactToSeq bool) error
 }
 
 type StoreOptions struct {
