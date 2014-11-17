@@ -46,22 +46,14 @@ func storeOpen(storeFile StoreFile, storeOptions StoreOptions) (Store, error) {
 }
 
 func initStoreOptions(o StoreOptions) StoreOptions {
-	noopBufFunc := func(buf []byte) {}
-
 	if o.CompareFuncs == nil {
 		o.CompareFuncs = defaultOptions.CompareFuncs
 	}
 	if o.CompareFuncs[""] == nil {
 		o.CompareFuncs[""] = defaultOptions.CompareFuncs[""]
 	}
-	if o.BufAlloc == nil {
-		o.BufAlloc = func(size int) []byte { return make([]byte, size) }
-	}
-	if o.BufAddRef == nil {
-		o.BufAddRef = noopBufFunc
-	}
-	if o.BufDecRef == nil {
-		o.BufDecRef = noopBufFunc
+	if o.BufManager == nil {
+		o.BufManager = &defaultBufManager{}
 	}
 	return o
 }
@@ -275,4 +267,29 @@ func (c *CollectionDef) Diff(partitionID PartitionID,
 func (c *CollectionDef) Rollback(partitionID PartitionID, seq Seq,
 	exactToSeq bool) error {
 	return fmt.Errorf("unimplemented")
+}
+
+// --------------------------------------------
+
+type defaultBufManager struct{}
+
+func (d *defaultBufManager) Alloc(size int) []byte {
+	return make([]byte, size)
+}
+
+func (d *defaultBufManager) Len(buf []byte) int {
+	return len(buf)
+}
+
+func (d *defaultBufManager) AddRef(buf []byte) {
+	// NOOP.
+}
+
+func (d *defaultBufManager) DecRef(buf []byte) bool {
+	return true // TODO: Is this right?
+}
+
+func (d *defaultBufManager) Visit(buf []byte, from, to int,
+	partVisitor func(partBuf []byte), partFrom, partTo int) {
+	partVisitor(buf[from:to])
 }

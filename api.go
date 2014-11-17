@@ -89,12 +89,7 @@ type Collection interface {
 type StoreOptions struct {
 	CompareFuncs map[string]CompareFunc // Keyed by compareFuncName.
 
-	BufAlloc func(size int) []byte
-	BufLen   func(buf []byte) int
-	BufVisit func(buf []byte, from, to int,
-		partVisitor func(partBuf []byte), partFrom, partTo int)
-	BufAddRef func(buf []byte)
-	BufDecRef func(buf []byte)
+	BufManager BufManager
 }
 
 type VisitorFunc func(partitionID PartitionID, key Key, seq Seq, val Val) bool
@@ -111,4 +106,13 @@ type ChangeStats struct {
 
 type StoreStats struct {
 	// TODO.
+}
+
+type BufManager interface {
+	Alloc(size int) []byte
+	Len(buf []byte) int
+	AddRef(buf []byte)
+	DecRef(buf []byte) bool
+	Visit(buf []byte, from, to int,
+		partVisitor func(partBuf []byte), partFrom, partTo int)
 }
