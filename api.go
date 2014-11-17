@@ -32,7 +32,6 @@ type Store interface {
 	AbortChanges(*ChangeStats) error
 
 	Snapshot() (Store, error)
-
 	SnapshotPreviousCommit(numCommitsBack int) (Store, error)
 
 	CopyTo(StoreFile, keepCommitsTo interface{}) error
@@ -41,25 +40,27 @@ type Store interface {
 }
 
 type Collection interface {
-	Get(partition PartitionID,
+	Get(partitionID PartitionID, key Key) (seq Seq, val Val, err error)
+
+	GetEx(partitionID PartitionID,
 		key Key,
 		withValue bool, // When withValue is false, value will be nil.
 		fastSample bool) ( // Return result only if fast / in memory (no disk hit).
 		seq Seq, val Val, err error)
 
 	// Set takes a seq number that should be monotonically increasing.
-	Set(partition PartitionID, key Key, seq Seq, val Val) error
+	Set(partitionID PartitionID, key Key, seq Seq, val Val) error
 
 	// Merge takes a seq number that should be monotonically increasing.
-	Merge(partition PartitionID, key Key, seq Seq, mergeFunc MergeFunc) error
+	Merge(partitionID PartitionID, key Key, seq Seq, mergeFunc MergeFunc) error
 
 	// Del takes a seq number that should be monotonically increasing.
-	Del(partition PartitionID, key Key, seq Seq) error
+	Del(partitionID PartitionID, key Key, seq Seq) error
 
 	Min(withValue bool) (
-		partition PartitionID, key Key, seq Seq, val Val, err error)
+		partitionID PartitionID, key Key, seq Seq, val Val, err error)
 	Max(withValue bool) (
-		partition PartitionID, key Key, seq Seq, val Val, err error)
+		partitionID PartitionID, key Key, seq Seq, val Val, err error)
 
 	// Scan provides range results in [fromKeyInclusive...toKeyExclusive) sequence,
 	// even when the reverse flag is true.
@@ -71,7 +72,7 @@ type Collection interface {
 		fastSample bool, // Return subset of range that's fast / in memory (no disk hit).
 		visitorFunc VisitorFunc) error
 
-	Diff(partition PartitionID,
+	Diff(partitionID PartitionID,
 		fromSeqExclusive Seq, // Should be a Seq at some past commit point.
 		withValue bool, // When withValue is false, nil value is passed to visitorFunc.
 		visitorFunc VisitorFunc) error
@@ -82,7 +83,7 @@ type Collection interface {
 	// exactToSeq is true, the rollback will error; if exactToSeq is
 	// false then the rollback may be further into the past than the
 	// seq number.
-	Rollback(partition PartitionID, seq Seq, exactToSeq bool) error
+	Rollback(partitionID PartitionID, seq Seq, exactToSeq bool) error
 }
 
 type StoreOptions struct {
@@ -96,7 +97,7 @@ type StoreOptions struct {
 	BufDecRef func(buf []byte)
 }
 
-type VisitorFunc func(partition PartitionID, key Key, seq Seq, val Val) bool
+type VisitorFunc func(partitionID PartitionID, key Key, seq Seq, val Val) bool
 
 type MergeFunc func(base, a, b []byte) ([]byte, error)
 
