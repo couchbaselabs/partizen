@@ -13,6 +13,7 @@ const HEADER_VERSION = "0.0.0"
 
 const maxUint64 = uint64(0xffffffffffffffff)
 
+// A store implements the Store interface.
 type store struct {
 	// These fields are immutable.
 	storeFile    StoreFile
@@ -45,6 +46,8 @@ func storeOpen(storeFile StoreFile, storeOptions StoreOptions) (Store, error) {
 }
 
 func initStoreOptions(o StoreOptions) StoreOptions {
+	noopBufFunc := func(buf []byte) {}
+
 	if o.CompareFuncs == nil {
 		o.CompareFuncs = defaultOptions.CompareFuncs
 	}
@@ -62,8 +65,6 @@ func initStoreOptions(o StoreOptions) StoreOptions {
 	}
 	return o
 }
-
-func noopBufFunc(buf []byte) {}
 
 var defaultOptions = StoreOptions{
 	CompareFuncs: map[string]CompareFunc{
