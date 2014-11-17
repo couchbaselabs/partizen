@@ -109,6 +109,9 @@ func (f *Footer) getStoreDef() (*StoreDef, error) {
 }
 
 func (s *store) CollectionNames() ([]string, error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+
 	storeDef, err := s.changes.getStoreDef()
 	if err != nil {
 		return nil, err
@@ -121,6 +124,9 @@ func (s *store) CollectionNames() ([]string, error) {
 }
 
 func (s *store) GetCollection(collName string) (Collection, error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+
 	storeDef, err := s.changes.getStoreDef()
 	if err != nil {
 		return nil, err
@@ -133,6 +139,9 @@ func (s *store) GetCollection(collName string) (Collection, error) {
 }
 
 func (s *store) AddCollection(collName string, compareFuncName string) (Collection, error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+
 	storeDef, err := s.changes.getStoreDef()
 	if err != nil {
 		return nil, err
@@ -142,7 +151,7 @@ func (s *store) AddCollection(collName string, compareFuncName string) (Collecti
 		return nil, fmt.Errorf("collection exists, collName: %s", collName)
 	}
 
-	changes := *s.changes // Copy.
+	var changes Footer = *s.changes // Copy.
 	changes.StoreDefLoc = StoreDefLoc{storeDef: storeDef.Copy()}
 	changes.StoreDefLoc.Type = LocTypeStoreDef
 	c := &CollectionDef{
@@ -152,6 +161,7 @@ func (s *store) AddCollection(collName string, compareFuncName string) (Collecti
 	}
 	changes.StoreDefLoc.storeDef.CollDefs = append(storeDef.CollDefs, c)
 	changes.StoreDefLoc.storeDef.collDefsByName[collName] = c
+	s.changes = &changes
 	return c, nil
 }
 
