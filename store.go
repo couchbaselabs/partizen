@@ -152,7 +152,7 @@ func (s *store) AddCollection(collName string, compareFuncName string) (Collecti
 		compareFunc: compareFunc,
 	}
 
-	var changes = s.changes.startChanges()
+	var changes = s.changes.startChanges(nil)
 
 	changes.StoreDefLoc.storeDef.CollDefs =
 		append(changes.StoreDefLoc.storeDef.CollDefs, c)
@@ -170,7 +170,7 @@ func (s *store) RemoveCollection(collName string) error {
 
 	for i, collDef := range s.changes.StoreDefLoc.storeDef.CollDefs {
 		if collDef.Name == collName {
-			var changes = s.changes.startChanges()
+			var changes = s.changes.startChanges(nil)
 
 			a := changes.StoreDefLoc.storeDef.CollDefs
 			copy(a[i:], a[i+1:])
@@ -220,7 +220,11 @@ func (s *store) Stats(dest *StoreStats) error {
 
 // --------------------------------------------
 
-func (f *Footer) startChanges() *Footer {
+func (f *Footer) startChanges(orig *Footer) *Footer {
+	if orig != nil && f != orig {
+		return f // We're already changed compared to non-nil orig.
+	}
+
 	var c Footer = *f // First, shallow copy.
 
 	c.StoreDefLoc.storeDef =
