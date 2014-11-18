@@ -17,12 +17,18 @@ func TestMemStoreOpen(t *testing.T) {
 	if err == nil || coll != nil {
 		t.Errorf("expected not-there collection to not be there")
 	}
+	if s.HasChanges() {
+		t.Errorf("expected new coll to have no changes")
+	}
 	coll, err = s.AddCollection("x", "")
 	if err != nil || coll == nil {
-		t.Errorf("expect AddCollection to work")
+		t.Errorf("expected AddCollection to work")
+	}
+	if !s.HasChanges() {
+		t.Errorf("expected coll to have changes after AddCollection()")
 	}
 	coll2, err := s.AddCollection("x", "")
 	if err == nil || coll2 != nil {
-		t.Errorf("expect re-AddCollection to error")
+		t.Errorf("expected re-AddCollection to error")
 	}
 }
