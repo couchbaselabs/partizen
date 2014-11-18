@@ -53,7 +53,7 @@ func initStoreOptions(o StoreOptions) StoreOptions {
 		o.CompareFuncs[""] = defaultOptions.CompareFuncs[""]
 	}
 	if o.BufManager == nil {
-		o.BufManager = &defaultBufManager{}
+		o.BufManager = defaultOptions.BufManager
 	}
 	return o
 }
@@ -62,6 +62,7 @@ var defaultOptions = StoreOptions{
 	CompareFuncs: map[string]CompareFunc{
 		"": bytes.Compare,
 	},
+	BufManager: &defaultBufManager{},
 }
 
 func readHeader(f StoreFile, o *StoreOptions) (*Header, error) {
