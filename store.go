@@ -70,9 +70,9 @@ func readHeader(f StoreFile, o *StoreOptions) (*Header, error) {
 		Magic0:   uint64(HEADER_MAGIC0),
 		Magic1:   uint64(HEADER_MAGIC1),
 		UUID:     uint64(rand.Int63()),
-		Version:  "0.0.0",
 		PageSize: 4096,
 	}
+	copy(header.Version[:], []byte(HEADER_VERSION + "\x00"))
 	if f == nil { // Memory only case.
 		return header, nil
 	}
@@ -91,7 +91,7 @@ func readFooter(f StoreFile, o *StoreOptions, header *Header,
 	}
 	footer.StoreDefLoc.Type = LocTypeStoreDef
 	footer.StoreDefLoc.storeDef = &StoreDef{
-		collDefsByName: make(map[string]*CollectionDef),
+		collDefsByName: make(map[string]*CollDef),
 	}
 	if f == nil { // Memory only case.
 		return footer, nil
@@ -154,7 +154,7 @@ func (s *store) AddCollection(collName string, compareFuncName string) (Collecti
 	var changes Footer = *s.changes // Copy.
 	changes.StoreDefLoc = StoreDefLoc{storeDef: storeDef.Copy()}
 	changes.StoreDefLoc.Type = LocTypeStoreDef
-	c := &CollectionDef{
+	c := &CollDef{
 		Name:            collName,
 		CompareFuncName: compareFuncName,
 		s:               s,
@@ -204,7 +204,7 @@ func (s *store) Stats(dest *StoreStats) error {
 func (sd *StoreDef) Copy() *StoreDef {
 	rv := &StoreDef{}
 	rv.CollDefs = append(rv.CollDefs, sd.CollDefs...)
-	rv.collDefsByName = make(map[string]*CollectionDef)
+	rv.collDefsByName = make(map[string]*CollDef)
 	for collName, collDef := range sd.collDefsByName {
 		rv.collDefsByName[collName] = collDef
 	}
@@ -213,12 +213,12 @@ func (sd *StoreDef) Copy() *StoreDef {
 
 // --------------------------------------------
 
-func (c *CollectionDef) Get(partitionID PartitionID, key Key) (
+func (c *CollDef) Get(partitionID PartitionID, key Key) (
 	seq Seq, val Val, err error) {
 	return c.GetEx(partitionID, key, true, false)
 }
 
-func (c *CollectionDef) GetEx(partitionID PartitionID,
+func (c *CollDef) GetEx(partitionID PartitionID,
 	key Key,
 	withValue bool, // When withValue is false, value will be nil.
 	fastSample bool) ( // Return result only if fast / in memory (no disk hit).
@@ -226,31 +226,31 @@ func (c *CollectionDef) GetEx(partitionID PartitionID,
 	return 0, nil, fmt.Errorf("unimplemented")
 }
 
-func (c *CollectionDef) Set(partitionID PartitionID, key Key, seq Seq,
+func (c *CollDef) Set(partitionID PartitionID, key Key, seq Seq,
 	val Val) error {
 	return fmt.Errorf("unimplemented")
 }
 
-func (c *CollectionDef) Merge(partitionID PartitionID, key Key, seq Seq,
+func (c *CollDef) Merge(partitionID PartitionID, key Key, seq Seq,
 	mergeFunc MergeFunc) error {
 	return fmt.Errorf("unimplemented")
 }
 
-func (c *CollectionDef) Del(partitionID PartitionID, key Key, seq Seq) error {
+func (c *CollDef) Del(partitionID PartitionID, key Key, seq Seq) error {
 	return fmt.Errorf("unimplemented")
 }
 
-func (c *CollectionDef) Min(withValue bool) (
+func (c *CollDef) Min(withValue bool) (
 	partitionID PartitionID, key Key, seq Seq, val Val, err error) {
 	return 0, nil, 0, nil, fmt.Errorf("unimplemented")
 }
 
-func (c *CollectionDef) Max(withValue bool) (
+func (c *CollDef) Max(withValue bool) (
 	partitionID PartitionID, key Key, seq Seq, val Val, err error) {
 	return 0, nil, 0, nil, fmt.Errorf("unimplemented")
 }
 
-func (c *CollectionDef) Scan(fromKeyInclusive Key,
+func (c *CollDef) Scan(fromKeyInclusive Key,
 	toKeyExclusive Key,
 	reverse bool, // When reverse flag is true, fromKey should be greater than toKey.
 	partitions []PartitionID, // Scan only these partitions; nil for all partitions.
@@ -260,14 +260,14 @@ func (c *CollectionDef) Scan(fromKeyInclusive Key,
 	return fmt.Errorf("unimplemented")
 }
 
-func (c *CollectionDef) Diff(partitionID PartitionID,
+func (c *CollDef) Diff(partitionID PartitionID,
 	fromSeqExclusive Seq, // Should be a Seq at some past commit point.
 	withValue bool, // When withValue is false, nil value is passed to visitorFunc.
 	visitorFunc VisitorFunc) error {
 	return fmt.Errorf("unimplemented")
 }
 
-func (c *CollectionDef) Rollback(partitionID PartitionID, seq Seq,
+func (c *CollDef) Rollback(partitionID PartitionID, seq Seq,
 	exactToSeq bool) error {
 	return fmt.Errorf("unimplemented")
 }

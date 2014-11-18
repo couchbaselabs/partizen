@@ -38,9 +38,9 @@ type Footer struct {
 // metadata separate from the Store footer for efficiency, but use
 // JSON encoding of the persisted StoreDef for debuggability.
 type StoreDef struct {
-	CollDefs []*CollectionDef
+	CollDefs []*CollDef
 
-	collDefsByName map[string]*CollectionDef
+	collDefsByName map[string]*CollDef
 }
 
 type StoreDefLoc struct {
@@ -49,8 +49,9 @@ type StoreDefLoc struct {
 	storeDef *StoreDef // If nil, runtime representation hasn't been loaded.
 }
 
-// A CollectionDef is persisted as JSON for debuggability.
-type CollectionDef struct {
+// A CollDef implements the Collection interface and is persisted as
+// JSON for debuggability.
+type CollDef struct {
 	Name            string
 	CompareFuncName string
 
