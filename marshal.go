@@ -6,6 +6,7 @@ type Header struct {
 	Magic1    uint64
 	UUID      uint64
 	Version   [48]byte
+	PageSize  uint32
 	ExtrasLen uint32
 	ExtrasVal []byte
 }
@@ -19,8 +20,9 @@ type Footer struct {
 
 	// Size in bytes of the entire written Footer and its related
 	// atomic tree data, including the Footer's MagicX, UUID & Size
-	// fields).  We write changed tree data after the Footer bytes to
-	// try to fill up an entire underlying storage page.
+	// fields).  We write Val's before the Footer and copy-on-write
+	// tree data after the Footer bytes to try to fill up an entire
+	// underlying storage page.
 	Size uint32
 
 	StoreDefLoc StoreDefLoc // Location of StoreDef.

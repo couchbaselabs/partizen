@@ -67,9 +67,11 @@ var defaultOptions = StoreOptions{
 
 func readHeader(f StoreFile, o *StoreOptions) (*Header, error) {
 	header := &Header{
-		Magic0: uint64(HEADER_MAGIC0),
-		Magic1: uint64(HEADER_MAGIC1),
-		UUID:   uint64(rand.Int63()),
+		Magic0:   uint64(HEADER_MAGIC0),
+		Magic1:   uint64(HEADER_MAGIC1),
+		UUID:     uint64(rand.Int63()),
+		Version:  "0.0.0",
+		PageSize: 4096,
 	}
 	if f == nil { // Memory only case.
 		return header, nil
