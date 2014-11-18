@@ -57,7 +57,7 @@ type CollDef struct {
 type RootLoc struct {
 	NodeLoc
 
-	store       *store  // Pointer to parent store.
+	store       *store // Pointer to parent store.
 	name        string
 	compareFunc CompareFunc
 }

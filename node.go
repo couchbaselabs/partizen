@@ -18,7 +18,7 @@ func (n *Node) Get(partitionID PartitionID,
 func (n *Node) Set(partitionID PartitionID, key Key, seq Seq, val Val) (*Node, error) {
 	if n == nil {
 		return &Node{
-			NumChildLocs: 1,
+			NumChildLocs:  1,
 			NumPartitions: 1,
 			ChildLocs: append([]Loc(nil),
 				Loc{Type: LocTypeVal, CheckSum: 0,
@@ -26,21 +26,21 @@ func (n *Node) Set(partitionID PartitionID, key Key, seq Seq, val Val) (*Node, e
 			PartitionIdxs: append([]NodePartitionIdx(nil),
 				NodePartitionIdx{
 					PartitionID: partitionID,
-					Offset: 0,
+					Offset:      0,
 				}),
 			Partitions: append([]NodePartition(nil),
 				NodePartition{
-					TotKeys: 1,
-					TotVals: 1,
+					TotKeys:     1,
+					TotVals:     1,
 					TotKeyBytes: uint64(len(key)),
 					TotValBytes: uint64(len(val)),
-					NumKeySeqs: 1,
+					NumKeySeqs:  1,
 					KeySeqs: append([]KeySeq(nil),
 						KeySeq{
-							KeyLen: uint16(len(key)),
-							Seq: seq,
+							KeyLen:       uint16(len(key)),
+							Seq:          seq,
 							ChildLocsIdx: 0,
-							Key: key,
+							Key:          key,
 						}),
 				}),
 		}, nil
