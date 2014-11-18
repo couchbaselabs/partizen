@@ -47,13 +47,13 @@ type StoreDefLoc struct {
 	storeDef *StoreDef // If nil, runtime representation hasn't been loaded.
 }
 
-// A CollDef implements the Collection interface and is persisted as
-// JSON for debuggability.
+// A CollDef is persisted as JSON for debuggability.
 type CollDef struct {
 	Name            string
 	CompareFuncName string
 }
 
+// A RootLoc implements the Collection interface.
 type RootLoc struct {
 	NodeLoc
 
