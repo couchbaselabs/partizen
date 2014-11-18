@@ -13,4 +13,8 @@ func TestMemStoreOpen(t *testing.T) {
 	if err != nil || names == nil || len(names) != 0 {
 		t.Errorf("expected empty CollectionNames()")
 	}
+	coll, err := s.GetCollection("not-there")
+	if err == nil || coll != nil {
+		t.Errorf("expected not-there collection to not be there")
+	}
 }
