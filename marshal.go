@@ -44,7 +44,7 @@ type StoreDef struct {
 }
 
 type StoreDefLoc struct {
-	*Loc
+	Loc
 
 	storeDef *StoreDef // If nil, runtime representation hasn't been loaded.
 }
@@ -80,7 +80,7 @@ type Node struct {
 }
 
 type NodeLoc struct {
-	*Loc
+	Loc
 
 	node *Node // If nil, runtime representation hasn't been loaded.
 }
@@ -163,7 +163,7 @@ type WALEntry struct {
 }
 
 type WALEntryLoc struct {
-	*Loc
+	Loc
 
 	walEntry *WALEntry // If nil, runtime representation hasn't been loaded.
 }

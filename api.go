@@ -10,7 +10,7 @@ type Val []byte
 type PartitionID uint16
 type Seq uint64
 
-func Open(storeFile StoreFile, storeOptions StoreOptions) (Store, error) {
+func StoreOpen(storeFile StoreFile, storeOptions *StoreOptions) (Store, error) {
 	return storeOpen(storeFile, storeOptions)
 }
 

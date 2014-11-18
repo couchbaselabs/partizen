@@ -26,43 +26,49 @@ type store struct {
 	changes *Footer // Unpersisted changes to a store.
 }
 
-func storeOpen(storeFile StoreFile, storeOptions StoreOptions) (Store, error) {
+func storeOpen(storeFile StoreFile, storeOptions *StoreOptions) (
+	Store, error) {
 	storeOptions = initStoreOptions(storeOptions)
-	header, err := readHeader(storeFile, &storeOptions)
+	header, err := readHeader(storeFile, storeOptions)
 	if err != nil {
 		return nil, err
 	}
-	footer, err := readFooter(storeFile, &storeOptions, header, maxUint64)
+	footer, err := readFooter(storeFile, storeOptions, header, maxUint64)
 	if err != nil {
 		return nil, err
 	}
 	return &store{
 		storeFile:    storeFile,
-		storeOptions: storeOptions,
+		storeOptions: *storeOptions,
 		header:       header,
 		footer:       footer,
 		changes:      footer,
 	}, nil
 }
 
-func initStoreOptions(o StoreOptions) StoreOptions {
-	if o.CompareFuncs == nil {
-		o.CompareFuncs = defaultOptions.CompareFuncs
+func initStoreOptions(o *StoreOptions) *StoreOptions {
+	if o == nil {
+		o = &defaultOptions
 	}
-	if o.CompareFuncs[""] == nil {
-		o.CompareFuncs[""] = defaultOptions.CompareFuncs[""]
+	rv := &StoreOptions{
+		CompareFuncs: o.CompareFuncs,
+		BufManager:   o.BufManager,
 	}
-	if o.BufManager == nil {
-		o.BufManager = defaultOptions.BufManager
+	if rv.CompareFuncs == nil {
+		rv.CompareFuncs = defaultOptions.CompareFuncs
 	}
-	return o
+	if rv.CompareFuncs[""] == nil {
+		rv.CompareFuncs[""] = defaultOptions.CompareFuncs[""]
+	}
+	if rv.BufManager == nil {
+		rv.BufManager = defaultOptions.BufManager
+	}
+	return rv
 }
 
 var defaultOptions = StoreOptions{
-	CompareFuncs: map[string]CompareFunc{
-		"": bytes.Compare,
-	},
-	BufManager: &defaultBufManager{},
+	CompareFuncs: map[string]CompareFunc{"": bytes.Compare},
+	BufManager:   &defaultBufManager{},
 }
 
 func readHeader(f StoreFile, o *StoreOptions) (*Header, error) {
@@ -72,7 +78,7 @@ func readHeader(f StoreFile, o *StoreOptions) (*Header, error) {
 		UUID:     uint64(rand.Int63()),
 		PageSize: 4096,
 	}
-	copy(header.Version[:], []byte(HEADER_VERSION + "\x00"))
+	copy(header.Version[:], []byte(HEADER_VERSION+"\x00"))
 	if f == nil { // Memory only case.
 		return header, nil
 	}
@@ -86,7 +92,6 @@ func readFooter(f StoreFile, o *StoreOptions, header *Header,
 		Magic0:       header.Magic0,
 		Magic1:       header.Magic1,
 		UUID:         header.UUID,
-		StoreDefLoc:  StoreDefLoc{},
 		CollRootLocs: make([]NodeLoc, 0),
 	}
 	footer.StoreDefLoc.Type = LocTypeStoreDef
