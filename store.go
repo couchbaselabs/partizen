@@ -104,21 +104,11 @@ func readFooter(f StoreFile, o *StoreOptions, header *Header,
 	return footer, nil
 }
 
-func (f *Footer) getStoreDef() (*StoreDef, error) {
-	if f.StoreDefLoc.storeDef == nil {
-		return nil, fmt.Errorf("unimplemented")
-	}
-	return f.StoreDefLoc.storeDef, nil
-}
-
 func (s *store) CollectionNames() ([]string, error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	storeDef, err := s.changes.getStoreDef()
-	if err != nil {
-		return nil, err
-	}
+	storeDef := s.changes.StoreDefLoc.storeDef
 	rv := make([]string, 0, len(storeDef.CollDefs))
 	for _, coll := range storeDef.CollDefs {
 		rv = append(rv, coll.Name)
@@ -130,11 +120,7 @@ func (s *store) GetCollection(collName string) (Collection, error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	storeDef, err := s.changes.getStoreDef()
-	if err != nil {
-		return nil, err
-	}
-	for i, collDef := range storeDef.CollDefs {
+	for i, collDef := range s.changes.StoreDefLoc.storeDef.CollDefs {
 		if collDef.Name == collName {
 			return s.changes.CollRootLocs[i], nil
 		}
@@ -150,11 +136,7 @@ func (s *store) AddCollection(collName string, compareFuncName string) (Collecti
 	if !exists || compareFunc == nil {
 		return nil, fmt.Errorf("no compareFunc, compareFuncName: %s", compareFuncName)
 	}
-	storeDef, err := s.changes.getStoreDef()
-	if err != nil {
-		return nil, err
-	}
-	for _, collDef := range storeDef.CollDefs {
+	for _, collDef := range s.changes.StoreDefLoc.storeDef.CollDefs {
 		if collDef.Name == collName {
 			return nil, fmt.Errorf("collection exists, collName: %s", collName)
 		}
@@ -170,16 +152,14 @@ func (s *store) AddCollection(collName string, compareFuncName string) (Collecti
 		compareFunc: compareFunc,
 	}
 
-	var changes Footer = *s.changes // First, shallow copy.
+	var changes = s.changes.startChanges()
 
-	changes.StoreDefLoc = StoreDefLoc{storeDef: storeDef.Copy()}
-	changes.StoreDefLoc.Type = LocTypeStoreDef
 	changes.StoreDefLoc.storeDef.CollDefs =
 		append(changes.StoreDefLoc.storeDef.CollDefs, c)
 	changes.CollRootLocs =
-		append(append([]*RootLoc(nil), changes.CollRootLocs...), r)
+		append(changes.CollRootLocs, r)
 
-	s.changes = &changes
+	s.changes = changes
 
 	return r, nil
 }
@@ -188,28 +168,21 @@ func (s *store) RemoveCollection(collName string) error {
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	storeDef, err := s.changes.getStoreDef()
-	if err != nil {
-		return err
-	}
-	for i, collDef := range storeDef.CollDefs {
+	for i, collDef := range s.changes.StoreDefLoc.storeDef.CollDefs {
 		if collDef.Name == collName {
-			var changes Footer = *s.changes // First, shallow copy.
+			var changes = s.changes.startChanges()
 
-			changes.StoreDefLoc = StoreDefLoc{storeDef: storeDef.Copy()}
-			changes.StoreDefLoc.Type = LocTypeStoreDef
-
-			a := append([]*CollDef(nil), changes.StoreDefLoc.storeDef.CollDefs...)
+			a := changes.StoreDefLoc.storeDef.CollDefs
 			copy(a[i:], a[i+1:])
 			a[len(a)-1] = nil
 			changes.StoreDefLoc.storeDef.CollDefs = a[:len(a)-1]
 
-			b := append([]*RootLoc(nil), changes.CollRootLocs...)
+			b := changes.CollRootLocs
 			copy(b[i:], b[i+1:])
 			b[len(b)-1] = nil
 			changes.CollRootLocs = b[:len(b)-1]
 
-			s.changes = &changes
+			s.changes = changes
 
 			return nil
 		}
@@ -247,7 +220,13 @@ func (s *store) Stats(dest *StoreStats) error {
 
 // --------------------------------------------
 
-func (sd *StoreDef) Copy() *StoreDef {
-	return &StoreDef{CollDefs: append([]*CollDef(nil), sd.CollDefs...)}
-}
+func (f *Footer) startChanges() *Footer {
+	var c Footer = *f // First, shallow copy.
 
+	c.StoreDefLoc.storeDef =
+		&StoreDef{CollDefs: append([]*CollDef(nil), c.StoreDefLoc.storeDef.CollDefs...)}
+
+	c.CollRootLocs = append([]*RootLoc(nil), c.CollRootLocs...)
+
+	return &c
+}
