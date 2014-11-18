@@ -156,20 +156,25 @@ func (s *store) AddCollection(collName string, compareFuncName string) (Collecti
 		return nil, fmt.Errorf("collection exists, collName: %s", collName)
 	}
 
-	var changes Footer = *s.changes // Copy.
-	changes.StoreDefLoc = StoreDefLoc{storeDef: storeDef.Copy()}
-	changes.StoreDefLoc.Type = LocTypeStoreDef
-	c := &CollDef{
+	collDef := &CollDef{
 		Name:            collName,
 		CompareFuncName: compareFuncName,
 		s:               s,
 	}
+
+	var changes Footer = *s.changes // First, shallow copy.
+
+	changes.StoreDefLoc = StoreDefLoc{storeDef: storeDef.Copy()}
+	changes.StoreDefLoc.Type = LocTypeStoreDef
+
 	changes.StoreDefLoc.storeDef.CollDefs =
-		append(changes.StoreDefLoc.storeDef.CollDefs, c)
-	changes.StoreDefLoc.storeDef.collDefsByName[collName] = c
+		append(changes.StoreDefLoc.storeDef.CollDefs, collDef)
+	changes.StoreDefLoc.storeDef.collDefsByName[collName] = collDef
 	changes.CollRootLocs = append(changes.CollRootLocs, NodeLoc{})
+
 	s.changes = &changes
-	return c, nil
+
+	return collDef, nil
 }
 
 func (s *store) RemoveCollection(collName string) error {
