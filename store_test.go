@@ -9,4 +9,8 @@ func TestMemStoreOpen(t *testing.T) {
 	if err != nil || s == nil {
 		t.Errorf("expected mem StoreOpen() to work, got err: %v", err)
 	}
+	names, err := s.CollectionNames()
+	if err != nil || names == nil || len(names) != 0 {
+		t.Errorf("expected empty CollectionNames()")
+	}
 }
