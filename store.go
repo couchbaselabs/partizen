@@ -220,6 +220,15 @@ func (s *store) Stats(dest *StoreStats) error {
 
 // --------------------------------------------
 
+func (s *store) startChanges() {
+	s.m.Lock()
+	s.changes = s.changes.startChanges(s.footer)
+	s.m.Unlock()
+}
+
+// --------------------------------------------
+
+// startChanges returns a new Footer copy that's ready for modifications.
 func (f *Footer) startChanges(orig *Footer) *Footer {
 	if orig != nil && f != orig {
 		return f // We're already changed compared to non-nil orig.

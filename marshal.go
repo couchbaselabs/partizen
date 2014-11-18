@@ -1,5 +1,9 @@
 package partizen
 
+import (
+	"sync"
+)
+
 // A Header is stored at the head (or 0th byte) of the log file.
 type Header struct {
 	Magic0    uint64
@@ -60,6 +64,8 @@ type RootLoc struct {
 	store       *store // Pointer to parent store.
 	name        string
 	compareFunc CompareFunc
+
+    m sync.Mutex // Protects writes to the NodeLoc fields.
 }
 
 // A Node of a partizen btree has its descendent locations first
@@ -152,6 +158,14 @@ type Loc struct {
 	// Transient; non-nil when the Loc is read into memory
 	// or when the bytes of the Loc are prepared for writing.
 	buf []byte
+}
+
+func (l *Loc) ClearLoc(t uint8) {
+	l.Type = t
+	l.CheckSum = 0
+	l.Size = 0
+	l.Offset = 0
+	l.buf = nil
 }
 
 const (
