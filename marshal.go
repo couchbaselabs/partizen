@@ -73,7 +73,7 @@ type Node struct {
 	// ChildLoc entries.
 	//
 	// TODO: Consider ordering ChildLocs by ChildLoc.Offset?
-	ChildLocs []NodeLoc // See MAX_CHILD_LOCS_PER_NODE.
+	ChildLocs []Loc // See MAX_CHILD_LOCS_PER_NODE.
 
 	// The PartitionIdxs and Partitions arrays have length of
 	// NumPartitions and are both ordered by PartitionID.  For example
