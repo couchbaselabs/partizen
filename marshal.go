@@ -59,13 +59,13 @@ type CollDef struct {
 
 // A RootLoc implements the Collection interface.
 type RootLoc struct {
-	NodeLoc
+	Loc
 
 	store       *store // Pointer to parent store.
 	name        string
 	compareFunc CompareFunc
 
-    m sync.Mutex // Protects writes to the NodeLoc fields.
+    m sync.Mutex // Protects writes to the Loc fields.
 }
 
 // A Node of a partizen btree has its descendent locations first
@@ -87,12 +87,6 @@ type Node struct {
 	// PartitionIdxs[4].PartitionID.
 	PartitionIdxs []NodePartitionIdx
 	Partitions    []NodePartition
-}
-
-type NodeLoc struct {
-	Loc
-
-	node *Node // If nil, runtime representation hasn't been loaded.
 }
 
 // MAX_CHILD_LOCS_PER_NODE defines the max number for
@@ -158,6 +152,10 @@ type Loc struct {
 	// Transient; non-nil when the Loc is read into memory
 	// or when the bytes of the Loc are prepared for writing.
 	buf []byte
+
+	// Only used when Type is LocTypeNode.  If nil, runtime
+	// representation hasn't been loaded.
+	node *Node
 }
 
 func (l *Loc) ClearLoc(t uint8) {
@@ -166,6 +164,7 @@ func (l *Loc) ClearLoc(t uint8) {
 	l.Size = 0
 	l.Offset = 0
 	l.buf = nil
+	l.node = nil
 }
 
 const (

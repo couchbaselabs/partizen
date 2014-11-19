@@ -1,7 +1,9 @@
 package partizen
 
 import (
+	"bytes"
 	"fmt"
+	"sort"
 )
 
 func (n *Node) Get(partitionID PartitionID,
@@ -12,7 +14,35 @@ func (n *Node) Get(partitionID PartitionID,
 	if n == nil {
 		return 0, nil, nil
 	}
-	return 0, nil, fmt.Errorf("todo")
+	i := sort.Search(int(n.NumPartitions),
+		func(i int) bool { return n.PartitionIdxs[i].PartitionID >= partitionID })
+	if i >= int(n.NumPartitions) {
+		return 0, nil, nil
+	}
+	if i >= len(n.Partitions) {
+		fmt.Errorf("unexpected i >= len(n.Partitions)")
+	}
+	p := &n.Partitions[i]
+	k := sort.Search(int(p.NumKeySeqs),
+		func(k int) bool { return bytes.Compare(p.KeySeqs[k].Key, key) >= 0 })
+	if k >= int(p.NumKeySeqs) {
+		return 0, nil, nil
+	}
+	ks := p.KeySeqs[k]
+	if int(ks.ChildLocsIdx) >= int(n.NumChildLocs) {
+		return 0, nil, fmt.Errorf("unexpected ks.ChildLocsIdx >= n.NumChildLocs")
+	}
+	if int(ks.ChildLocsIdx) >= len(n.ChildLocs) {
+		return 0, nil, fmt.Errorf("unexpected ks.ChildLocsIdx >= len(n.ChildLocs)")
+	}
+	c := &n.ChildLocs[ks.ChildLocsIdx]
+	if c.Type == LocTypeNode {
+		return c.node.Get(partitionID, key, withValue, fastSample)
+	}
+	if c.Type == LocTypeVal {
+		return ks.Seq, c.buf, nil
+	}
+	return 0, nil, fmt.Errorf("unexpected child node type")
 }
 
 func (n *Node) Set(partitionID PartitionID, key Key, seq Seq, val Val) (*Node, error) {
