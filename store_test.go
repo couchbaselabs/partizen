@@ -57,4 +57,12 @@ func TestMemStoreOpen(t *testing.T) {
 	if !reflect.DeepEqual(names, []string{}) {
 		t.Errorf("expected no collection name")
 	}
+	coll, err = s.GetCollection("x")
+	if err == nil || coll != nil {
+		t.Errorf("expected x collection to not be there")
+	}
+	err = s.RemoveCollection("x")
+	if err == nil {
+		t.Errorf("expected 2nd RemoveCollection to fail")
+	}
 }
