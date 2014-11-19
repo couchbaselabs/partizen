@@ -29,4 +29,9 @@ func TestSimpleMemColl(t *testing.T) {
 		t.Errorf("expected Get(a) to work, got seq: %d, val: %s, err: %v",
 			seq, val, err)
 	}
+	seq, val, err = c.Get(0, []byte("not-there"))
+	if err != nil || seq != 0 || val != nil {
+		t.Errorf("expected Get on missing key to be empty")
+	}
+
 }
