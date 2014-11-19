@@ -33,5 +33,8 @@ func TestSimpleMemColl(t *testing.T) {
 	if err != nil || seq != 0 || val != nil {
 		t.Errorf("expected Get on missing key to be empty")
 	}
-
+	seq, val, err = c.Get(0xafff, []byte("a"))
+	if err != nil || seq != 0 || val != nil {
+		t.Errorf("expected Get with wrong partition to be empty")
+	}
 }
