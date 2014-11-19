@@ -40,7 +40,7 @@ func (n *Node) Get(partitionID PartitionID,
 		return c.node.Get(partitionID, key, withValue, fastSample)
 	}
 	if c.Type == LocTypeVal {
-		return ks.Seq, c.buf, nil
+		return ks.Seq, c.buf, nil // TODO: Buffer mgmt.
 	}
 	return 0, nil, fmt.Errorf("unexpected child node type")
 }
