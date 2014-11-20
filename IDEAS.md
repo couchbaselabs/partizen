@@ -2,7 +2,11 @@ partizen
 
 A potential copy-on-write b+tree design with partition and sequence
 number awareness.  Partitions can be independently rolled back to a
-previous sequence number in O(1) time.
+previous sequence number in O(1) time.  But, key data will still be
+stored in lexigraphic order in b-tree fashion, so that range scans
+will find items lexigraphically "close" to each other.  (e.g., all the
+entries of folks who live in "Mountain View" will be next to each
+other, even if they come from different vbuckets)
 
 Status: thinking about the design / draft.
 
