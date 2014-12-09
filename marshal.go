@@ -65,7 +65,7 @@ type RootLoc struct {
 	name        string
 	compareFunc CompareFunc
 
-    m sync.Mutex // Protects writes to the Loc fields.
+	m sync.Mutex // Protects writes to the Loc fields.
 }
 
 // A Node of a partizen btree has its descendent locations first
