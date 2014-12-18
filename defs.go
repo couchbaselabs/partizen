@@ -106,8 +106,8 @@ type KeySeqIdx struct {
 	// Node, this Seq is the Node's max Seq for a Partition.
 	Seq Seq
 
-	// An index into Node.ChildLocs; and, to support ChangesSince(),
-	// a ChildLocsIdx of uint8(0xff) means a deleted item.
+	// An index into Node.ChildLocs; and, to support Diff(), a
+	// ChildLocsIdx of uint8(0xff) means a deleted item.
 	Idx uint8
 }
 
