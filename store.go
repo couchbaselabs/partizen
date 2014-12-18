@@ -89,9 +89,9 @@ func readHeader(f StoreFile, o *StoreOptions) (*Header, error) {
 func readFooter(f StoreFile, o *StoreOptions, header *Header,
 	startOffset uint64) (*Footer, error) {
 	footer := &Footer{
-		Magic0:       header.Magic0,
-		Magic1:       header.Magic1,
-		UUID:         header.UUID,
+		// Magic0:       header.Magic0,
+		// Magic1:       header.Magic1,
+		// UUID:         header.UUID,
 		CollRootLocs: make([]*RootLoc, 0),
 	}
 	footer.StoreDefLoc.Type = LocTypeStoreDef

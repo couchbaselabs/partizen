@@ -18,16 +18,18 @@ type Header struct {
 // A Footer is the last record appended to the log file whenever
 // there's a successful Store.Commit().
 type Footer struct {
-	Magic0 uint64 // Same as Header.Magic0.
-	Magic1 uint64 // Same as Header.Magic1.
-	UUID   uint64 // Same as Header.UUID.
+	// Magic0 uint64 // Same as Header.Magic0.
+	// Magic1 uint64 // Same as Header.Magic1.
+	// UUID   uint64 // Same as Header.UUID.
 
 	// Size in bytes of the entire written Footer and its related
 	// atomic tree data, including the Footer's MagicX, UUID & Size
 	// fields).  We write Val's before the Footer and copy-on-write
 	// tree data after the Footer bytes to try to fill up an entire
 	// underlying storage page.
-	Size uint32
+	//
+	// TODO: Is that a safe/good idea?
+	// Size uint32
 
 	StoreDefLoc StoreDefLoc // Location of StoreDef.
 	WALTailLoc  WALEntryLoc // Last entry of write-ahead-log.
@@ -72,6 +74,7 @@ type RootLoc struct {
 // ordered by PartitionID, then secondarily ordered by Key.
 type Node struct {
 	NumChildLocs  uint8
+	NumKeys       uint8
 	NumPartitions uint16
 
 	// ChildLocs are kept separate from Partitions because multiple
@@ -80,6 +83,8 @@ type Node struct {
 	//
 	// TODO: Consider ordering ChildLocs by ChildLoc.Offset?
 	ChildLocs []Loc // See MAX_CHILD_LOCS_PER_NODE.
+
+	KeySeqs []Seq
 
 	// The PartitionIdxs and Partitions arrays have length of
 	// NumPartitions and are both ordered by PartitionID.  For example
