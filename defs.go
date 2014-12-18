@@ -11,8 +11,6 @@ type Header struct {
 	UUID             uint64
 	Version          [64]byte
 	PageSize         uint16
-	DefaultMinDegree uint16
-	DefaultMaxDegree uint16 // Usually (2*DefaultMinDegree)+1.
 	ExtrasLen        uint16
 	ExtrasVal        []byte
 }
@@ -47,7 +45,7 @@ type CollDef struct {
 	Name            string
 	CompareFuncName string
 	MinDegree       uint16
-	MaxDegree       uint16
+	MaxDegree       uint16 // Usually (2*MinDegree)+1.
 }
 
 // A RootLoc implements the Collection interface.

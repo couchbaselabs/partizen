@@ -88,12 +88,10 @@ var DefaultOptions = StoreOptions{
 
 func readHeader(f StoreFile, o *StoreOptions) (*Header, error) {
 	header := &Header{
-		Magic0:           uint64(HEADER_MAGIC0),
-		Magic1:           uint64(HEADER_MAGIC1),
-		UUID:             uint64(rand.Int63()),
-		PageSize:         o.DefaultPageSize,
-		DefaultMinDegree: o.DefaultMinDegree,
-		DefaultMaxDegree: o.DefaultMaxDegree,
+		Magic0:   uint64(HEADER_MAGIC0),
+		Magic1:   uint64(HEADER_MAGIC1),
+		UUID:     uint64(rand.Int63()),
+		PageSize: o.DefaultPageSize,
 	}
 	copy(header.Version[:], []byte(HEADER_VERSION+"\x00"))
 	if f == nil { // Memory only case.
@@ -160,15 +158,15 @@ func (s *store) AddCollection(collName string, compareFuncName string) (Collecti
 	c := &CollDef{
 		Name:            collName,
 		CompareFuncName: compareFuncName,
-		MinDegree:       s.header.DefaultMinDegree,
-		MaxDegree:       s.header.DefaultMaxDegree,
+		MinDegree:       s.storeOptions.DefaultMinDegree,
+		MaxDegree:       s.storeOptions.DefaultMaxDegree,
 	}
 	r := &RootLoc{
 		store:       s,
 		name:        collName,
 		compareFunc: compareFunc,
-		minDegree:   s.header.DefaultMinDegree,
-		maxDegree:   s.header.DefaultMaxDegree,
+		minDegree:   s.storeOptions.DefaultMinDegree,
+		maxDegree:   s.storeOptions.DefaultMaxDegree,
 	}
 
 	var changes = s.changes.startChanges(nil)
