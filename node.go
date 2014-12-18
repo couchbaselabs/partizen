@@ -6,7 +6,7 @@ import (
 	"sort"
 )
 
-func (n *Node) Get(partitionID PartitionID,
+func (n *Node) Get(partitionId PartitionId,
 	key Key,
 	withValue bool, // When withValue is false, value will be nil.
 	fastSample bool) ( // Return result only if fast / in memory (no disk hit).
@@ -14,71 +14,69 @@ func (n *Node) Get(partitionID PartitionID,
 	if n == nil {
 		return 0, nil, nil
 	}
-	i := sort.Search(int(n.NumPartitions),
-		func(i int) bool { return n.PartitionIdxs[i].PartitionID >= partitionID })
-	if i >= int(n.NumPartitions) {
+	i := sort.Search(len(n.NodePartitions),
+		func(i int) bool {
+			return n.NodePartitions[i].PartitionId >= partitionId
+		})
+	if i >= len(n.NodePartitions) {
 		return 0, nil, nil
 	}
-	if i >= len(n.Partitions) {
-		fmt.Errorf("unexpected i >= len(n.Partitions)")
-	}
-	p := &n.Partitions[i]
-	k := sort.Search(int(p.NumKeySeqs),
-		func(k int) bool { return bytes.Compare(p.KeySeqs[k].Key, key) >= 0 })
-	if k >= int(p.NumKeySeqs) {
+	p := &n.NodePartitions[i]
+	k := sort.Search(len(p.KeyIdxs),
+		func(k int) bool {
+			return bytes.Compare(n.KeySeqIdxs[int(p.KeyIdxs[k])].Key, key) >= 0
+		})
+	if k >= len(p.KeyIdxs) {
 		return 0, nil, nil
 	}
-	ks := p.KeySeqs[k]
-	if int(ks.ChildLocsIdx) >= int(n.NumChildLocs) {
-		return 0, nil, fmt.Errorf("unexpected ks.ChildLocsIdx >= n.NumChildLocs")
+	ki := int(p.KeyIdxs[k])
+	if ki >= len(n.KeySeqIdxs) {
+		return 0, nil, fmt.Errorf("unexpected ki >= len(n.KeySeqIdxs)")
 	}
-	if int(ks.ChildLocsIdx) >= len(n.ChildLocs) {
-		return 0, nil, fmt.Errorf("unexpected ks.ChildLocsIdx >= len(n.ChildLocs)")
+	ksi := &n.KeySeqIdxs[ki]
+	if int(ksi.Idx) >= len(n.ChildLocs) {
+		return 0, nil, fmt.Errorf("unexpected ksi.Idx >= len(n.ChildLocs)")
 	}
-	c := &n.ChildLocs[ks.ChildLocsIdx]
-	if c.Type == LocTypeNode {
-		return c.node.Get(partitionID, key, withValue, fastSample)
+	cl := &n.ChildLocs[int(ksi.Idx)]
+	if cl.Type == LocTypeNode {
+		return cl.node.Get(partitionId, key, withValue, fastSample)
 	}
-	if c.Type == LocTypeVal {
-		return ks.Seq, c.buf, nil // TODO: Buffer mgmt.
+	if cl.Type == LocTypeVal {
+		return ksi.Seq, cl.buf, nil // TODO: Buffer mgmt.
 	}
 	return 0, nil, fmt.Errorf("unexpected child node type")
 }
 
-func (n *Node) Set(partitionID PartitionID, key Key, seq Seq, val Val) (*Node, error) {
+func (n *Node) Set(partitionId PartitionId, key Key, seq Seq, val Val) (*Node, error) {
 	if n == nil {
-		return makeValNode(partitionID, key, seq, val)
+		return makeValNode(partitionId, key, seq, val)
 	}
 
 	return nil, fmt.Errorf("todo")
 }
 
-func makeValNode(partitionID PartitionID, key Key, seq Seq, val Val) (*Node, error) {
+func makeValNode(partitionId PartitionId, key Key, seq Seq, val Val) (*Node, error) {
 	return &Node{ // TODO: Memory mgmt.
-		NumChildLocs:  1,
-		NumPartitions: 1,
-		ChildLocs: append([]Loc(nil),
-			Loc{Type: LocTypeVal, CheckSum: 0,
-				Size: uint32(len(val)), Offset: 0, buf: val}),
-		PartitionIdxs: append([]NodePartitionIdx(nil),
-			NodePartitionIdx{
-				PartitionID: partitionID,
-				Offset:      0,
-			}),
-		Partitions: append([]NodePartition(nil),
+		ChildLocs: []Loc{
+			Loc{
+				Type:   LocTypeVal,
+				Size:   uint32(len(val)),
+				Offset: 0,
+				buf:    val,
+			}},
+		KeySeqIdxs: []KeySeqIdx{
+			KeySeqIdx{
+				Key: key,
+				Seq: seq,
+				Idx: 0,
+			}},
+		NodePartitions: []NodePartition{
 			NodePartition{
 				TotKeys:     1,
 				TotVals:     1,
 				TotKeyBytes: uint64(len(key)),
 				TotValBytes: uint64(len(val)),
-				NumKeySeqs:  1,
-				KeySeqs: append([]KeySeq(nil),
-					KeySeq{
-						KeyLen:       uint16(len(key)),
-						Seq:          seq,
-						ChildLocsIdx: 0,
-						Key:          key,
-					}),
-			}),
+				KeyIdxs:     []uint16{0},
+			}},
 	}, nil
 }

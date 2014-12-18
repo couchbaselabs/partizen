@@ -18,19 +18,6 @@ type Header struct {
 // A Footer is the last record appended to the log file whenever
 // there's a successful Store.Commit().
 type Footer struct {
-	// Magic0 uint64 // Same as Header.Magic0.
-	// Magic1 uint64 // Same as Header.Magic1.
-	// UUID   uint64 // Same as Header.UUID.
-
-	// Size in bytes of the entire written Footer and its related
-	// atomic tree data, including the Footer's MagicX, UUID & Size
-	// fields).  We write Val's before the Footer and copy-on-write
-	// tree data after the Footer bytes to try to fill up an entire
-	// underlying storage page.
-	//
-	// TODO: Is that a safe/good idea?
-	// Size uint32
-
 	StoreDefLoc StoreDefLoc // Location of StoreDef.
 	WALTailLoc  WALEntryLoc // Last entry of write-ahead-log.
 
@@ -73,9 +60,9 @@ type RootLoc struct {
 // A Node of a partizen btree has its descendent locations first
 // ordered by PartitionID, then secondarily ordered by Key.
 type Node struct {
-	NumChildLocs  uint8
-	NumKeys       uint8
-	NumPartitions uint16
+	// NumChildLocs      uint8
+	// NumKeySeqs        uint8
+	// NumNodePartitions uint16
 
 	// ChildLocs are kept separate from Partitions because multiple
 	// NodePartition.KeySeq's may be sharing or indexing to the same
@@ -84,50 +71,34 @@ type Node struct {
 	// TODO: Consider ordering ChildLocs by ChildLoc.Offset?
 	ChildLocs []Loc // See MAX_CHILD_LOCS_PER_NODE.
 
-	KeySeqs []Seq
+	// Sorted by KeySeqIdx.Key.
+	KeySeqIdxs []KeySeqIdx
 
-	// The PartitionIdxs and Partitions arrays have length of
-	// NumPartitions and are both ordered by PartitionID.  For example
-	// PartitionIdxs[4] and Partitions[4] are both about
-	// PartitionIdxs[4].PartitionID.
-	PartitionIdxs []NodePartitionIdx
-	Partitions    []NodePartition
+	// Sorted by NodePartition.PartitionId.
+	NodePartitions []NodePartition // See MAX_NODE_PARTITIONS_PER_NODE.
 }
 
 // MAX_CHILD_LOCS_PER_NODE defines the max number for
 // Node.NumChildLocs per Node. Although Node.NumChildLocs is a uint8,
 // the max fan-out of a Node is 255, not 256, because ChildLoc index
 // 0xff is reserved to mark deletions.
-const MAX_CHILD_LOCS_PER_NODE = 255
-
-// A NodePartitionIdx is a fixed-sized struct to allow fast lookup of
-// a PartitionId in a Node (see Node.PartitionIdxs array).
-type NodePartitionIdx struct {
-	PartitionID PartitionID
-
-	// Offset is the starting byte offset of the corresponding
-	// NodePartition entry in the Node.Partitions array, starting from
-	// the 0th Node.Partitions[0] byte position.
-	Offset uint16
-}
+const MAX_CHILD_LOCS_PER_NODE = 255        // (2^8)-1.
+const MAX_NODE_PARTITIONS_PER_NODE = 65535 // (2^16)-1.
 
 // A NodePartition is a variable-sized struct that holds keys of
 // direct descendants of a Partition for a Node.
 type NodePartition struct {
-	TotKeys     uint64 // TotKeys - TotVals equals number of deletions.
+	PartitionId PartitionId
+	TotKeys     uint64
 	TotVals     uint64
 	TotKeyBytes uint64
 	TotValBytes uint64
-
-	NumKeySeqs uint8
-	KeySeqs    []KeySeq // KeySeqs is ordered by Key.
-
-	// FUTURE: Aggregates might be also maintained here per NodePartition.
+	KeyIdxs     []uint16 // Indexes into the Node.KeySeqIdxs array.
 }
 
-// A KeySeqIdx is a variable-sized struct that tracks a single key.
-type KeySeq struct {
-	KeyLen uint16
+// A KeyIdxSeq is a variable-sized struct that tracks a single key.
+type KeySeqIdx struct {
+	Key Key
 
 	// The meaning of this Seq field depends on the ChildLoc's type...
 	// If this KeySeqIdx points to a Val (or to a deleted Val), this
@@ -137,16 +108,14 @@ type KeySeq struct {
 
 	// An index into Node.ChildLocs; and, to support ChangesSince(),
 	// a ChildLocsIdx of uint8(0xff) means a deleted item.
-	ChildLocsIdx uint8
-
-	// The Key goes last as its variable sized.
-	Key Key
+	Idx uint8
 }
 
 // A Loc represents the location of a byte range persisted or
 // soon-to-be-persisted to the storage file.
 type Loc struct {
 	Type     uint8
+	Flags    uint8
 	CheckSum uint16
 	Size     uint32
 
