@@ -141,7 +141,8 @@ func (s *store) GetCollection(collName string) (Collection, error) {
 	return nil, fmt.Errorf("no collection, collName: %s", collName)
 }
 
-func (s *store) AddCollection(collName string, compareFuncName string) (Collection, error) {
+func (s *store) AddCollection(collName string, compareFuncName string) (
+	Collection, error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 
@@ -253,8 +254,9 @@ func (f *Footer) startChanges(orig *Footer) *Footer {
 
 	var c Footer = *f // First, shallow copy.
 
-	c.StoreDefLoc.storeDef =
-		&StoreDef{CollDefs: append([]*CollDef(nil), c.StoreDefLoc.storeDef.CollDefs...)}
+	c.StoreDefLoc.storeDef = &StoreDef{
+		CollDefs: append([]*CollDef(nil), c.StoreDefLoc.storeDef.CollDefs...),
+	}
 
 	c.CollRootLocs = append([]*RootLoc(nil), c.CollRootLocs...)
 
