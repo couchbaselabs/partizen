@@ -6,13 +6,13 @@ import (
 
 // A Header is stored at the head (or 0th byte) of the log file.
 type Header struct {
-	Magic0           uint64
-	Magic1           uint64
-	UUID             uint64
-	Version          [64]byte
-	PageSize         uint16
-	ExtrasLen        uint16
-	ExtrasVal        []byte
+	Magic0    uint64
+	Magic1    uint64
+	UUID      uint64
+	Version   [64]byte
+	PageSize  uint16
+	ExtrasLen uint16
+	ExtrasVal []byte
 }
 
 // A Footer is the last record appended to the log file whenever

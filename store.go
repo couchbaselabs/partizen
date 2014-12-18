@@ -163,10 +163,10 @@ func (s *store) AddCollection(collName string, compareFuncName string) (Collecti
 	}
 	r := &RootLoc{
 		store:       s,
-		name:        collName,
+		name:        c.Name,
 		compareFunc: compareFunc,
-		minDegree:   s.storeOptions.DefaultMinDegree,
-		maxDegree:   s.storeOptions.DefaultMaxDegree,
+		minDegree:   c.MinDegree,
+		maxDegree:   c.MaxDegree,
 	}
 
 	var changes = s.changes.startChanges(nil)
