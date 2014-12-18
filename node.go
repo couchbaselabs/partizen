@@ -59,9 +59,9 @@ func makeValNode(partitionId PartitionId, key Key, seq Seq, val Val) (*Node, err
 	return &Node{ // TODO: Memory mgmt.
 		ChildLocs: []Loc{
 			Loc{
-				Type:   LocTypeVal,
-				Size:   uint32(len(val)),
 				Offset: 0,
+				Size:   uint32(len(val)),
+				Type:   LocTypeVal,
 				buf:    val,
 			}},
 		KeySeqIdxs: []KeySeqIdx{
@@ -72,6 +72,7 @@ func makeValNode(partitionId PartitionId, key Key, seq Seq, val Val) (*Node, err
 			}},
 		NodePartitions: []NodePartition{
 			NodePartition{
+				PartitionId: partitionId,
 				TotKeys:     1,
 				TotVals:     1,
 				TotKeyBytes: uint64(len(key)),
