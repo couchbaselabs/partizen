@@ -112,23 +112,24 @@ type KeySeqIdx struct {
 }
 
 // A Loc represents the location of a byte range persisted or
-// soon-to-be-persisted to the storage file.
+// soon-to-be-persisted to the storage file.  Field sizes are
+// carefully chosed to add up to 128 bits.
 type Loc struct {
+	// Offset is relative to start of file.  Offset of 0 means the
+	// pointed-to bytes buf are not persisted yet.
+	Offset   uint64
+	Size     uint32
 	Type     uint8
 	Flags    uint8
-	CheckSum uint16
-	Size     uint32
+	CheckSum uint16 // An optional checksum of the bytes buf.
 
-	// Offset is relative to start of file.
-	// Offset of 0 means not persisted yet.
-	Offset uint64
-
-	// Transient; non-nil when the Loc is read into memory
-	// or when the bytes of the Loc are prepared for writing.
+	// Transient; non-nil when the Loc is read into memory or when the
+    // bytes of the Loc are prepared for writing.  The len(Loc.buf)
+    // should equal Loc.Size.
 	buf []byte
 
-	// Only used when Type is LocTypeNode.  If nil, runtime
-	// representation hasn't been loaded.
+	// Transient; only used when Type is LocTypeNode.  If nil, runtime
+	// representation hasn't been loaded yet.
 	node *Node
 }
 
