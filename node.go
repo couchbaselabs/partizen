@@ -44,7 +44,7 @@ func (n *Node) Get(partitionId PartitionId,
 	if cl.Type == LocTypeVal {
 		return ksi.Seq, cl.buf, nil // TODO: Buffer mgmt.
 	}
-	return 0, nil, fmt.Errorf("unexpected child node type")
+	return 0, nil, fmt.Errorf("unexpected child node type: %d", cl.Type)
 }
 
 func (n *Node) Set(partitionId PartitionId, key Key, seq Seq, val Val) (*Node, error) {
