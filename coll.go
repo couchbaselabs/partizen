@@ -18,7 +18,7 @@ func (r *RootLoc) GetEx(partitionId PartitionId,
 	node := r.node
 	r.m.Unlock()
 
-	return node.Get(partitionId, key, withValue, fastSample)
+	return node.Get(r, partitionId, key, withValue, fastSample)
 }
 
 func (r *RootLoc) Set(partitionId PartitionId, key Key, seq Seq, val Val) (err error) {
@@ -28,7 +28,7 @@ func (r *RootLoc) Set(partitionId PartitionId, key Key, seq Seq, val Val) (err e
 	node := r.node
 	r.m.Unlock()
 
-	n, err := node.Set(partitionId, key, seq, val)
+	n, err := node.Set(r, partitionId, key, seq, val)
 	if err != nil {
 		return err
 	}

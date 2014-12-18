@@ -48,35 +48,52 @@ func storeOpen(storeFile StoreFile, storeOptions *StoreOptions) (
 
 func initStoreOptions(o *StoreOptions) *StoreOptions {
 	if o == nil {
-		o = &defaultOptions
+		o = &DefaultOptions
 	}
 	rv := &StoreOptions{
-		CompareFuncs: o.CompareFuncs,
-		BufManager:   o.BufManager,
+		CompareFuncs:     o.CompareFuncs,
+		DefaultPageSize:  o.DefaultPageSize,
+		DefaultMinDegree: o.DefaultMinDegree,
+		DefaultMaxDegree: o.DefaultMaxDegree,
+		BufManager:       o.BufManager,
 	}
 	if rv.CompareFuncs == nil {
-		rv.CompareFuncs = defaultOptions.CompareFuncs
+		rv.CompareFuncs = DefaultOptions.CompareFuncs
 	}
 	if rv.CompareFuncs[""] == nil {
-		rv.CompareFuncs[""] = defaultOptions.CompareFuncs[""]
+		rv.CompareFuncs[""] = DefaultOptions.CompareFuncs[""]
+	}
+	if rv.DefaultPageSize <= 0 {
+		rv.DefaultPageSize = DefaultOptions.DefaultPageSize
+	}
+	if rv.DefaultMinDegree <= 0 {
+		rv.DefaultMinDegree = DefaultOptions.DefaultMinDegree
+	}
+	if rv.DefaultMaxDegree <= 0 {
+		rv.DefaultMaxDegree = DefaultOptions.DefaultMaxDegree
 	}
 	if rv.BufManager == nil {
-		rv.BufManager = defaultOptions.BufManager
+		rv.BufManager = DefaultOptions.BufManager
 	}
 	return rv
 }
 
-var defaultOptions = StoreOptions{
-	CompareFuncs: map[string]CompareFunc{"": bytes.Compare},
-	BufManager:   &defaultBufManager{},
+var DefaultOptions = StoreOptions{
+	CompareFuncs:     map[string]CompareFunc{"": bytes.Compare},
+	DefaultPageSize:  4096,
+	DefaultMinDegree: 2, // TODO: Larger DefaultMinDegree.
+	DefaultMaxDegree: 5, // TODO: Larger DefaultMaxDegree.
+	BufManager:       &defaultBufManager{},
 }
 
 func readHeader(f StoreFile, o *StoreOptions) (*Header, error) {
 	header := &Header{
-		Magic0:   uint64(HEADER_MAGIC0),
-		Magic1:   uint64(HEADER_MAGIC1),
-		UUID:     uint64(rand.Int63()),
-		PageSize: 4096,
+		Magic0:           uint64(HEADER_MAGIC0),
+		Magic1:           uint64(HEADER_MAGIC1),
+		UUID:             uint64(rand.Int63()),
+		PageSize:         o.DefaultPageSize,
+		DefaultMinDegree: o.DefaultMinDegree,
+		DefaultMaxDegree: o.DefaultMaxDegree,
 	}
 	copy(header.Version[:], []byte(HEADER_VERSION+"\x00"))
 	if f == nil { // Memory only case.
@@ -89,9 +106,6 @@ func readHeader(f StoreFile, o *StoreOptions) (*Header, error) {
 func readFooter(f StoreFile, o *StoreOptions, header *Header,
 	startOffset uint64) (*Footer, error) {
 	footer := &Footer{
-		// Magic0:       header.Magic0,
-		// Magic1:       header.Magic1,
-		// UUID:         header.UUID,
 		CollRootLocs: make([]*RootLoc, 0),
 	}
 	footer.StoreDefLoc.Type = LocTypeStoreDef
@@ -100,6 +114,7 @@ func readFooter(f StoreFile, o *StoreOptions, header *Header,
 		return footer, nil
 	}
 	// TODO: Actually scan and read the footer from f, and initialize changes.
+	// TODO: Footer should have copies of magic & uuid bytes for double-check.
 	// TODO: Read WALEntry log and apply to footer.
 	return footer, nil
 }
@@ -145,11 +160,15 @@ func (s *store) AddCollection(collName string, compareFuncName string) (Collecti
 	c := &CollDef{
 		Name:            collName,
 		CompareFuncName: compareFuncName,
+		MinDegree:       s.header.DefaultMinDegree,
+		MaxDegree:       s.header.DefaultMaxDegree,
 	}
 	r := &RootLoc{
 		store:       s,
 		name:        collName,
 		compareFunc: compareFunc,
+		minDegree:   s.header.DefaultMinDegree,
+		maxDegree:   s.header.DefaultMaxDegree,
 	}
 
 	var changes = s.changes.startChanges(nil)

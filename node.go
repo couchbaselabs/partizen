@@ -6,7 +6,7 @@ import (
 	"sort"
 )
 
-func (n *Node) Get(partitionId PartitionId,
+func (n *Node) Get(r *RootLoc, partitionId PartitionId,
 	key Key,
 	withValue bool, // When withValue is false, value will be nil.
 	fastSample bool) ( // Return result only if fast / in memory (no disk hit).
@@ -39,7 +39,7 @@ func (n *Node) Get(partitionId PartitionId,
 	}
 	cl := &n.ChildLocs[int(ksi.Idx)]
 	if cl.Type == LocTypeNode {
-		return cl.node.Get(partitionId, key, withValue, fastSample)
+		return cl.node.Get(r, partitionId, key, withValue, fastSample)
 	}
 	if cl.Type == LocTypeVal {
 		return ksi.Seq, cl.buf, nil // TODO: Buffer mgmt.
@@ -47,7 +47,8 @@ func (n *Node) Get(partitionId PartitionId,
 	return 0, nil, fmt.Errorf("unexpected child node type: %d", cl.Type)
 }
 
-func (n *Node) Set(partitionId PartitionId, key Key, seq Seq, val Val) (*Node, error) {
+func (n *Node) Set(r *RootLoc, partitionId PartitionId,
+	key Key, seq Seq, val Val) (*Node, error) {
 	if n == nil {
 		return makeValNode(partitionId, key, seq, val)
 	}

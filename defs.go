@@ -6,13 +6,15 @@ import (
 
 // A Header is stored at the head (or 0th byte) of the log file.
 type Header struct {
-	Magic0    uint64
-	Magic1    uint64
-	UUID      uint64
-	Version   [48]byte
-	PageSize  uint32
-	ExtrasLen uint32
-	ExtrasVal []byte
+	Magic0           uint64
+	Magic1           uint64
+	UUID             uint64
+	Version          [64]byte
+	PageSize         uint16
+	DefaultMinDegree uint16
+	DefaultMaxDegree uint16 // Usually (2*DefaultMinDegree)+1.
+	ExtrasLen        uint16
+	ExtrasVal        []byte
 }
 
 // A Footer is the last record appended to the log file whenever
@@ -44,6 +46,8 @@ type StoreDefLoc struct {
 type CollDef struct {
 	Name            string
 	CompareFuncName string
+	MinDegree       uint16
+	MaxDegree       uint16
 }
 
 // A RootLoc implements the Collection interface.
@@ -53,6 +57,8 @@ type RootLoc struct {
 	store       *store // Pointer to parent store.
 	name        string
 	compareFunc CompareFunc
+	minDegree   uint16
+	maxDegree   uint16
 
 	m sync.Mutex // Protects writes to the Loc fields.
 }
@@ -124,8 +130,8 @@ type Loc struct {
 	CheckSum uint16 // An optional checksum of the bytes buf.
 
 	// Transient; non-nil when the Loc is read into memory or when the
-    // bytes of the Loc are prepared for writing.  The len(Loc.buf)
-    // should equal Loc.Size.
+	// bytes of the Loc are prepared for writing.  The len(Loc.buf)
+	// should equal Loc.Size.
 	buf []byte
 
 	// Transient; only used when Type is LocTypeNode.  If nil, runtime
