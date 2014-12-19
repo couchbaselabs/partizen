@@ -56,7 +56,8 @@ func (n *Node) Set(r *RootLoc, partitionId PartitionId,
 	return nil, fmt.Errorf("todo")
 }
 
-func makeValNode(partitionId PartitionId, key Key, seq Seq, val Val) (*Node, error) {
+func makeValNode(partitionId PartitionId, key Key, seq Seq, val Val) (
+	*Node, error) {
 	return &Node{ // TODO: Memory mgmt.
 		ChildLocs: []Loc{
 			Loc{
