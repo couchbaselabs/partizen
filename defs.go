@@ -21,8 +21,8 @@ type Footer struct {
 	StoreDefLoc StoreDefLoc // Location of StoreDef.
 	WALTailLoc  WALEntryLoc // Last entry of write-ahead-log.
 
-	// Locations of partizen btree root Nodes, 1 per Collection.  The
-	// length of CollRootLocs equals len(StoreDef.CollDefs).
+	// Locations of partizen btree root Nodes, 1 per Collection.
+	// len(Footer.CollRootLocs) equals len(StoreDef.CollDefs).
 	CollRootLocs []*RootLoc
 }
 
