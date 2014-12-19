@@ -70,7 +70,13 @@ type Node interface {
 		found bool, nodePartitionIdx int)
 
 	LocateKeySeqIdx(nodePartitionIdx int, key Key) (
-		found bool, nodePartitionKeyIdx int, keySeqIdx *KeySeqIdx)
+		found bool, nodePartitionKeyIdx int, keySeqIdx KeySeqIdx)
+
+	InsertChildLoc(partitionId PartitionId,
+		nodePartitionIdx, nodePartitionKeyIdx int, key Key, seq Seq, loc Loc) Node
+
+	UpdateChildLoc(partitionId PartitionId,
+		nodePartitionIdx, nodePartitionKeyIdx int, seq Seq, loc Loc) Node
 }
 
 type NodeMem struct {
@@ -110,7 +116,7 @@ type NodePartition struct {
 	KeyIdxs     []uint16 // Indexes into the Node.KeySeqIdxs array.
 }
 
-// A KeyIdxSeq is a variable-sized struct that tracks a single key.
+// A KeySeqIdx tracks a single key.
 type KeySeqIdx struct {
 	Key Key
 
