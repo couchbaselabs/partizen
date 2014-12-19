@@ -4,21 +4,13 @@ import (
 	"fmt"
 )
 
-func (r *RootLoc) Get(partitionId PartitionId, key Key) (
-	seq Seq, val Val, err error) {
-	return r.GetEx(partitionId, key, true, false)
-}
-
-func (r *RootLoc) GetEx(partitionId PartitionId,
-	key Key,
-	withValue bool, // When withValue is false, value will be nil.
-	fastSample bool) ( // Return result only if fast / in memory (no disk hit).
+func (r *RootLoc) Get(partitionId PartitionId, key Key, withValue bool) (
 	seq Seq, val Val, err error) {
 	r.m.Lock()
 	node := r.node
 	r.m.Unlock()
 
-	return node.Get(r, partitionId, key, withValue, fastSample)
+	return node.Get(r, partitionId, key, withValue)
 }
 
 func (r *RootLoc) Set(partitionId PartitionId, key Key, seq Seq, val Val) (err error) {
@@ -69,7 +61,6 @@ func (r *RootLoc) Scan(fromKeyInclusive Key,
 	reverse bool, // When reverse flag is true, fromKey should be greater than toKey.
 	partitions []PartitionId, // Scan only these partitions; nil for all partitions.
 	withValue bool, // When withValue is false, nil value is passed to visitorFunc.
-	fastSample bool, // Return subset of range that's fast / in memory (no disk hit).
 	visitorFunc VisitorFunc) error {
 	return fmt.Errorf("unimplemented")
 }

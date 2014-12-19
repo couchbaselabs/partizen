@@ -40,12 +40,7 @@ type Store interface {
 }
 
 type Collection interface {
-	Get(partitionId PartitionId, key Key) (seq Seq, val Val, err error)
-
-	GetEx(partitionId PartitionId,
-		key Key,
-		withValue bool, // When withValue is false, value will be nil.
-		fastSample bool) ( // Return result only if fast / in memory (no disk hit).
+	Get(partitionId PartitionId, key Key, withValue bool) (
 		seq Seq, val Val, err error)
 
 	// Set takes a seq number that should be monotonically increasing.
@@ -69,7 +64,6 @@ type Collection interface {
 		reverse bool, // When reverse flag is true, fromKey should be greater than toKey.
 		partitionIds []PartitionId, // Scan only these partitions; nil for all partitions.
 		withValue bool, // When withValue is false, nil value is passed to visitorFunc.
-		fastSample bool, // Return subset of range that's fast / in memory (no disk hit).
 		visitorFunc VisitorFunc) error
 
 	Diff(partitionId PartitionId,

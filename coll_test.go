@@ -16,7 +16,7 @@ func TestSimpleMemColl(t *testing.T) {
 	if !s.HasChanges() {
 		t.Errorf("expected coll to have changes after AddCollection()")
 	}
-	seq, val, err := c.Get(0, []byte("a"))
+	seq, val, err := c.Get(0, []byte("a"), true)
 	if err != nil || seq != 0 || val != nil {
 		t.Errorf("expected Get on empty coll to be empty")
 	}
@@ -24,16 +24,16 @@ func TestSimpleMemColl(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected Set on empty coll to work")
 	}
-	seq, val, err = c.Get(0, []byte("a"))
+	seq, val, err = c.Get(0, []byte("a"), true)
 	if err != nil || seq != 1 || string(val) != "A" {
 		t.Errorf("expected Get(a) to work, got seq: %d, val: %s, err: %v",
 			seq, val, err)
 	}
-	seq, val, err = c.Get(0, []byte("not-there"))
+	seq, val, err = c.Get(0, []byte("not-there"), true)
 	if err != nil || seq != 0 || val != nil {
 		t.Errorf("expected Get on missing key to be empty")
 	}
-	seq, val, err = c.Get(0xafff, []byte("a"))
+	seq, val, err = c.Get(0xafff, []byte("a"), true)
 	if err != nil || seq != 0 || val != nil {
 		t.Errorf("expected Get with wrong partition to be empty")
 	}
