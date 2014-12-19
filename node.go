@@ -15,7 +15,7 @@ func (r *RootLoc) NodeGet(n Node, partitionId PartitionId, key Key, withValue bo
 	if !found {
 		return 0, nil, nil
 	}
-	found, _, _, keySeqIdx := n.LocateKeySeqIdx(nodePartitionIdx, key)
+	found, _, keySeqIdx := n.LocateKeySeqIdx(nodePartitionIdx, key)
 	if !found {
 		return 0, nil, nil
 	}
@@ -60,22 +60,25 @@ func (n *NodeMem) LocateNodePartition(partitionId PartitionId) (
 }
 
 func (n *NodeMem) LocateKeySeqIdx(nodePartitionIdx int, key Key) (
-	found bool, nodePartitionKeyIdx, keySeqIdxIdx int, keySeqIdx *KeySeqIdx) {
+	found bool, nodePartitionKeyIdx int, keySeqIdx *KeySeqIdx) {
+	if nodePartitionIdx >= len(n.NodePartitions) {
+		panic("nodePartitionIdx >= len(n.NodePartitions)")
+	}
 	np := &n.NodePartitions[nodePartitionIdx]
 	nodePartitionKeyIdx = sort.Search(len(np.KeyIdxs),
 		func(k int) bool {
-			return bytes.Compare(n.KeySeqIdxs[int(np.KeyIdxs[k])].Key, key) >= 0
+			keySeqIdx := &n.KeySeqIdxs[int(np.KeyIdxs[k])]
+			return bytes.Compare(keySeqIdx.Key, key) >= 0
 		})
 	if nodePartitionKeyIdx >= len(np.KeyIdxs) {
-		return false, nodePartitionKeyIdx, -1, nil
+		return false, nodePartitionKeyIdx, nil
 	}
 	// TODO: Optimize away this extra comparison.
-	keySeqIdxIdx = int(np.KeyIdxs[nodePartitionKeyIdx])
-	keySeqIdx = &n.KeySeqIdxs[keySeqIdxIdx]
+	keySeqIdx = &n.KeySeqIdxs[int(np.KeyIdxs[nodePartitionKeyIdx])]
 	if bytes.Compare(keySeqIdx.Key, key) != 0 {
-		return false, nodePartitionKeyIdx, -1, nil
+		return false, nodePartitionKeyIdx, nil
 	}
-	return true, nodePartitionKeyIdx, keySeqIdxIdx, keySeqIdx
+	return true, nodePartitionKeyIdx, keySeqIdx
 }
 
 func (n *NodeMem) ChildLoc(childLocIdx int) *Loc {

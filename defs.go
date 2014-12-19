@@ -70,7 +70,7 @@ type Node interface {
 		found bool, nodePartitionIdx int)
 
 	LocateKeySeqIdx(nodePartitionIdx int, key Key) (
-		found bool, nodePartitionKeyIdx, keySeqIdxIdx int, keySeqIdx *KeySeqIdx)
+		found bool, nodePartitionKeyIdx int, keySeqIdx *KeySeqIdx)
 }
 
 type NodeMem struct {
