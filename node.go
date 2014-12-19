@@ -85,7 +85,8 @@ func (n *NodeMem) ChildLoc(childLocIdx int) *Loc {
 	return &n.ChildLocs[childLocIdx]
 }
 
-func makeNodeMem(locType uint8, partitionId PartitionId, key Key, seq Seq, val Val) (Node, error) {
+func makeNodeMem(locType uint8, partitionId PartitionId, key Key, seq Seq, val Val) (
+	Node, error) {
 	return &NodeMem{ // TODO: Memory mgmt.
 		ChildLocs: []Loc{
 			Loc{
