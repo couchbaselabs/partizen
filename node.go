@@ -11,7 +11,7 @@ func (r *RootLoc) NodeGet(n Node, partitionId PartitionId, key Key, withValue bo
 	if n == nil {
 		return 0, nil, nil
 	}
-	found, nodePartitionIdx, _ := n.LocateNodePartition(partitionId)
+	found, nodePartitionIdx := n.LocateNodePartition(partitionId)
 	if !found {
 		return 0, nil, nil
 	}
@@ -43,20 +43,20 @@ func (r *RootLoc) NodeSet(n Node, partitionId PartitionId, key Key, seq Seq, val
 // ----------------------------------------------------------------------
 
 func (n *NodeMem) LocateNodePartition(partitionId PartitionId) (
-	found bool, nodePartitionIdx int, nodePartition *NodePartition) {
+	found bool, nodePartitionIdx int) {
 	nodePartitionIdx = sort.Search(len(n.NodePartitions),
 		func(i int) bool {
 			return n.NodePartitions[i].PartitionId >= partitionId
 		})
 	if nodePartitionIdx >= len(n.NodePartitions) {
-		return false, nodePartitionIdx, nil
+		return false, nodePartitionIdx
 	}
 	// TODO: Optimize away this extra comparison.
-	nodePartition = &n.NodePartitions[nodePartitionIdx]
+	nodePartition := &n.NodePartitions[nodePartitionIdx]
 	if nodePartition.PartitionId != partitionId {
-		return false, nodePartitionIdx, nil
+		return false, nodePartitionIdx
 	}
-	return true, nodePartitionIdx, nodePartition
+	return true, nodePartitionIdx
 }
 
 func (n *NodeMem) LocateKeySeqIdx(nodePartitionIdx int, key Key) (

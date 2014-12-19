@@ -67,7 +67,7 @@ type Node interface {
 	ChildLoc(childLocIdx int) *Loc
 
 	LocateNodePartition(partitionId PartitionId) (
-		found bool, nodePartitionIdx int, nodePartition *NodePartition)
+		found bool, nodePartitionIdx int)
 
 	LocateKeySeqIdx(nodePartitionIdx int, key Key) (
 		found bool, nodePartitionKeyIdx, keySeqIdxIdx int, keySeqIdx *KeySeqIdx)
