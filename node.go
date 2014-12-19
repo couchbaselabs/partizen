@@ -82,6 +82,9 @@ func (n *NodeMem) LocateKeySeqIdx(nodePartitionIdx int, key Key) (
 }
 
 func (n *NodeMem) ChildLoc(childLocIdx int) *Loc {
+	if childLocIdx < 0 {
+		panic("childLocIdx < 0")
+	}
 	if childLocIdx >= len(n.ChildLocs) {
 		return nil
 	}
