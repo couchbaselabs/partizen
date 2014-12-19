@@ -6,78 +6,87 @@ import (
 	"sort"
 )
 
-func (n *Node) Get(r *RootLoc, partitionId PartitionId, key Key, withValue bool) (
+func (r *RootLoc) NodeGet(n Node, partitionId PartitionId, key Key, withValue bool) (
 	seq Seq, val Val, err error) {
 	if n == nil {
 		return 0, nil, nil
 	}
-	resNode, _, _, keySeqIdx, childLocIdx, err := n.GetIdxs(r, partitionId, key)
-	if err != nil {
-		return 0, nil,  err
-	}
-	if resNode == nil {
+	found, nodePartitionIdx, _ := n.LocateNodePartition(partitionId)
+	if !found {
 		return 0, nil, nil
 	}
-	cl := &resNode.ChildLocs[childLocIdx]
+	found, _, _, keySeqIdx := n.LocateKeySeqIdx(nodePartitionIdx, key)
+	if !found {
+		return 0, nil, nil
+	}
+	cl := n.ChildLoc(int(keySeqIdx.Idx))
+	if cl == nil {
+		return 0, nil, fmt.Errorf("missing child node: %d", keySeqIdx.Idx)
+	}
 	if cl.Type == LocTypeNode {
-		return cl.node.Get(r, partitionId, key, withValue)
+		return r.NodeGet(cl.node, partitionId, key, withValue)
 	}
 	if cl.Type == LocTypeVal {
-		return resNode.KeySeqIdxs[keySeqIdx].Seq, cl.buf, nil // TODO: Buffer mgmt.
+		return keySeqIdx.Seq, cl.buf, nil // TODO: Buffer mgmt.
 	}
 	return 0, nil, fmt.Errorf("unexpected child node type: %d", cl.Type)
 }
 
-func (n *Node) GetIdxs(r *RootLoc, partitionId PartitionId, key Key) (
-	resNode *Node,
-	nodePartitionIdx int,
-	nodePartitionKeyIdx int,
-	keySeqIdx int,
-	childLocIdx int,
-	err error) {
+func (r *RootLoc) NodeSet(n Node, partitionId PartitionId, key Key, seq Seq, val Val) (
+	Node, error) {
+	if n == nil {
+		return makeValNode(partitionId, key, seq, val)
+	}
+	return nil, fmt.Errorf("todo")
+}
+
+// ----------------------------------------------------------------------
+
+func (n *NodeMem) LocateNodePartition(partitionId PartitionId) (
+	found bool, nodePartitionIdx int, nodePartition *NodePartition) {
 	nodePartitionIdx = sort.Search(len(n.NodePartitions),
 		func(i int) bool {
 			return n.NodePartitions[i].PartitionId >= partitionId
 		})
 	if nodePartitionIdx >= len(n.NodePartitions) {
-		return nil, 0, 0, 0, 0, nil
+		return false, nodePartitionIdx, nil
 	}
-	p := &n.NodePartitions[nodePartitionIdx]
-	nodePartitionKeyIdx = sort.Search(len(p.KeyIdxs),
+	// TODO: Optimize away this extra comparison.
+	nodePartition = &n.NodePartitions[nodePartitionIdx]
+	if nodePartition.PartitionId != partitionId {
+		return false, nodePartitionIdx, nil
+	}
+	return true, nodePartitionIdx, nodePartition
+}
+
+func (n *NodeMem) LocateKeySeqIdx(nodePartitionIdx int, key Key) (
+	found bool, nodePartitionKeyIdx, keySeqIdxIdx int, keySeqIdx *KeySeqIdx) {
+	np := &n.NodePartitions[nodePartitionIdx]
+	nodePartitionKeyIdx = sort.Search(len(np.KeyIdxs),
 		func(k int) bool {
-			return bytes.Compare(n.KeySeqIdxs[int(p.KeyIdxs[k])].Key, key) >= 0
+			return bytes.Compare(n.KeySeqIdxs[int(np.KeyIdxs[k])].Key, key) >= 0
 		})
-	if nodePartitionKeyIdx >= len(p.KeyIdxs) {
-		return nil, 0, 0, 0, 0, nil
+	if nodePartitionKeyIdx >= len(np.KeyIdxs) {
+		return false, nodePartitionKeyIdx, -1, nil
 	}
-	keySeqIdx = int(p.KeyIdxs[nodePartitionKeyIdx])
-	if keySeqIdx >= len(n.KeySeqIdxs) {
-		return nil, 0, 0, 0, 0, fmt.Errorf("unexpected keyIdx >= len(n.KeySeqIdxs)")
+	// TODO: Optimize away this extra comparison.
+	keySeqIdxIdx = int(np.KeyIdxs[nodePartitionKeyIdx])
+	keySeqIdx = &n.KeySeqIdxs[keySeqIdxIdx]
+	if bytes.Compare(keySeqIdx.Key, key) != 0 {
+		return false, nodePartitionKeyIdx, -1, nil
 	}
-	childLocIdx = int(n.KeySeqIdxs[keySeqIdx].Idx)
+	return true, nodePartitionKeyIdx, keySeqIdxIdx, keySeqIdx
+}
+
+func (n *NodeMem) ChildLoc(childLocIdx int) *Loc {
 	if childLocIdx >= len(n.ChildLocs) {
-		return nil, 0, 0, 0, 0, fmt.Errorf("unexpected childLocIdx >= len(n.ChildLocs)")
+		return nil
 	}
-	return n, nodePartitionIdx, nodePartitionKeyIdx, keySeqIdx, childLocIdx, nil
+	return &n.ChildLocs[childLocIdx]
 }
 
-func (n *Node) Set(r *RootLoc, partitionId PartitionId,
-	key Key, seq Seq, val Val) (*Node, error) {
-	if n == nil {
-		return makeValNode(partitionId, key, seq, val)
-	}
-
-	_, _, _, _, _, err := n.GetIdxs(r, partitionId, key)
-	if err != nil {
-		return nil, err
-	}
-
-	return nil, fmt.Errorf("todo")
-}
-
-func makeValNode(partitionId PartitionId, key Key, seq Seq, val Val) (
-	*Node, error) {
-	return &Node{ // TODO: Memory mgmt.
+func makeValNode(partitionId PartitionId, key Key, seq Seq, val Val) (Node, error) {
+	return &NodeMem{ // TODO: Memory mgmt.
 		ChildLocs: []Loc{
 			Loc{
 				Offset: 0,

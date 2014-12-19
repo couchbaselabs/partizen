@@ -10,7 +10,7 @@ func (r *RootLoc) Get(partitionId PartitionId, key Key, withValue bool) (
 	node := r.node
 	r.m.Unlock()
 
-	return node.Get(r, partitionId, key, withValue)
+	return r.NodeGet(node, partitionId, key, withValue)
 }
 
 func (r *RootLoc) Set(partitionId PartitionId, key Key, seq Seq, val Val) (err error) {
@@ -20,7 +20,7 @@ func (r *RootLoc) Set(partitionId PartitionId, key Key, seq Seq, val Val) (err e
 	node := r.node
 	r.m.Unlock()
 
-	n, err := node.Set(r, partitionId, key, seq, val)
+	n, err := r.NodeSet(node, partitionId, key, seq, val)
 	if err != nil {
 		return err
 	}

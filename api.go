@@ -39,6 +39,8 @@ type Store interface {
 	Stats(dest *StoreStats) error
 }
 
+// TODO: Should have separation of insert versus update versus upsert?
+
 type Collection interface {
 	Get(partitionId PartitionId, key Key, withValue bool) (
 		seq Seq, val Val, err error)

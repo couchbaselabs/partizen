@@ -63,7 +63,17 @@ type RootLoc struct {
 
 // A Node of a partizen btree has its descendent locations first
 // ordered by PartitionID, then secondarily ordered by Key.
-type Node struct {
+type Node interface {
+	ChildLoc(childLocIdx int) *Loc
+
+	LocateNodePartition(partitionId PartitionId) (
+		found bool, nodePartitionIdx int, nodePartition *NodePartition)
+
+	LocateKeySeqIdx(nodePartitionIdx int, key Key) (
+		found bool, nodePartitionKeyIdx, keySeqIdxIdx int, keySeqIdx *KeySeqIdx)
+}
+
+type NodeMem struct {
 	// NumChildLocs      uint8
 	// NumKeySeqs        uint8
 	// NumNodePartitions uint16
@@ -134,7 +144,7 @@ type Loc struct {
 
 	// Transient; only used when Type is LocTypeNode.  If nil, runtime
 	// representation hasn't been loaded yet.
-	node *Node
+	node Node
 }
 
 func (l *Loc) ClearLoc(t uint8) {
