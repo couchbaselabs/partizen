@@ -35,7 +35,7 @@ func (r *RootLoc) NodeGet(n Node, partitionId PartitionId, key Key, withValue bo
 func (r *RootLoc) NodeSet(n Node, partitionId PartitionId, key Key, seq Seq, val Val) (
 	Node, error) {
 	if n == nil {
-		return makeValNode(partitionId, key, seq, val)
+		return makeNodeMem(LocTypeVal, partitionId, key, seq, val)
 	}
 	return nil, fmt.Errorf("todo")
 }
@@ -85,13 +85,13 @@ func (n *NodeMem) ChildLoc(childLocIdx int) *Loc {
 	return &n.ChildLocs[childLocIdx]
 }
 
-func makeValNode(partitionId PartitionId, key Key, seq Seq, val Val) (Node, error) {
+func makeNodeMem(locType uint8, partitionId PartitionId, key Key, seq Seq, val Val) (Node, error) {
 	return &NodeMem{ // TODO: Memory mgmt.
 		ChildLocs: []Loc{
 			Loc{
 				Offset: 0,
 				Size:   uint32(len(val)),
-				Type:   LocTypeVal,
+				Type:   locType,
 				buf:    val,
 			}},
 		KeySeqIdxs: []KeySeqIdx{
