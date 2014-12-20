@@ -39,11 +39,13 @@ func (r *RootLoc) NodeSet(n Node, partitionId PartitionId, key Key, seq Seq, val
 	}
 	found, nodePartitionIdx := n.LocateNodePartition(partitionId)
 	if !found {
-		return n.InsertChildLoc(partitionId, nodePartitionIdx, 0, key, seq, Loc{
-			Size: uint32(len(val)),
-			Type: LocTypeVal,
-			buf:  val,
-		}), nil
+		if n.IsLeaf(true) {
+			return n.InsertChildLoc(partitionId, nodePartitionIdx, 0, key, seq, Loc{
+				Size: uint32(len(val)),
+				Type: LocTypeVal,
+				buf:  val,
+			}), nil
+		}
 	}
 	found, nodePartitionKeyIdx, keySeqIdx := n.LocateKeySeqIdx(nodePartitionIdx, key)
 	if !found {
@@ -121,6 +123,13 @@ func (n *NodeMem) ChildLoc(childLocIdx int) *Loc {
 		return nil
 	}
 	return &n.ChildLocs[childLocIdx]
+}
+
+func (n *NodeMem) IsLeaf(defaultVal bool) bool {
+	if len(n.ChildLocs) > 0 {
+		return n.ChildLocs[0].Type == LocTypeVal
+	}
+	return defaultVal
 }
 
 func (n *NodeMem) InsertChildLoc(partitionId PartitionId,
