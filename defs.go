@@ -83,42 +83,12 @@ type Node interface {
 		nodePartitionIdx, nodePartitionKeyIdx int, seq Seq, loc Loc) Node
 }
 
-type NodeMem struct {
-	// NumChildLocs      uint8
-	// NumKeySeqs        uint8
-	// NumNodePartitions uint16
-
-	// ChildLocs are kept separate from Partitions because multiple
-	// NodePartition.KeySeq's may be sharing or indexing to the same
-	// ChildLoc entries.
-	//
-	// TODO: Consider ordering ChildLocs by ChildLoc.Offset?
-	ChildLocs []Loc // See MAX_CHILD_LOCS_PER_NODE.
-
-	// Sorted by KeySeqIdx.Key.
-	KeySeqIdxs []KeySeqIdx
-
-	// Sorted by NodePartition.PartitionId.
-	NodePartitions []NodePartition // See MAX_NODE_PARTITIONS_PER_NODE.
-}
-
 // MAX_CHILD_LOCS_PER_NODE defines the max number for
 // Node.NumChildLocs per Node. Although Node.NumChildLocs is a uint8,
 // the max fan-out of a Node is 255, not 256, because ChildLoc index
 // 0xff is reserved to mark deletions.
 const MAX_CHILD_LOCS_PER_NODE = 255        // (2^8)-1.
 const MAX_NODE_PARTITIONS_PER_NODE = 65535 // (2^16)-1.
-
-// A NodePartition is a variable-sized struct that holds keys of
-// direct descendants of a Partition for a Node.
-type NodePartition struct {
-	PartitionId PartitionId
-	TotKeys     uint64
-	TotVals     uint64
-	TotKeyBytes uint64
-	TotValBytes uint64
-	KeyIdxs     []uint16 // Indexes into the Node.KeySeqIdxs array.
-}
 
 // A KeySeqIdx tracks a single key.
 type KeySeqIdx struct {

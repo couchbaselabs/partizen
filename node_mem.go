@@ -5,6 +5,36 @@ import (
 	"sort"
 )
 
+type NodeMem struct {
+	// NumChildLocs      uint8
+	// NumKeySeqs        uint8
+	// NumNodePartitions uint16
+
+	// ChildLocs are kept separate from Partitions because multiple
+	// NodePartition.KeySeq's may be sharing or indexing to the same
+	// ChildLoc entries.
+	//
+	// TODO: Consider ordering ChildLocs by ChildLoc.Offset?
+	ChildLocs []Loc // See MAX_CHILD_LOCS_PER_NODE.
+
+	// Sorted by KeySeqIdx.Key.
+	KeySeqIdxs []KeySeqIdx
+
+	// Sorted by NodePartition.PartitionId.
+	NodePartitions []NodePartition // See MAX_NODE_PARTITIONS_PER_NODE.
+}
+
+// A NodePartition is a variable-sized struct that holds keys of
+// direct descendants of a Partition for a Node.
+type NodePartition struct {
+	PartitionId PartitionId
+	TotKeys     uint64
+	TotVals     uint64
+	TotKeyBytes uint64
+	TotValBytes uint64
+	KeyIdxs     []uint16 // Indexes into the Node.KeySeqIdxs array.
+}
+
 func (n *NodeMem) LocateNodePartition(partitionId PartitionId) (
 	found bool, nodePartitionIdx int) {
 	nodePartitionIdx = sort.Search(len(n.NodePartitions),
