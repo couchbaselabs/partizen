@@ -116,13 +116,13 @@ func nodeKeyLocProcessMutations(degree int, nodeKeyLoc *KeyLoc,
 		node.KeyLocs[0].Loc.Type != LOC_TYPE_NODE {
 		builder = &ValsBuilder{}
 	} else {
-		builder = &NodesBuilder{Degree: degree}
+		builder = &NodesBuilder{}
 	}
 
 	processMutations(node.KeyLocs, 0, len(node.KeyLocs),
 		mutations, mbeg, mend, builder)
 
-	return builder.Done(mutations, r)
+	return builder.Done(mutations, degree, r)
 }
 
 func formParentKeyLocs(degree int, childKeyLocs []*KeyLoc,
@@ -200,7 +200,7 @@ type KeyLocsBuilder interface {
 	AddExisting(existing *KeyLoc)
 	AddUpdate(existing *KeyLoc, mutation *Mutation, mutationIdx int)
 	AddNew(mutation *Mutation, mutationIdx int)
-	Done(mutations []Mutation, r io.ReaderAt) ([]*KeyLoc, error)
+	Done(mutations []Mutation, degree int, r io.ReaderAt) ([]*KeyLoc, error)
 }
 
 // --------------------------------------------------
@@ -229,8 +229,8 @@ func (b *ValsBuilder) AddNew(mutation *Mutation, mutationIdx int) {
 	}
 }
 
-func (b *ValsBuilder) Done(mutations []Mutation, r io.ReaderAt) (
-	[]*KeyLoc, error) {
+func (b *ValsBuilder) Done(mutations []Mutation, degree int,
+	r io.ReaderAt) ([]*KeyLoc, error) {
 	return b.s, nil
 }
 
@@ -282,8 +282,8 @@ func (b *NodesBuilder) AddNew(mutation *Mutation, mutationIdx int) {
 	}
 }
 
-func (b *NodesBuilder) Done(mutations []Mutation, r io.ReaderAt) (
-	[]*KeyLoc, error) {
+func (b *NodesBuilder) Done(mutations []Mutation, degree int,
+	r io.ReaderAt) ([]*KeyLoc, error) {
 	var rv []*KeyLoc
 
 	for _, nm := range b.NodeMutations {
@@ -291,13 +291,13 @@ func (b *NodesBuilder) Done(mutations []Mutation, r io.ReaderAt) (
 			rv = append(rv, nm.NodeKeyLoc)
 		} else {
 			childKeyLocs, err :=
-				nodeKeyLocProcessMutations(b.Degree, nm.NodeKeyLoc,
+				nodeKeyLocProcessMutations(degree, nm.NodeKeyLoc,
 					mutations, nm.MutationsBeg, nm.MutationsEnd, r)
 			if err != nil {
 				return nil, fmt.Errorf("NodesBuilder.Done,"+
 					" NodeKeyLoc: %#v, err: %v", nm.NodeKeyLoc, err)
 			}
-			rv = formParentKeyLocs(b.Degree, childKeyLocs, rv)
+			rv = formParentKeyLocs(degree, childKeyLocs, rv)
 		}
 	}
 
