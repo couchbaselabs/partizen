@@ -105,21 +105,21 @@ func nodeKeyLocProcessMutations(degree int, nodeKeyLoc *KeyLoc,
 		return nil, fmt.Errorf("nodeKeyLocProcessMutations,"+
 			" nodeKeyLoc: %#v, err: %v", nodeKeyLoc, err)
 	}
-	if node == nil {
-		return nil, fmt.Errorf("nodeKeyLocProcessMutations,"+
-			" missing node, nodeKeyLoc: %#v, err: %v",
-			nodeKeyLoc, err)
-	}
 
 	var builder KeyLocsBuilder
-	if len(node.KeyLocs) <= 0 ||
+	if node == nil || len(node.KeyLocs) <= 0 ||
 		node.KeyLocs[0].Loc.Type != LOC_TYPE_NODE {
 		builder = &ValsBuilder{}
 	} else {
 		builder = &NodesBuilder{}
 	}
 
-	processMutations(node.KeyLocs, 0, len(node.KeyLocs),
+	var keyLocs []*KeyLoc
+	if node != nil {
+		keyLocs = node.KeyLocs
+	}
+
+	processMutations(keyLocs, 0, len(keyLocs),
 		mutations, mbeg, mend, builder)
 
 	return builder.Done(mutations, degree, r)
