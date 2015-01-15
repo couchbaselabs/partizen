@@ -25,7 +25,7 @@ type Loc struct {
 	// pointed-to bytes buf are not persisted yet.
 	Offset   uint64
 	Size     uint32
-	Type     LocType
+	Type     uint8
 	Flags    uint8
 	CheckSum uint16 // An optional checksum of the bytes buf.
 
@@ -34,18 +34,27 @@ type Loc struct {
 	// should equal Loc.Size.
 	buf []byte
 
-	// Transient; only used when Type is LocTypeNode.  If nil, runtime
-	// representation hasn't been loaded yet.  The node might share
-	// memory with Loc.buf.
+	// Transient; only used when Type is LocTypeNode.  If nil,
+	// runtime representation hasn't been loaded yet.  The node might
+	// share memory with Loc.buf.
 	node *Node
 }
 
-type LocType uint8
+func (l *Loc) Clear() {
+	l.Offset = 0
+	l.Size = 0
+	l.Type = LocTypeUnknown
+	l.Flags = 0
+	l.CheckSum = 0
+	l.buf = nil
+	l.node = nil
+}
 
 const (
-	LOC_TYPE_UNKNOWN LocType = 0
-	LOC_TYPE_NODE    LocType = 1
-	LOC_TYPE_VAL     LocType = 2
+	LocTypeUnknown  uint8 = 0x00
+	LocTypeNode     uint8 = 0x01
+	LocTypeVal      uint8 = 0x02
+	LocTypeStoreDef uint8 = 0x03
 )
 
 // A Node has KeyLoc children.  All the KeyLoc children of a Node must
@@ -75,7 +84,7 @@ func (m *Mutation) ToValKeyLoc() *KeyLoc {
 	return &KeyLoc{
 		Key: m.Key,
 		Loc: Loc{
-			Type: LOC_TYPE_VAL,
+			Type: LocTypeVal,
 			Size: uint32(len(m.Val)),
 			buf:  m.Val,
 		},
@@ -115,7 +124,7 @@ func nodeLocProcessMutations(degree int, nodeLoc *Loc,
 
 	var builder KeyLocsBuilder
 	if node == nil || len(node.KeyLocs) <= 0 ||
-		node.KeyLocs[0].Loc.Type != LOC_TYPE_NODE {
+		node.KeyLocs[0].Loc.Type != LocTypeNode {
 		builder = &ValsBuilder{}
 	} else {
 		builder = &NodesBuilder{}
@@ -140,7 +149,7 @@ func formParentKeyLocs(degree int, childKeyLocs []*KeyLoc,
 		parentKeyLocs = append(parentKeyLocs, &KeyLoc{
 			Key: childKeyLocs[beg].Key,
 			Loc: Loc{
-				Type: LOC_TYPE_NODE,
+				Type: LocTypeNode,
 				node: &Node{KeyLocs: childKeyLocs[beg:i]},
 			},
 		})
@@ -150,7 +159,7 @@ func formParentKeyLocs(degree int, childKeyLocs []*KeyLoc,
 		parentKeyLocs = append(parentKeyLocs, &KeyLoc{
 			Key: childKeyLocs[beg].Key,
 			Loc: Loc{
-				Type: LOC_TYPE_NODE,
+				Type: LocTypeNode,
 				node: &Node{KeyLocs: childKeyLocs[beg:]},
 			},
 		})
@@ -220,7 +229,7 @@ type KeyLocsBuilder interface {
 // --------------------------------------------------
 
 // A ValsBuilder implements the KeyLocsBuilder interface to return an
-// array of LOC_TYPE_VAL KeyLoc's, which can be then used as input to
+// array of LocTypeVal KeyLoc's, which can be then used as input to
 // create a leaf Node.
 type ValsBuilder struct {
 	s []*KeyLoc
@@ -251,7 +260,7 @@ func (b *ValsBuilder) Done(mutations []Mutation, degree int,
 // --------------------------------------------------
 
 // An NodesBuilder implements the KeyLocsBuilder interface to return an
-// array of LOC_TYPE_NODE KeyLoc's, which can be then used as input to
+// array of LocTypeNode KeyLoc's, which can be then used as input to
 // create an interior Node.
 type NodesBuilder struct {
 	NodeMutations []NodeMutations
@@ -325,7 +334,7 @@ func ReadLocNode(loc *Loc, r io.ReaderAt) (*Node, error) {
 	if loc == nil {
 		return nil, nil
 	}
-	if loc.Type != LOC_TYPE_NODE {
+	if loc.Type != LocTypeNode {
 		return nil, fmt.Errorf("ReadLocNode: not a node, loc: %#v", loc)
 	}
 	if loc.node != nil {
