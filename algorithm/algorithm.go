@@ -120,7 +120,8 @@ func nodeKeyLocProcessMutations(degree int, nodeKeyLoc *KeyLoc,
 	}
 
 	processMutations(keyLocs, 0, len(keyLocs),
-		mutations, mbeg, mend, builder)
+		mutations, mbeg, mend,
+		builder)
 
 	return builder.Done(mutations, degree, r)
 }
@@ -289,7 +290,9 @@ func (b *NodesBuilder) Done(mutations []Mutation, degree int,
 
 	for _, nm := range b.NodeMutations {
 		if nm.MutationsBeg >= nm.MutationsEnd {
-			rv = append(rv, nm.NodeKeyLoc)
+			if nm.NodeKeyLoc != nil {
+				rv = append(rv, nm.NodeKeyLoc)
+			}
 		} else {
 			childKeyLocs, err :=
 				nodeKeyLocProcessMutations(degree, nm.NodeKeyLoc,
@@ -308,6 +311,9 @@ func (b *NodesBuilder) Done(mutations []Mutation, degree int,
 // --------------------------------------------------
 
 func ReadNode(r io.ReaderAt, kl *KeyLoc) (*Node, error) {
+	if kl == nil {
+		return nil, nil
+	}
 	if kl.node != nil {
 		return kl.node, nil
 	}
