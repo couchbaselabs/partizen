@@ -231,7 +231,7 @@ func (b *NodesBuilder) Done(mutations []Mutation, r io.ReaderAt) (
 					" node: %#v, NodeKeyLoc: %#v, err: %v",
 					node, nm.NodeKeyLoc, err)
 			}
-			rv = appendParentKeyLocs(b.Degree, childKeyLocs, rv)
+			rv = formParentKeyLocs(b.Degree, childKeyLocs, rv)
 		}
 	}
 
@@ -255,7 +255,7 @@ func nodeProcessMutations(degree int, node *Node,
 	return builder.Done(mutations, r)
 }
 
-func appendParentKeyLocs(degree int, childKeyLocs []*KeyLoc,
+func formParentKeyLocs(degree int, childKeyLocs []*KeyLoc,
 	parentKeyLocs []*KeyLoc) []*KeyLoc {
 	beg := 0
 	for i := degree; i < len(childKeyLocs); i = i + degree {
