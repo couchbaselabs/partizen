@@ -59,18 +59,18 @@ type Collection interface {
 	Max(withValue bool) (
 		partitionId PartitionId, key Key, seq Seq, val Val, err error)
 
-	// Scan provides range results in [fromKeyInclusive...toKeyExclusive) sequence,
-	// even when the reverse flag is true.
+	// Scan gives range results in [fromKeyInclusive...toKeyExclusive)
+	// sequence, even when the reverse flag is true.
 	Scan(fromKeyInclusive Key,
 		toKeyExclusive Key,
-		reverse bool, // When reverse flag is true, fromKey should be greater than toKey.
-		partitionIds []PartitionId, // Scan only these partitions; nil for all partitions.
-		withValue bool, // When withValue is false, nil value is passed to visitorFunc.
+		reverse bool, // When reverse, fromKey should be > than toKey.
+		partitionIds []PartitionId, // Use nil for all partitions.
+		withValue bool, // When !withValue, visitorFunc gets nil value.
 		visitorFunc VisitorFunc) error
 
 	Diff(partitionId PartitionId,
 		fromSeqExclusive Seq, // Should be a Seq at some past commit point.
-		withValue bool, // When withValue is false, nil value is passed to visitorFunc.
+		withValue bool, // When !withValue, visitorFunc gets nil value.
 		visitorFunc VisitorFunc) error
 
 	// Rollback rewindws a partition back to at mox a previous seq
@@ -114,5 +114,5 @@ type BufManager interface {
 	AddRef(buf []byte)
 	DecRef(buf []byte) bool
 	Visit(buf []byte, from, to int,
-		partVisitor func(partBuf []byte), partFrom, partTo int)
+		partVisitor func(partBuf []byte, partFrom, partTo int))
 }

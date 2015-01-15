@@ -19,6 +19,6 @@ func (d *defaultBufManager) DecRef(buf []byte) bool {
 }
 
 func (d *defaultBufManager) Visit(buf []byte, from, to int,
-	partVisitor func(partBuf []byte), partFrom, partTo int) {
-	partVisitor(buf[from:to])
+	partVisitor func(partBuf []byte, partFrom, partTo int)) {
+	partVisitor(buf[from:to], from, to)
 }
