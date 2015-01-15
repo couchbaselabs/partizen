@@ -49,7 +49,7 @@ const (
 )
 
 // A Node has KeyLoc children.  All the KeyLoc children of a Node must
-// be of the same Loc.Type -- either all val's or all nodes.
+// be of the same Loc.Type; e.g., either all val's or all nodes.
 type Node struct {
 	KeyLocs []*KeyLoc
 }
@@ -87,13 +87,13 @@ var zeroMutation Mutation
 
 // --------------------------------------------------
 
-func rootKeyLocProcessMutations(degree int, rootKeyLoc *KeyLoc,
+func rootLocProcessMutations(degree int, rootLoc *Loc,
 	mutations []Mutation, r io.ReaderAt) (*KeyLoc, error) {
-	rv, err := nodeKeyLocProcessMutations(degree, rootKeyLoc,
+	rv, err := nodeLocProcessMutations(degree, rootLoc,
 		mutations, 0, len(mutations), r)
 	if err != nil {
-		return nil, fmt.Errorf("rootProcessMutations,"+
-			" rootKeyLoc: %#v, err: %v", rootKeyLoc, err)
+		return nil, fmt.Errorf("rootLocProcessMutations:"+
+			" rootLoc: %#v, err: %v", rootLoc, err)
 	}
 	for len(rv) > 1 {
 		rv = formParentKeyLocs(degree, rv, nil)
@@ -104,13 +104,13 @@ func rootKeyLocProcessMutations(degree int, rootKeyLoc *KeyLoc,
 	return nil, nil
 }
 
-func nodeKeyLocProcessMutations(degree int, nodeKeyLoc *KeyLoc,
+func nodeLocProcessMutations(degree int, nodeLoc *Loc,
 	mutations []Mutation, mbeg, mend int,
 	r io.ReaderAt) ([]*KeyLoc, error) {
-	node, err := ReadNode(r, nodeKeyLoc)
+	node, err := ReadLocNode(nodeLoc, r)
 	if err != nil {
-		return nil, fmt.Errorf("nodeKeyLocProcessMutations,"+
-			" nodeKeyLoc: %#v, err: %v", nodeKeyLoc, err)
+		return nil, fmt.Errorf("nodeLocProcessMutations:"+
+			" nodeLoc: %#v, err: %v", nodeLoc, err)
 	}
 
 	var builder KeyLocsBuilder
@@ -306,10 +306,10 @@ func (b *NodesBuilder) Done(mutations []Mutation, degree int,
 			}
 		} else {
 			childKeyLocs, err :=
-				nodeKeyLocProcessMutations(degree, nm.NodeKeyLoc,
+				nodeLocProcessMutations(degree, &nm.NodeKeyLoc.Loc,
 					mutations, nm.MutationsBeg, nm.MutationsEnd, r)
 			if err != nil {
-				return nil, fmt.Errorf("NodesBuilder.Done,"+
+				return nil, fmt.Errorf("NodesBuilder.Done:"+
 					" NodeKeyLoc: %#v, err: %v", nm.NodeKeyLoc, err)
 			}
 			rv = formParentKeyLocs(degree, childKeyLocs, rv)
@@ -321,12 +321,15 @@ func (b *NodesBuilder) Done(mutations []Mutation, degree int,
 
 // --------------------------------------------------
 
-func ReadNode(r io.ReaderAt, kl *KeyLoc) (*Node, error) {
-	if kl == nil {
+func ReadLocNode(loc *Loc, r io.ReaderAt) (*Node, error) {
+	if loc == nil {
 		return nil, nil
 	}
-	if kl.Loc.node != nil {
-		return kl.Loc.node, nil
+	if loc.Type != LOC_TYPE_NODE {
+		return nil, fmt.Errorf("ReadLocNode: not a node, loc: %#v", loc)
 	}
-	return nil, fmt.Errorf("unimpl")
+	if loc.node != nil {
+		return loc.node, nil
+	}
+	return nil, fmt.Errorf("ReadLocNode: failed")
 }
