@@ -11,16 +11,33 @@ type Val []byte
 type PartitionId uint16
 type Seq uint64
 
-// A Loc represents a location on disk of a range of bytes.
-type Loc struct {
-	Type   LocType
-	Offset uint64 // Zero Offset means not yet persisted.
-	Size   uint32 // Zero Size means not yet prepared for persistence.
+// A KeyLoc associates a Key with a Loc.
+type KeyLoc struct {
+	Key Key
+	Loc Loc
+}
 
-	// The immutable, uncompressed bytes that were or will be
-	// persisted.  When buf is nil, Loc is not yet loaded from storage
-	// or not yet prepared for persistence.
+// A Loc represents the location of a byte range persisted or
+// soon-to-be-persisted to the storage file.  Persisted field sizes
+// are carefully chosen to add up to 128 bits.
+type Loc struct {
+	// Offset is relative to start of file.  Offset of 0 means the
+	// pointed-to bytes buf are not persisted yet.
+	Offset   uint64
+	Size     uint32
+	Type     LocType
+	Flags    uint8
+	CheckSum uint16 // An optional checksum of the bytes buf.
+
+	// Transient; non-nil when the Loc is read into memory or when the
+	// bytes of the Loc are prepared for writing.  The len(Loc.buf)
+	// should equal Loc.Size.
 	buf []byte
+
+	// Transient; only used when Type is LocTypeNode.  If nil, runtime
+	// representation hasn't been loaded yet.  The node might share
+	// memory with Loc.buf.
+	node *Node
 }
 
 type LocType uint8
@@ -30,16 +47,6 @@ const (
 	LOC_TYPE_NODE    LocType = 1
 	LOC_TYPE_VAL     LocType = 2
 )
-
-// A KeyLoc associates a Key with a Loc.
-type KeyLoc struct {
-	Key Key
-	Loc Loc
-
-	// When LOC_TYPE_NODE, this is the in-memory Node representation
-	// of the Loc, where the node might share memory from Loc.buf.
-	node *Node
-}
 
 // A Node has KeyLoc children.  All the KeyLoc children of a Node must
 // be of the same Loc.Type -- either all val's or all nodes.
@@ -131,17 +138,21 @@ func formParentKeyLocs(degree int, childKeyLocs []*KeyLoc,
 	beg := 0
 	for i := degree; i < len(childKeyLocs); i = i + degree {
 		parentKeyLocs = append(parentKeyLocs, &KeyLoc{
-			Key:  childKeyLocs[beg].Key,
-			Loc:  Loc{Type: LOC_TYPE_NODE},
-			node: &Node{KeyLocs: childKeyLocs[beg:i]},
+			Key: childKeyLocs[beg].Key,
+			Loc: Loc{
+				Type: LOC_TYPE_NODE,
+				node: &Node{KeyLocs: childKeyLocs[beg:i]},
+			},
 		})
 		beg = i
 	}
 	if beg < len(childKeyLocs) {
 		parentKeyLocs = append(parentKeyLocs, &KeyLoc{
-			Key:  childKeyLocs[beg].Key,
-			Loc:  Loc{Type: LOC_TYPE_NODE},
-			node: &Node{KeyLocs: childKeyLocs[beg:]},
+			Key: childKeyLocs[beg].Key,
+			Loc: Loc{
+				Type: LOC_TYPE_NODE,
+				node: &Node{KeyLocs: childKeyLocs[beg:]},
+			},
 		})
 	}
 	return parentKeyLocs
@@ -314,8 +325,8 @@ func ReadNode(r io.ReaderAt, kl *KeyLoc) (*Node, error) {
 	if kl == nil {
 		return nil, nil
 	}
-	if kl.node != nil {
-		return kl.node, nil
+	if kl.Loc.node != nil {
+		return kl.Loc.node, nil
 	}
 	return nil, fmt.Errorf("unimpl")
 }
