@@ -277,5 +277,8 @@ func formParentKeyLocs(degree int, childKeyLocs []*KeyLoc,
 // --------------------------------------------------
 
 func ReadNode(r io.ReaderAt, kl *KeyLoc) (*Node, error) {
+	if kl.node != nil {
+		return kl.node, nil
+	}
 	return nil, fmt.Errorf("unimpl")
 }
