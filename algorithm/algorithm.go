@@ -242,7 +242,6 @@ func (b *ValsBuilder) Done(mutations []Mutation, degree int,
 // array of LOC_TYPE_NODE KeyLoc's, which can be then used as input to
 // create an interior Node.
 type NodesBuilder struct {
-	Degree        int
 	NodeMutations []NodeMutations
 }
 
