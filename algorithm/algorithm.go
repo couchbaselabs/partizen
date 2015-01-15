@@ -80,6 +80,57 @@ var zeroMutation Mutation
 
 // --------------------------------------------------
 
+func rootProcessMutations(degree int, root *Node,
+	mutations []Mutation, r io.ReaderAt) (*KeyLoc, error) {
+	rv, err := nodeProcessMutations(degree, root,
+		mutations, 0, len(mutations), r)
+	if err != nil {
+		return nil, fmt.Errorf("rootProcessMutations,"+
+			" root: %#v, err: %v", root, err)
+	}
+	for len(rv) > 1 {
+		rv = formParentKeyLocs(degree, rv, nil)
+	}
+	if len(rv) > 0 {
+		return rv[0], nil
+	}
+	return nil, nil
+}
+
+func nodeProcessMutations(degree int, node *Node,
+	mutations []Mutation, mbeg, mend int,
+	r io.ReaderAt) ([]*KeyLoc, error) {
+	var builder KeyLocsBuilder
+	if len(node.KeyLocs) <= 0 ||
+		node.KeyLocs[0].Loc.Type != LOC_TYPE_NODE {
+		builder = &ValsBuilder{}
+	} else {
+		builder = &NodesBuilder{Degree: degree}
+	}
+	processMutations(node.KeyLocs, 0, len(node.KeyLocs),
+		mutations, mbeg, mend, builder)
+	return builder.Done(mutations, r)
+}
+
+func formParentKeyLocs(degree int, childKeyLocs []*KeyLoc,
+	parentKeyLocs []*KeyLoc) []*KeyLoc {
+	beg := 0
+	for i := degree; i < len(childKeyLocs); i = i + degree {
+		parentKeyLocs = append(parentKeyLocs, &KeyLoc{
+			Key:  childKeyLocs[beg].Key,
+			Loc:  Loc{Type: LOC_TYPE_NODE},
+			node: &Node{KeyLocs: childKeyLocs[beg:i]},
+		})
+		beg = i
+	}
+	parentKeyLocs = append(parentKeyLocs, &KeyLoc{
+		Key:  childKeyLocs[beg].Key,
+		Loc:  Loc{Type: LOC_TYPE_NODE},
+		node: &Node{KeyLocs: childKeyLocs[beg:]},
+	})
+	return parentKeyLocs
+}
+
 func processMutations(
 	existings []*KeyLoc,
 	ebeg, eend int, // Sub-range of existings[ebeg:eend] to process.
@@ -249,42 +300,6 @@ func (b *NodesBuilder) Done(mutations []Mutation, r io.ReaderAt) (
 	}
 
 	return rv, nil
-}
-
-// --------------------------------------------------
-
-func nodeProcessMutations(degree int, node *Node,
-	mutations []Mutation, mbeg, mend int,
-	r io.ReaderAt) ([]*KeyLoc, error) {
-	var builder KeyLocsBuilder
-	if len(node.KeyLocs) <= 0 ||
-		node.KeyLocs[0].Loc.Type != LOC_TYPE_NODE {
-		builder = &ValsBuilder{}
-	} else {
-		builder = &NodesBuilder{Degree: degree}
-	}
-	processMutations(node.KeyLocs, 0, len(node.KeyLocs),
-		mutations, mbeg, mend, builder)
-	return builder.Done(mutations, r)
-}
-
-func formParentKeyLocs(degree int, childKeyLocs []*KeyLoc,
-	parentKeyLocs []*KeyLoc) []*KeyLoc {
-	beg := 0
-	for i := degree; i < len(childKeyLocs); i = i + degree {
-		parentKeyLocs = append(parentKeyLocs, &KeyLoc{
-			Key:  childKeyLocs[beg].Key,
-			Loc:  Loc{Type: LOC_TYPE_NODE},
-			node: &Node{KeyLocs: childKeyLocs[beg:i]},
-		})
-		beg = i
-	}
-	parentKeyLocs = append(parentKeyLocs, &KeyLoc{
-		Key:  childKeyLocs[beg].Key,
-		Loc:  Loc{Type: LOC_TYPE_NODE},
-		node: &Node{KeyLocs: childKeyLocs[beg:]},
-	})
-	return parentKeyLocs
 }
 
 // --------------------------------------------------
