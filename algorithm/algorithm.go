@@ -80,13 +80,13 @@ var zeroMutation Mutation
 
 // --------------------------------------------------
 
-func rootProcessMutations(degree int, root *Node,
+func rootKeyLocProcessMutations(degree int, rootKeyLoc *KeyLoc,
 	mutations []Mutation, r io.ReaderAt) (*KeyLoc, error) {
-	rv, err := nodeProcessMutations(degree, root,
+	rv, err := nodeKeyLocProcessMutations(degree, rootKeyLoc,
 		mutations, 0, len(mutations), r)
 	if err != nil {
 		return nil, fmt.Errorf("rootProcessMutations,"+
-			" root: %#v, err: %v", root, err)
+			" rootKeyLoc: %#v, err: %v", rootKeyLoc, err)
 	}
 	for len(rv) > 1 {
 		rv = formParentKeyLocs(degree, rv, nil)
@@ -97,9 +97,20 @@ func rootProcessMutations(degree int, root *Node,
 	return nil, nil
 }
 
-func nodeProcessMutations(degree int, node *Node,
+func nodeKeyLocProcessMutations(degree int, nodeKeyLoc *KeyLoc,
 	mutations []Mutation, mbeg, mend int,
 	r io.ReaderAt) ([]*KeyLoc, error) {
+	node, err := ReadNode(r, nodeKeyLoc)
+	if err != nil {
+		return nil, fmt.Errorf("nodeKeyLocProcessMutations,"+
+			" nodeKeyLoc: %#v, err: %v", nodeKeyLoc, err)
+	}
+	if node == nil {
+		return nil, fmt.Errorf("nodeKeyLocProcessMutations,"+
+			" missing node, nodeKeyLoc: %#v, err: %v",
+			nodeKeyLoc, err)
+	}
+
 	var builder KeyLocsBuilder
 	if len(node.KeyLocs) <= 0 ||
 		node.KeyLocs[0].Loc.Type != LOC_TYPE_NODE {
@@ -107,8 +118,10 @@ func nodeProcessMutations(degree int, node *Node,
 	} else {
 		builder = &NodesBuilder{Degree: degree}
 	}
+
 	processMutations(node.KeyLocs, 0, len(node.KeyLocs),
 		mutations, mbeg, mend, builder)
+
 	return builder.Done(mutations, r)
 }
 
@@ -277,23 +290,12 @@ func (b *NodesBuilder) Done(mutations []Mutation, r io.ReaderAt) (
 		if nm.MutationsBeg >= nm.MutationsEnd {
 			rv = append(rv, nm.NodeKeyLoc)
 		} else {
-			node, err := ReadNode(r, nm.NodeKeyLoc)
+			childKeyLocs, err :=
+				nodeKeyLocProcessMutations(b.Degree, nm.NodeKeyLoc,
+					mutations, nm.MutationsBeg, nm.MutationsEnd, r)
 			if err != nil {
 				return nil, fmt.Errorf("NodesBuilder.Done,"+
-					" NodeKeyLoc: %#v, err: %v",
-					nm.NodeKeyLoc, err)
-			}
-			if node == nil {
-				return nil, fmt.Errorf("NodesBuilder.Done,"+
-					" missing node, NodeKeyLoc: %#v, err: %v",
-					nm.NodeKeyLoc, err)
-			}
-			childKeyLocs, err := nodeProcessMutations(b.Degree, node,
-				mutations, nm.MutationsBeg, nm.MutationsEnd, r)
-			if err != nil {
-				return nil, fmt.Errorf("NodesBuilder.Done,"+
-					" node: %#v, NodeKeyLoc: %#v, err: %v",
-					node, nm.NodeKeyLoc, err)
+					" NodeKeyLoc: %#v, err: %v", nm.NodeKeyLoc, err)
 			}
 			rv = formParentKeyLocs(b.Degree, childKeyLocs, rv)
 		}
