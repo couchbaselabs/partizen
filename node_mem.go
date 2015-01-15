@@ -92,7 +92,8 @@ func (n *NodeMem) IsLeaf(defaultVal bool) bool {
 }
 
 func (n *NodeMem) InsertChildLoc(partitionId PartitionId,
-	nodePartitionIdx, nodePartitionKeyIdx int, key Key, seq Seq, loc Loc) Node {
+	nodePartitionIdx, nodePartitionKeyIdx int,
+	key Key, seq Seq, loc Loc) Node {
 	npa := make([]NodePartition, len(n.NodePartitions)+1)
 	copy(npa[:nodePartitionIdx], n.NodePartitions[:nodePartitionIdx])
 	npa[nodePartitionIdx] = NodePartition{
@@ -114,7 +115,8 @@ func (n *NodeMem) UpdateChildLoc(partitionId PartitionId,
 	return nil
 }
 
-func makeNodeMem(locType uint8, partitionId PartitionId, key Key, seq Seq, val Val) (
+func makeNodeMem(locType uint8, partitionId PartitionId,
+	key Key, seq Seq, val Val) (
 	Node, error) {
 	return &NodeMem{ // TODO: Memory mgmt.
 		ChildLocs: []Loc{

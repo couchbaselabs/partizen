@@ -4,7 +4,8 @@ import (
 	"fmt"
 )
 
-func (r *RootLoc) NodeGet(n Node, partitionId PartitionId, key Key, withValue bool) (
+func (r *RootLoc) NodeGet(n Node, partitionId PartitionId,
+	key Key, withValue bool) (
 	seq Seq, val Val, err error) {
 	if n == nil {
 		return 0, nil, nil
@@ -30,7 +31,8 @@ func (r *RootLoc) NodeGet(n Node, partitionId PartitionId, key Key, withValue bo
 	return 0, nil, fmt.Errorf("unexpected child node type: %d", cl.Type)
 }
 
-func (r *RootLoc) NodeSet(n Node, partitionId PartitionId, key Key, seq Seq, val Val) (
+func (r *RootLoc) NodeSet(n Node, partitionId PartitionId,
+	key Key, seq Seq, val Val) (
 	Node, error) {
 	if n == nil {
 		return makeNodeMem(LocTypeVal, partitionId, key, seq, val)
@@ -38,16 +40,19 @@ func (r *RootLoc) NodeSet(n Node, partitionId PartitionId, key Key, seq Seq, val
 	found, nodePartitionIdx := n.LocateNodePartition(partitionId)
 	if !found {
 		if n.IsLeaf(true) {
-			return n.InsertChildLoc(partitionId, nodePartitionIdx, 0, key, seq, Loc{
-				Size: uint32(len(val)),
-				Type: LocTypeVal,
-				buf:  val,
-			}), nil
+			return n.InsertChildLoc(partitionId, nodePartitionIdx, 0,
+				key, seq, Loc{
+					Size: uint32(len(val)),
+					Type: LocTypeVal,
+					buf:  val,
+				}), nil
 		}
 	}
-	found, nodePartitionKeyIdx, keySeqIdx := n.LocateKeySeqIdx(nodePartitionIdx, key)
+	found, nodePartitionKeyIdx, keySeqIdx :=
+		n.LocateKeySeqIdx(nodePartitionIdx, key)
 	if !found {
-		return n.InsertChildLoc(partitionId, nodePartitionIdx, nodePartitionKeyIdx,
+		return n.InsertChildLoc(partitionId,
+			nodePartitionIdx, nodePartitionKeyIdx,
 			key, seq, Loc{
 				Size: uint32(len(val)),
 				Type: LocTypeVal,
@@ -62,7 +67,8 @@ func (r *RootLoc) NodeSet(n Node, partitionId PartitionId, key Key, seq Seq, val
 		return r.NodeSet(cl.node, partitionId, key, seq, val)
 	}
 	if cl.Type == LocTypeVal {
-		return n.UpdateChildLoc(partitionId, nodePartitionIdx, nodePartitionKeyIdx,
+		return n.UpdateChildLoc(partitionId,
+			nodePartitionIdx, nodePartitionKeyIdx,
 			seq, Loc{
 				Size: uint32(len(val)),
 				Type: LocTypeVal,

@@ -37,7 +37,7 @@ type StoreDef struct {
 type StoreDefLoc struct {
 	Loc
 
-	storeDef *StoreDef // If nil, runtime representation hasn't been loaded.
+	storeDef *StoreDef // If nil, runtime representation isn't loaded yet.
 }
 
 // A CollDef is persisted as JSON for debuggability.
@@ -77,10 +77,12 @@ type Node interface {
 		found bool, nodePartitionKeyIdx int, keySeqIdx KeySeqIdx)
 
 	InsertChildLoc(partitionId PartitionId,
-		nodePartitionIdx, nodePartitionKeyIdx int, key Key, seq Seq, loc Loc) Node
+		nodePartitionIdx, nodePartitionKeyIdx int, key Key,
+		seq Seq, loc Loc) Node
 
 	UpdateChildLoc(partitionId PartitionId,
-		nodePartitionIdx, nodePartitionKeyIdx int, seq Seq, loc Loc) Node
+		nodePartitionIdx, nodePartitionKeyIdx int,
+		seq Seq, loc Loc) Node
 }
 
 // MAX_CHILD_LOCS_PER_NODE defines the max number for
@@ -151,5 +153,5 @@ type WALEntry struct {
 type WALEntryLoc struct {
 	Loc
 
-	walEntry *WALEntry // If nil, runtime representation hasn't been loaded.
+	walEntry *WALEntry // If nil, runtime representation isn't loaded yet.
 }
