@@ -11,6 +11,7 @@ type Val []byte
 type PartitionId uint16
 type Seq uint64
 
+// A Loc represents a location on disk of a range of bytes.
 type Loc struct {
 	Type   LocType
 	Offset uint64 // Zero Offset means not yet persisted.
@@ -30,6 +31,7 @@ const (
 	LOC_TYPE_VAL     LocType = 2
 )
 
+// A KeyLoc associates a Key with a Loc.
 type KeyLoc struct {
 	Key Key
 	Loc Loc
@@ -39,11 +41,13 @@ type KeyLoc struct {
 	node *Node
 }
 
+// A Node has KeyLoc children.  All the KeyLoc children of a Node must
+// be of the same Loc.Type -- either all val's or all nodes.
 type Node struct {
 	KeyLocs []*KeyLoc
 }
 
-// Mutation represents a mutation request.
+// A Mutation represents a mutation request on a key.
 type Mutation struct {
 	Key []byte
 	Val []byte
@@ -61,11 +65,20 @@ const (
 )
 
 func (m *Mutation) ToValKeyLoc() *KeyLoc {
-	return nil // TODO.
+	return &KeyLoc{
+		Key: m.Key,
+		Loc: Loc{
+			Type: LOC_TYPE_VAL,
+			Size: uint32(len(m.Val)),
+			buf:  m.Val,
+		},
+	}
 }
 
 var zeroKeyLoc KeyLoc
 var zeroMutation Mutation
+
+// --------------------------------------------------
 
 func processMutations(
 	existings []*KeyLoc,
@@ -132,29 +145,29 @@ type KeyLocsBuilder interface {
 // array of LOC_TYPE_VAL KeyLoc's, which can be then used as input to
 // create a leaf Node.
 type ValsBuilder struct {
-	Vals []*KeyLoc
+	s []*KeyLoc
 }
 
 func (b *ValsBuilder) AddExisting(existing *KeyLoc) {
-	b.Vals = append(b.Vals, existing)
+	b.s = append(b.s, existing)
 }
 
 func (b *ValsBuilder) AddUpdate(existing *KeyLoc,
 	mutation *Mutation, mutationIdx int) {
 	if mutation.Op == MUTATION_OP_UPDATE {
-		b.Vals = append(b.Vals, mutation.ToValKeyLoc())
+		b.s = append(b.s, mutation.ToValKeyLoc())
 	}
 }
 
 func (b *ValsBuilder) AddNew(mutation *Mutation, mutationIdx int) {
 	if mutation.Op == MUTATION_OP_UPDATE {
-		b.Vals = append(b.Vals, mutation.ToValKeyLoc())
+		b.s = append(b.s, mutation.ToValKeyLoc())
 	}
 }
 
 func (b *ValsBuilder) Done(mutations []Mutation, r io.ReaderAt) (
 	[]*KeyLoc, error) {
-	return b.Vals, nil
+	return b.s, nil
 }
 
 // --------------------------------------------------

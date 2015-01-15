@@ -93,7 +93,7 @@ func (n *NodeMem) IsLeaf(defaultVal bool) bool {
 
 func (n *NodeMem) InsertChildLoc(partitionId PartitionId,
 	nodePartitionIdx, nodePartitionKeyIdx int, key Key, seq Seq, loc Loc) Node {
-	npa := make([]NodePartition, len(n.NodePartitions) + 1)
+	npa := make([]NodePartition, len(n.NodePartitions)+1)
 	copy(npa[:nodePartitionIdx], n.NodePartitions[:nodePartitionIdx])
 	npa[nodePartitionIdx] = NodePartition{
 		PartitionId: partitionId,
