@@ -13,7 +13,8 @@ func (r *RootLoc) Get(partitionId PartitionId, key Key, withValue bool) (
 	return r.NodeGet(node, partitionId, key, withValue)
 }
 
-func (r *RootLoc) Set(partitionId PartitionId, key Key, seq Seq, val Val) (err error) {
+func (r *RootLoc) Set(partitionId PartitionId, key Key, seq Seq, val Val) (
+	err error) {
 	r.store.startChanges()
 
 	r.m.Lock()
@@ -58,16 +59,16 @@ func (r *RootLoc) Max(withValue bool) (
 
 func (r *RootLoc) Scan(fromKeyInclusive Key,
 	toKeyExclusive Key,
-	reverse bool, // When reverse flag is true, fromKey should be greater than toKey.
-	partitions []PartitionId, // Scan only these partitions; nil for all partitions.
-	withValue bool, // When withValue is false, nil value is passed to visitorFunc.
+	reverse bool,
+	partitions []PartitionId,
+	withValue bool,
 	visitorFunc VisitorFunc) error {
 	return fmt.Errorf("unimplemented")
 }
 
 func (r *RootLoc) Diff(partitionId PartitionId,
-	fromSeqExclusive Seq, // Should be a Seq at some past commit point.
-	withValue bool, // When withValue is false, nil value is passed to visitorFunc.
+	fromSeqExclusive Seq,
+	withValue bool,
 	visitorFunc VisitorFunc) error {
 	return fmt.Errorf("unimplemented")
 }
