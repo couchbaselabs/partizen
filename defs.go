@@ -129,20 +129,23 @@ type Loc struct {
 	node Node
 }
 
-func (l *Loc) ClearLoc(t uint8) {
-	l.Type = t
-	l.CheckSum = 0
-	l.Size = 0
+func (l *Loc) Clear() {
 	l.Offset = 0
+	l.Size = 0
+	l.Type = LocTypeUnknown
+	l.Flags = 0
+	l.CheckSum = 0
 	l.buf = nil
 	l.node = nil
 }
 
 const (
 	// Allowed values for Loc.Type field...
-	LocTypeNode     = 0x00
-	LocTypeVal      = 0x01
-	LocTypeStoreDef = 0x02
+	LocTypeUnknown  uint8 = 0x00
+	LocTypeNode     uint8 = 0x01
+	LocTypeVal      uint8 = 0x02
+	LocTypeStoreDef uint8 = 0x03
+	LocTypeWALEntry uint8 = 0x04
 )
 
 type WALEntry struct {

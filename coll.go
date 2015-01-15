@@ -28,7 +28,8 @@ func (r *RootLoc) Set(partitionId PartitionId, key Key, seq Seq, val Val) (
 
 	r.m.Lock()
 	if r.node == node {
-		r.ClearLoc(LocTypeNode)
+		r.Clear()
+		r.Type = LocTypeNode
 		r.node = n
 	} else {
 		err = fmt.Errorf("concurrent modification")
