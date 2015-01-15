@@ -136,11 +136,13 @@ func formParentKeyLocs(degree int, childKeyLocs []*KeyLoc,
 		})
 		beg = i
 	}
-	parentKeyLocs = append(parentKeyLocs, &KeyLoc{
-		Key:  childKeyLocs[beg].Key,
-		Loc:  Loc{Type: LOC_TYPE_NODE},
-		node: &Node{KeyLocs: childKeyLocs[beg:]},
-	})
+	if beg < len(childKeyLocs) {
+		parentKeyLocs = append(parentKeyLocs, &KeyLoc{
+			Key:  childKeyLocs[beg].Key,
+			Loc:  Loc{Type: LOC_TYPE_NODE},
+			node: &Node{KeyLocs: childKeyLocs[beg:]},
+		})
+	}
 	return parentKeyLocs
 }
 
