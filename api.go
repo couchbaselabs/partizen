@@ -34,7 +34,7 @@ type Store interface {
 	Snapshot() (Store, error)
 	SnapshotPreviousCommit(numCommitsBack int) (Store, error)
 
-	CopyTo(StoreFile, keepCommitsTo interface{}) error
+	CopyTo(storeFile StoreFile, keepCommitsTo interface{}) error
 
 	Stats(dest *StoreStats) error
 }

@@ -228,7 +228,7 @@ func (s *store) SnapshotPreviousCommit(numCommitsBack int) (Store, error) {
 	return nil, fmt.Errorf("unimplemented")
 }
 
-func (s *store) CopyTo(StoreFile, keepCommitsTo interface{}) error {
+func (s *store) CopyTo(storeFile StoreFile, keepCommitsTo interface{}) error {
 	return fmt.Errorf("unimplemented")
 }
 
