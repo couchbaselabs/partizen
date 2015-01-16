@@ -6,16 +6,16 @@ import (
 	"io"
 )
 
-func rootLocProcessMutations(degree int, rootLoc *Loc,
-	mutations []Mutation, r io.ReaderAt) (*KeyLoc, error) {
-	rv, err := nodeLocProcessMutations(degree, rootLoc,
-		mutations, 0, len(mutations), r)
+func rootLocProcessMutations(rootLoc *Loc, mutations []Mutation,
+	degree int, r io.ReaderAt) (*KeyLoc, error) {
+	rv, err := nodeLocProcessMutations(rootLoc, mutations,
+		0, len(mutations), degree, r)
 	if err != nil {
 		return nil, fmt.Errorf("rootLocProcessMutations:"+
 			" rootLoc: %#v, err: %v", rootLoc, err)
 	}
 	for len(rv) > 1 {
-		rv = formParentKeyLocs(degree, rv, nil)
+		rv = formParentKeyLocs(rv, degree, nil)
 	}
 	if len(rv) > 0 {
 		return rv[0], nil
@@ -23,9 +23,8 @@ func rootLocProcessMutations(degree int, rootLoc *Loc,
 	return nil, nil
 }
 
-func nodeLocProcessMutations(degree int, nodeLoc *Loc,
-	mutations []Mutation, mbeg, mend int,
-	r io.ReaderAt) ([]*KeyLoc, error) {
+func nodeLocProcessMutations(nodeLoc *Loc, mutations []Mutation,
+	mbeg, mend int, degree int, r io.ReaderAt) ([]*KeyLoc, error) {
 	node, err := ReadLocNode(nodeLoc, r)
 	if err != nil {
 		return nil, fmt.Errorf("nodeLocProcessMutations:"+
@@ -45,13 +44,12 @@ func nodeLocProcessMutations(degree int, nodeLoc *Loc,
 	}
 
 	processMutations(keyLocs, 0, len(keyLocs),
-		mutations, mbeg, mend,
-		builder)
+		mutations, mbeg, mend, builder)
 
 	return builder.Done(mutations, degree, r)
 }
 
-func formParentKeyLocs(degree int, childKeyLocs []*KeyLoc,
+func formParentKeyLocs(childKeyLocs []*KeyLoc, degree int,
 	parentKeyLocs []*KeyLoc) []*KeyLoc {
 	beg := 0
 	for i := degree; i < len(childKeyLocs); i = i + degree {
@@ -224,13 +222,13 @@ func (b *NodesBuilder) Done(mutations []Mutation, degree int,
 			}
 		} else {
 			childKeyLocs, err :=
-				nodeLocProcessMutations(degree, &nm.NodeKeyLoc.Loc,
-					mutations, nm.MutationsBeg, nm.MutationsEnd, r)
+				nodeLocProcessMutations(&nm.NodeKeyLoc.Loc, mutations,
+					nm.MutationsBeg, nm.MutationsEnd, degree, r)
 			if err != nil {
 				return nil, fmt.Errorf("NodesBuilder.Done:"+
 					" NodeKeyLoc: %#v, err: %v", nm.NodeKeyLoc, err)
 			}
-			rv = formParentKeyLocs(degree, childKeyLocs, rv)
+			rv = formParentKeyLocs(childKeyLocs, degree, rv)
 		}
 	}
 
