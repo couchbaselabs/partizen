@@ -8,17 +8,17 @@ import (
 
 func rootLocProcessMutations(rootLoc *Loc, mutations []Mutation,
 	degree int, r io.ReaderAt) (*KeyLoc, error) {
-	rv, err := nodeLocProcessMutations(rootLoc, mutations,
+	keyLocs, err := nodeLocProcessMutations(rootLoc, mutations,
 		0, len(mutations), degree, r)
 	if err != nil {
 		return nil, fmt.Errorf("rootLocProcessMutations:"+
 			" rootLoc: %#v, err: %v", rootLoc, err)
 	}
-	for len(rv) > 1 {
-		rv = formParentKeyLocs(rv, degree, nil)
+	for len(keyLocs) > 1 {
+		keyLocs = formParentKeyLocs(keyLocs, degree, nil)
 	}
-	if len(rv) > 0 {
-		return rv[0], nil
+	if len(keyLocs) > 0 {
+		return keyLocs[0], nil
 	}
 	return nil, nil
 }
