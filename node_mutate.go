@@ -15,7 +15,7 @@ func rootLocProcessMutations(rootLoc *Loc, mutations []Mutation,
 			" rootLoc: %#v, err: %v", rootLoc, err)
 	}
 	for len(keyLocs) > 1 {
-		keyLocs = formParentKeyLocs(keyLocs, degree, nil)
+		keyLocs = groupKeyLocs(keyLocs, degree, nil)
 	}
 	if len(keyLocs) > 0 {
 		return keyLocs[0], nil
@@ -49,11 +49,16 @@ func nodeLocProcessMutations(nodeLoc *Loc, mutations []Mutation,
 	return builder.Done(mutations, degree, r)
 }
 
-func formParentKeyLocs(childKeyLocs []*KeyLoc, degree int,
-	parentKeyLocs []*KeyLoc) []*KeyLoc {
+func groupKeyLocs(childKeyLocs []*KeyLoc, degree int,
+	groupedKeyLocsStart []*KeyLoc) []*KeyLoc {
+	// TODO: A more optimal grouping approach would instead partition
+	// the childKeyLocs more evenly, instead of the current approach
+	// where the last group might be unfairly too small as it has only
+	// the simple remainder of childKeyLocs.
+	groupedKeyLocs := groupedKeyLocsStart
 	beg := 0
 	for i := degree; i < len(childKeyLocs); i = i + degree {
-		parentKeyLocs = append(parentKeyLocs, &KeyLoc{
+		groupedKeyLocs = append(groupedKeyLocs, &KeyLoc{
 			Key: childKeyLocs[beg].Key,
 			Loc: Loc{
 				Type: LocTypeNode,
@@ -63,7 +68,7 @@ func formParentKeyLocs(childKeyLocs []*KeyLoc, degree int,
 		beg = i
 	}
 	if beg < len(childKeyLocs) {
-		parentKeyLocs = append(parentKeyLocs, &KeyLoc{
+		groupedKeyLocs = append(groupedKeyLocs, &KeyLoc{
 			Key: childKeyLocs[beg].Key,
 			Loc: Loc{
 				Type: LocTypeNode,
@@ -71,7 +76,7 @@ func formParentKeyLocs(childKeyLocs []*KeyLoc, degree int,
 			},
 		})
 	}
-	return parentKeyLocs
+	return groupedKeyLocs
 }
 
 func processMutations(
@@ -228,7 +233,7 @@ func (b *NodesBuilder) Done(mutations []Mutation, degree int,
 				return nil, fmt.Errorf("NodesBuilder.Done:"+
 					" NodeKeyLoc: %#v, err: %v", nm.NodeKeyLoc, err)
 			}
-			rv = formParentKeyLocs(childKeyLocs, degree, rv)
+			rv = groupKeyLocs(childKeyLocs, degree, rv)
 		}
 	}
 
