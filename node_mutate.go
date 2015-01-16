@@ -6,13 +6,13 @@ import (
 	"io"
 )
 
-func rootLocProcessMutations(rootLoc *Loc, mutations []Mutation,
+func rootNodeLocProcessMutations(rootNodeLoc *Loc, mutations []Mutation,
 	degree int, r io.ReaderAt) (*KeyLoc, error) {
-	keyLocs, err := nodeLocProcessMutations(rootLoc, mutations,
+	keyLocs, err := nodeLocProcessMutations(rootNodeLoc, mutations,
 		0, len(mutations), degree, r)
 	if err != nil {
 		return nil, fmt.Errorf("rootLocProcessMutations:"+
-			" rootLoc: %#v, err: %v", rootLoc, err)
+			" rootNodeLoc: %#v, err: %v", rootNodeLoc, err)
 	}
 	for len(keyLocs) > 1 {
 		keyLocs = groupKeyLocs(keyLocs, degree, nil)
