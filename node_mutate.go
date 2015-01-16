@@ -247,18 +247,3 @@ func MutationToValKeyLoc(m *Mutation) *KeyLoc {
 		},
 	}
 }
-
-// --------------------------------------------------
-
-func ReadLocNode(loc *Loc, r io.ReaderAt) (Node, error) {
-	if loc == nil {
-		return nil, nil
-	}
-	if loc.Type != LocTypeNode {
-		return nil, fmt.Errorf("ReadLocNode: not a node, loc: %#v", loc)
-	}
-	if loc.node != nil {
-		return loc.node, nil
-	}
-	return nil, fmt.Errorf("ReadLocNode: failed")
-}
