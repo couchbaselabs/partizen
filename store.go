@@ -220,22 +220,6 @@ func (s *store) AbortChanges(cs *ChangeStats) error {
 	return fmt.Errorf("unimplemented")
 }
 
-func (s *store) Snapshot() (Store, error) {
-	return nil, fmt.Errorf("unimplemented")
-}
-
-func (s *store) SnapshotPreviousCommit(numCommitsBack int) (Store, error) {
-	return nil, fmt.Errorf("unimplemented")
-}
-
-func (s *store) CopyTo(storeFile StoreFile, keepCommitsTo interface{}) error {
-	return fmt.Errorf("unimplemented")
-}
-
-func (s *store) Stats(dest *StoreStats) error {
-	return fmt.Errorf("unimplemented")
-}
-
 // --------------------------------------------
 
 func (s *store) startChanges() {

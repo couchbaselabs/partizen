@@ -10,7 +10,8 @@ type Val []byte
 type PartitionId uint16
 type Seq uint64
 
-func StoreOpen(storeFile StoreFile, storeOptions *StoreOptions) (Store, error) {
+func StoreOpen(storeFile StoreFile, storeOptions *StoreOptions) (
+	Store, error) {
 	return storeOpen(storeFile, storeOptions)
 }
 
@@ -30,13 +31,6 @@ type Store interface {
 	HasChanges() bool
 	CommitChanges(*ChangeStats) error
 	AbortChanges(*ChangeStats) error
-
-	Snapshot() (Store, error)
-	SnapshotPreviousCommit(numCommitsBack int) (Store, error)
-
-	CopyTo(storeFile StoreFile, keepCommitsTo interface{}) error
-
-	Stats(dest *StoreStats) error
 }
 
 // TODO: Should have separation of insert versus update versus upsert?
