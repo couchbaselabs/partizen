@@ -1,100 +1,10 @@
-package algorithm
+package partizen
 
 import (
 	"bytes"
 	"fmt"
 	"io"
 )
-
-type Key []byte
-type Val []byte
-type PartitionId uint16
-type Seq uint64
-
-// A KeyLoc associates a Key with a Loc.
-type KeyLoc struct {
-	Key Key
-	Loc Loc
-}
-
-// A Loc represents the location of a byte range persisted or
-// soon-to-be-persisted to the storage file.  Persisted field sizes
-// are carefully chosen to add up to 128 bits.
-type Loc struct {
-	// Offset is relative to start of file.  Offset of 0 means the
-	// pointed-to bytes buf are not persisted yet.
-	Offset   uint64
-	Size     uint32
-	Type     uint8
-	Flags    uint8
-	CheckSum uint16 // An optional checksum of the bytes buf.
-
-	// Transient; non-nil when the Loc is read into memory or when the
-	// bytes of the Loc are prepared for writing.  The len(Loc.buf)
-	// should equal Loc.Size.
-	buf []byte
-
-	// Transient; only used when Type is LocTypeNode.  If nil,
-	// runtime representation hasn't been loaded yet.  The node might
-	// share memory with Loc.buf.
-	node *Node
-}
-
-func (l *Loc) Clear() {
-	l.Offset = 0
-	l.Size = 0
-	l.Type = LocTypeUnknown
-	l.Flags = 0
-	l.CheckSum = 0
-	l.buf = nil
-	l.node = nil
-}
-
-const (
-	LocTypeUnknown  uint8 = 0x00
-	LocTypeNode     uint8 = 0x01
-	LocTypeVal      uint8 = 0x02
-	LocTypeStoreDef uint8 = 0x03
-)
-
-// A Node has KeyLoc children.  All the KeyLoc children of a Node must
-// be of the same Loc.Type; e.g., either all val's or all nodes.
-type Node struct {
-	KeyLocs []*KeyLoc
-}
-
-// A Mutation represents a mutation request on a key.
-type Mutation struct {
-	Key []byte
-	Val []byte
-	Op  MutationOp
-}
-
-type MutationOp uint8
-
-const (
-	MUTATION_OP_NONE   MutationOp = 0
-	MUTATION_OP_UPDATE MutationOp = 1
-	MUTATION_OP_DELETE MutationOp = 2
-
-	// FUTURE MutationOp's might include merging, visiting, etc.
-)
-
-func (m *Mutation) ToValKeyLoc() *KeyLoc {
-	return &KeyLoc{
-		Key: m.Key,
-		Loc: Loc{
-			Type: LocTypeVal,
-			Size: uint32(len(m.Val)),
-			buf:  m.Val,
-		},
-	}
-}
-
-var zeroKeyLoc KeyLoc
-var zeroMutation Mutation
-
-// --------------------------------------------------
 
 func rootLocProcessMutations(degree int, rootLoc *Loc,
 	mutations []Mutation, r io.ReaderAt) (*KeyLoc, error) {
@@ -123,8 +33,7 @@ func nodeLocProcessMutations(degree int, nodeLoc *Loc,
 	}
 
 	var builder KeyLocsBuilder
-	if node == nil || len(node.KeyLocs) <= 0 ||
-		node.KeyLocs[0].Loc.Type != LocTypeNode {
+	if node == nil || node.IsLeaf() || node.NumChildren() <= 0 {
 		builder = &ValsBuilder{}
 	} else {
 		builder = &NodesBuilder{}
@@ -132,7 +41,7 @@ func nodeLocProcessMutations(degree int, nodeLoc *Loc,
 
 	var keyLocs []*KeyLoc
 	if node != nil {
-		keyLocs = node.KeyLocs
+		keyLocs = node.GetKeyLocs()
 	}
 
 	processMutations(keyLocs, 0, len(keyLocs),
@@ -150,7 +59,7 @@ func formParentKeyLocs(degree int, childKeyLocs []*KeyLoc,
 			Key: childKeyLocs[beg].Key,
 			Loc: Loc{
 				Type: LocTypeNode,
-				node: &Node{KeyLocs: childKeyLocs[beg:i]},
+				node: &NodeMem{KeyLocs: childKeyLocs[beg:i]},
 			},
 		})
 		beg = i
@@ -160,7 +69,7 @@ func formParentKeyLocs(degree int, childKeyLocs []*KeyLoc,
 			Key: childKeyLocs[beg].Key,
 			Loc: Loc{
 				Type: LocTypeNode,
-				node: &Node{KeyLocs: childKeyLocs[beg:]},
+				node: &NodeMem{KeyLocs: childKeyLocs[beg:]},
 			},
 		})
 	}
@@ -242,13 +151,13 @@ func (b *ValsBuilder) AddExisting(existing *KeyLoc) {
 func (b *ValsBuilder) AddUpdate(existing *KeyLoc,
 	mutation *Mutation, mutationIdx int) {
 	if mutation.Op == MUTATION_OP_UPDATE {
-		b.s = append(b.s, mutation.ToValKeyLoc())
+		b.s = append(b.s, MutationToValKeyLoc(mutation))
 	}
 }
 
 func (b *ValsBuilder) AddNew(mutation *Mutation, mutationIdx int) {
 	if mutation.Op == MUTATION_OP_UPDATE {
-		b.s = append(b.s, mutation.ToValKeyLoc())
+		b.s = append(b.s, MutationToValKeyLoc(mutation))
 	}
 }
 
@@ -330,7 +239,20 @@ func (b *NodesBuilder) Done(mutations []Mutation, degree int,
 
 // --------------------------------------------------
 
-func ReadLocNode(loc *Loc, r io.ReaderAt) (*Node, error) {
+func MutationToValKeyLoc(m *Mutation) *KeyLoc {
+	return &KeyLoc{
+		Key: m.Key,
+		Loc: Loc{
+			Type: LocTypeVal,
+			Size: uint32(len(m.Val)),
+			buf:  m.Val,
+		},
+	}
+}
+
+// --------------------------------------------------
+
+func ReadLocNode(loc *Loc, r io.ReaderAt) (Node, error) {
 	if loc == nil {
 		return nil, nil
 	}

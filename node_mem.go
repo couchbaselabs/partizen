@@ -22,6 +22,8 @@ type NodeMem struct {
 
 	// Sorted by NodePartition.PartitionId.
 	NodePartitions []NodePartition // See MAX_NODE_PARTITIONS_PER_NODE.
+
+	KeyLocs []*KeyLoc
 }
 
 // A NodePartition is a variable-sized struct that holds keys of
@@ -84,11 +86,19 @@ func (n *NodeMem) ChildLoc(childLocIdx int) *Loc {
 	return &n.ChildLocs[childLocIdx]
 }
 
-func (n *NodeMem) IsLeaf(defaultVal bool) bool {
+func (n *NodeMem) NumChildren() int {
+	return len(n.ChildLocs)
+}
+
+func (n *NodeMem) IsLeaf() bool {
 	if len(n.ChildLocs) > 0 {
 		return n.ChildLocs[0].Type == LocTypeVal
 	}
-	return defaultVal
+	return false
+}
+
+func (n *NodeMem) GetKeyLocs() []*KeyLoc {
+	return nil
 }
 
 func (n *NodeMem) InsertChildLoc(partitionId PartitionId,

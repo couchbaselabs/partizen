@@ -39,7 +39,7 @@ func (r *RootLoc) NodeSet(n Node, partitionId PartitionId,
 	}
 	found, nodePartitionIdx := n.LocateNodePartition(partitionId)
 	if !found {
-		if n.IsLeaf(true) {
+		if n.IsLeaf() {
 			return n.InsertChildLoc(partitionId, nodePartitionIdx, 0,
 				key, seq, Loc{
 					Size: uint32(len(val)),

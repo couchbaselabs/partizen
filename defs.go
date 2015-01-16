@@ -66,9 +66,13 @@ type RootLoc struct {
 // A Node of a partizen btree has its descendent locations first
 // ordered by PartitionID, then secondarily ordered by Key.
 type Node interface {
-	IsLeaf(defaultVal bool) bool
+	NumChildren() int
+
+	IsLeaf() bool
 
 	ChildLoc(childLocIdx int) *Loc
+
+	GetKeyLocs() []*KeyLoc
 
 	LocateNodePartition(partitionId PartitionId) (
 		found bool, nodePartitionIdx int)
@@ -146,6 +150,33 @@ const (
 	LocTypeVal      uint8 = 0x02
 	LocTypeStoreDef uint8 = 0x03
 	LocTypeWALEntry uint8 = 0x04
+)
+
+// A KeyLoc associates a Key with a Loc.
+type KeyLoc struct {
+	Key Key
+	Loc Loc
+}
+
+var zeroKeyLoc KeyLoc
+
+// A Mutation represents a mutation request on a key.
+type Mutation struct {
+	Key []byte
+	Val []byte
+	Op  MutationOp
+}
+
+var zeroMutation Mutation
+
+type MutationOp uint8
+
+const (
+	MUTATION_OP_NONE   MutationOp = 0
+	MUTATION_OP_UPDATE MutationOp = 1
+	MUTATION_OP_DELETE MutationOp = 2
+
+	// FUTURE MutationOp's might include merging, visiting, etc.
 )
 
 type WALEntry struct {
