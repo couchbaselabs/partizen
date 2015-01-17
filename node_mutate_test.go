@@ -58,7 +58,7 @@ func TestEmptyMutate(t *testing.T) {
 
 	m = []Mutation{Mutation{
 		Key: []byte("x"),
-		Op: MUTATION_OP_DELETE,
+		Op:  MUTATION_OP_DELETE,
 	}}
 	kl, err = rootNodeLocProcessMutations(nil, m, 32, nil)
 	if err != nil {
@@ -69,7 +69,7 @@ func TestEmptyMutate(t *testing.T) {
 	}
 }
 
-func Test1Update(t *testing.T) {
+func TestMutationsOn1Val(t *testing.T) {
 	m := []Mutation{Mutation{
 		Key: []byte("a"),
 		Val: []byte("A"),
@@ -105,6 +105,7 @@ func Test1Update(t *testing.T) {
 	}
 
 	// Try some DELETE's of key that's not in the tree.
+	kl2 := kl
 	for _, keyNotThere := range []string{"x", "0", "aa", ""} {
 		m = []Mutation{
 			Mutation{
@@ -112,9 +113,9 @@ func Test1Update(t *testing.T) {
 				Op:  MUTATION_OP_DELETE,
 			},
 		}
-		kl2, err := rootNodeLocProcessMutations(&kl.Loc, m, 32, nil)
+		kl2, err := rootNodeLocProcessMutations(&kl2.Loc, m, 32, nil)
 		if err != nil {
-		t.Errorf("expected ok, err: %#v", err)
+			t.Errorf("expected ok, err: %#v", err)
 		}
 		if kl2 == nil {
 			t.Errorf("expected kl2")
@@ -141,9 +142,23 @@ func Test1Update(t *testing.T) {
 			t.Errorf("expected val child is A")
 		}
 	}
+
+	m = []Mutation{ // Delete the only key.
+		Mutation{
+			Key: []byte("a"),
+			Op:  MUTATION_OP_DELETE,
+		},
+	}
+	kl3, err := rootNodeLocProcessMutations(&kl2.Loc, m, 32, nil)
+	if err != nil {
+		t.Errorf("expected ok, err: %#v", err)
+	}
+	if kl3 != nil {
+		t.Errorf("expected no keyloc")
+	}
 }
 
-func Test2Update(t *testing.T) {
+func TestMutationsOn2Vals(t *testing.T) {
 	m := []Mutation{
 		Mutation{
 			Key: []byte("a"),
