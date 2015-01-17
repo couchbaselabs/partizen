@@ -98,7 +98,7 @@ func (n *NodeMem) IsLeaf() bool {
 }
 
 func (n *NodeMem) GetKeyLocs() []*KeyLoc {
-	return nil
+	return n.KeyLocs
 }
 
 func (n *NodeMem) InsertChildLoc(partitionId PartitionId,
