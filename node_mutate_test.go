@@ -61,7 +61,7 @@ func Test1Update(t *testing.T) {
 	m := []Mutation{Mutation{
 		Key: []byte("a"),
 		Val: []byte("A"),
-		Op: MUTATION_OP_UPDATE,
+		Op:  MUTATION_OP_UPDATE,
 	}}
 	kl, err := rootNodeLocProcessMutations(nil, m, 32, nil)
 	if err != nil {
@@ -98,12 +98,12 @@ func Test2Update(t *testing.T) {
 		Mutation{
 			Key: []byte("a"),
 			Val: []byte("A"),
-			Op: MUTATION_OP_UPDATE,
+			Op:  MUTATION_OP_UPDATE,
 		},
 		Mutation{
 			Key: []byte("b"),
 			Val: []byte("B"),
-			Op: MUTATION_OP_UPDATE,
+			Op:  MUTATION_OP_UPDATE,
 		},
 	}
 	kl, err := rootNodeLocProcessMutations(nil, m, 32, nil)

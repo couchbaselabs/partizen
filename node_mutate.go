@@ -6,11 +6,13 @@ import (
 	"io"
 )
 
-// rootNodeLocProcessMutations is the entry function for mutations on
-// the root Loc of a tree.  The mutations need to be sorted by
-// ascending key order, and also should be de-duplicated.  That is, if
-// the application has a sequence of mutations on the same key, the
-// caller must only pass in the last mutation for that key.
+// rootNodeLocProcessMutations is the entry function for applying a
+// batch of copy-on-write mutations on a tree (rootNodeLoc).  The
+// mutations must be ordered by ascending key order, and must also
+// have no duplicates.  That is, if the application has a sequence of
+// mutations on the same key, the caller must only pass in the last
+// mutation for any key.  The rootNodeLoc may be nil to start off a
+// brand new tree.
 func rootNodeLocProcessMutations(rootNodeLoc *Loc, mutations []Mutation,
 	degree int, r io.ReaderAt) (*KeyLoc, error) {
 	keyLocs, err := nodeLocProcessMutations(rootNodeLoc, mutations,
