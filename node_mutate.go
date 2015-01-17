@@ -14,7 +14,8 @@ func rootNodeLocProcessMutations(rootNodeLoc *Loc, mutations []Mutation,
 		return nil, fmt.Errorf("rootLocProcessMutations:"+
 			" rootNodeLoc: %#v, err: %v", rootNodeLoc, err)
 	}
-	for len(keyLocs) > 1 {
+	for len(keyLocs) > 1 ||
+		(len(keyLocs) > 0 && keyLocs[0].Loc.Type == LocTypeVal) {
 		keyLocs = groupKeyLocs(keyLocs, degree, nil)
 	}
 	if len(keyLocs) > 0 {
@@ -121,10 +122,10 @@ func nextKeyLoc(idx, n int, keyLocs []*KeyLoc) (
 	return &zeroKeyLoc, false, idx
 }
 
-func nextMutation(idx, n int, keyValOps []Mutation) (
+func nextMutation(idx, n int, mutations []Mutation) (
 	*Mutation, bool, int) {
 	if idx < n {
-		return &keyValOps[idx], true, idx
+		return &mutations[idx], true, idx
 	}
 	return &zeroMutation, false, idx
 }
