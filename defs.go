@@ -70,9 +70,11 @@ type Node interface {
 
 	IsLeaf() bool
 
-	ChildLoc(childLocIdx int) *Loc
-
 	GetKeyLocs() []*KeyLoc
+
+	// --------------------------------
+
+	ChildLoc(childLocIdx int) *Loc
 
 	LocateNodePartition(partitionId PartitionId) (
 		found bool, nodePartitionIdx int)
