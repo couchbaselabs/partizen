@@ -70,7 +70,7 @@ type Node interface {
 
 	IsLeaf() bool
 
-	GetKeyLocs() []*KeyLoc
+	GetKeyLocs() KeyLocs
 
 	// --------------------------------
 
@@ -159,6 +159,8 @@ type KeyLoc struct {
 	Key Key
 	Loc Loc
 }
+
+type KeyLocs []*KeyLoc
 
 var zeroKeyLoc KeyLoc
 

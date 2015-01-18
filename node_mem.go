@@ -23,7 +23,9 @@ type NodeMem struct {
 	// Sorted by NodePartition.PartitionId.
 	NodePartitions []NodePartition // See MAX_NODE_PARTITIONS_PER_NODE.
 
-	KeyLocs []*KeyLoc
+	// -----------------------------------
+
+	KeyLocs KeyLocs
 }
 
 // A NodePartition is a variable-sized struct that holds keys of
@@ -97,7 +99,7 @@ func (n *NodeMem) IsLeaf() bool {
 	return false
 }
 
-func (n *NodeMem) GetKeyLocs() []*KeyLoc {
+func (n *NodeMem) GetKeyLocs() KeyLocs {
 	return n.KeyLocs
 }
 

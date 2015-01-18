@@ -34,7 +34,7 @@ func rootNodeLocProcessMutations(rootNodeLoc *Loc, mutations []Mutation,
 // nodeLocProcessMutations recursively applies the batch of mutations
 // down the tree, building up copy-on-write new nodes.
 func nodeLocProcessMutations(nodeLoc *Loc, mutations []Mutation,
-	mbeg, mend int, maxFanOut int, r io.ReaderAt) ([]*KeyLoc, error) {
+	mbeg, mend int, maxFanOut int, r io.ReaderAt) (KeyLocs, error) {
 	node, err := ReadLocNode(nodeLoc, r)
 	if err != nil {
 		return nil, fmt.Errorf("nodeLocProcessMutations:"+
@@ -48,7 +48,7 @@ func nodeLocProcessMutations(nodeLoc *Loc, mutations []Mutation,
 		builder = &NodesBuilder{}
 	}
 
-	var keyLocs []*KeyLoc
+	var keyLocs KeyLocs
 	if node != nil {
 		keyLocs = node.GetKeyLocs()
 	}
@@ -61,8 +61,8 @@ func nodeLocProcessMutations(nodeLoc *Loc, mutations []Mutation,
 
 // groupKeyLocs assigns a key-ordered sequence of children to new
 // parent nodes, where the parent nodes will meet the given maxFanOut.
-func groupKeyLocs(childKeyLocs []*KeyLoc, maxFanOut int,
-	groupedKeyLocsStart []*KeyLoc) []*KeyLoc {
+func groupKeyLocs(childKeyLocs KeyLocs, maxFanOut int,
+	groupedKeyLocsStart KeyLocs) KeyLocs {
 	// TODO: A more optimal grouping approach would instead partition
 	// the childKeyLocs more evenly, instead of the current approach
 	// where the last group might be unfairly too small as it has only
@@ -94,7 +94,7 @@ func groupKeyLocs(childKeyLocs []*KeyLoc, maxFanOut int,
 // processMutations merges or zippers together a key-ordered sequence
 // of existing KeyLoc's with a key-ordered batch of mutations.
 func processMutations(
-	existings []*KeyLoc,
+	existings KeyLocs,
 	ebeg, eend int, // Sub-range of existings[ebeg:eend] to process.
 	mutations []Mutation,
 	mbeg, mend int, // Sub-range of mutations[mbeg:mend] to process.
@@ -127,7 +127,7 @@ func processMutations(
 	}
 }
 
-func nextKeyLoc(idx, n int, keyLocs []*KeyLoc) (
+func nextKeyLoc(idx, n int, keyLocs KeyLocs) (
 	*KeyLoc, bool, int) {
 	if idx < n {
 		return keyLocs[idx], true, idx
@@ -149,7 +149,7 @@ type KeyLocsBuilder interface {
 	AddExisting(existing *KeyLoc)
 	AddUpdate(existing *KeyLoc, mutation *Mutation, mutationIdx int)
 	AddNew(mutation *Mutation, mutationIdx int)
-	Done(mutations []Mutation, maxFanOut int, r io.ReaderAt) ([]*KeyLoc, error)
+	Done(mutations []Mutation, maxFanOut int, r io.ReaderAt) (KeyLocs, error)
 }
 
 // --------------------------------------------------
@@ -158,7 +158,7 @@ type KeyLocsBuilder interface {
 // array of LocTypeVal KeyLoc's, which can be then used as input as
 // the children to create new leaf Nodes.
 type ValsBuilder struct {
-	s []*KeyLoc
+	s KeyLocs
 }
 
 func (b *ValsBuilder) AddExisting(existing *KeyLoc) {
@@ -179,7 +179,7 @@ func (b *ValsBuilder) AddNew(mutation *Mutation, mutationIdx int) {
 }
 
 func (b *ValsBuilder) Done(mutations []Mutation, maxFanOut int,
-	r io.ReaderAt) ([]*KeyLoc, error) {
+	r io.ReaderAt) (KeyLocs, error) {
 	return b.s, nil
 }
 
@@ -242,8 +242,8 @@ func (b *NodesBuilder) AddNew(mutation *Mutation, mutationIdx int) {
 }
 
 func (b *NodesBuilder) Done(mutations []Mutation, maxFanOut int,
-	r io.ReaderAt) ([]*KeyLoc, error) {
-	var rv []*KeyLoc
+	r io.ReaderAt) (KeyLocs, error) {
+	var rv KeyLocs
 
 	for _, nm := range b.NodeMutations {
 		if nm.MutationsBeg >= nm.MutationsEnd {
