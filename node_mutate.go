@@ -205,8 +205,8 @@ type NodesBuilder struct {
 
 type NodeMutations struct {
 	NodeKeySeqLoc *KeySeqLoc
-	MutationsBeg  int // Inclusive index into keyValOps.
-	MutationsEnd  int // Exclusive index into keyValOps.
+	MutationsBeg  int // Inclusive index into []Mutation.
+	MutationsEnd  int // Exclusive index into []Mutation.
 }
 
 func (b *NodesBuilder) AddExisting(existing *KeySeqLoc) {
