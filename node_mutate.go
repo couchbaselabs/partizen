@@ -78,33 +78,32 @@ func groupKeySeqLocs(childKeySeqLocs KeySeqLocs, maxFanOut int,
 		n = childKeySeqLocs.Len()
 	}
 	for i := maxFanOut; i < n; i = i + maxFanOut {
-		if groupedKeySeqLocs == nil {
-			groupedKeySeqLocs = &KeySeqLocsArray{}
-		}
-		groupedKeySeqLocs = groupedKeySeqLocs.Append(&KeySeqLoc{
-			Key: childKeySeqLocs.Key(beg),
-			Seq: maxSeq(childKeySeqLocs, beg, i),
-			Loc: Loc{
+		groupedKeySeqLocs = keySeqLocsAppend(groupedKeySeqLocs,
+			childKeySeqLocs.Key(beg),
+			maxSeq(childKeySeqLocs, beg, i),
+			Loc{
 				Type: LocTypeNode,
 				node: &NodeMem{KeySeqLocs: childKeySeqLocs.Slice(beg, i)},
-			},
-		})
+			})
 		beg = i
 	}
 	if beg < n {
-		if groupedKeySeqLocs == nil {
-			groupedKeySeqLocs = &KeySeqLocsArray{}
-		}
-		groupedKeySeqLocs = groupedKeySeqLocs.Append(&KeySeqLoc{
-			Key: childKeySeqLocs.Key(beg),
-			Seq: maxSeq(childKeySeqLocs, beg, n),
-			Loc: Loc{
+		groupedKeySeqLocs = keySeqLocsAppend(groupedKeySeqLocs,
+			childKeySeqLocs.Key(beg),
+			maxSeq(childKeySeqLocs, beg, n),
+			Loc{
 				Type: LocTypeNode,
 				node: &NodeMem{KeySeqLocs: childKeySeqLocs.Slice(beg, n)},
-			},
-		})
+			})
 	}
 	return groupedKeySeqLocs
+}
+
+func keySeqLocsAppend(a KeySeqLocs, key Key, seq Seq, loc Loc) KeySeqLocs {
+	if a == nil {
+		return &KeySeqLocsArray{&KeySeqLoc{Key: key, Seq: seq, Loc: loc}}
+	}
+	return a.Append(&KeySeqLoc{Key: key, Seq: seq, Loc: loc})
 }
 
 func maxSeq(keySeqLocs KeySeqLocs, from, to int) (rv Seq) {
