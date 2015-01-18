@@ -53,12 +53,8 @@ func nodeLocProcessMutations(nodeLoc *Loc, mutations []Mutation,
 		keySeqLocs = node.GetKeySeqLocs()
 	}
 
-	n := 0
-	if keySeqLocs != nil {
-		n = keySeqLocs.Len()
-	}
-
-	processMutations(keySeqLocs, 0, n, mutations, mbeg, mend, builder)
+	processMutations(keySeqLocs, 0, keySeqLocsLen(keySeqLocs),
+		mutations, mbeg, mend, builder)
 
 	return builder.Done(mutations, maxFanOut, r)
 }
@@ -73,10 +69,7 @@ func groupKeySeqLocs(childKeySeqLocs KeySeqLocs, maxFanOut int,
 	// the simple remainder of childKeySeqLocs.
 	groupedKeySeqLocs := groupedKeySeqLocsStart
 	beg := 0
-	n := 0
-	if childKeySeqLocs != nil {
-		n = childKeySeqLocs.Len()
-	}
+	n := keySeqLocsLen(childKeySeqLocs)
 	for i := maxFanOut; i < n; i = i + maxFanOut {
 		groupedKeySeqLocs = keySeqLocsAppend(groupedKeySeqLocs,
 			childKeySeqLocs.Key(beg),
@@ -97,6 +90,13 @@ func groupKeySeqLocs(childKeySeqLocs KeySeqLocs, maxFanOut int,
 			})
 	}
 	return groupedKeySeqLocs
+}
+
+func keySeqLocsLen(a KeySeqLocs) int {
+	if a == nil {
+		return 0
+	}
+	return a.Len()
 }
 
 func keySeqLocsAppend(a KeySeqLocs, key Key, seq Seq, loc Loc) KeySeqLocs {
