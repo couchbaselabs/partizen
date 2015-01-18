@@ -91,16 +91,16 @@ func TestMutationsOn1Val(t *testing.T) {
 	if kl.Loc.node == nil || kl.Loc.buf != nil {
 		t.Errorf("expected a keyLoc with node, no buf")
 	}
-	if len(kl.Loc.node.(*NodeMem).KeySeqLocs) != 1 {
+	if kl.Loc.node.(*NodeMem).KeySeqLocs.Len() != 1 {
 		t.Errorf("expected 1 child")
 	}
-	if string(kl.Loc.node.(*NodeMem).KeySeqLocs[0].Key) != "a" {
+	if string(kl.Loc.node.(*NodeMem).KeySeqLocs.Key(0)) != "a" {
 		t.Errorf("expected 1 child")
 	}
-	if !isSomeMemLoc(&kl.Loc.node.(*NodeMem).KeySeqLocs[0].Loc, LocTypeVal) {
+	if !isSomeMemLoc(kl.Loc.node.(*NodeMem).KeySeqLocs.Loc(0), LocTypeVal) {
 		t.Errorf("expected val child")
 	}
-	if string(kl.Loc.node.(*NodeMem).KeySeqLocs[0].Loc.buf) != "A" {
+	if string(kl.Loc.node.(*NodeMem).KeySeqLocs.Loc(0).buf) != "A" {
 		t.Errorf("expected val child is A")
 	}
 
@@ -129,16 +129,16 @@ func TestMutationsOn1Val(t *testing.T) {
 		if kl2.Loc.node == nil || kl2.Loc.buf != nil {
 			t.Errorf("expected a keyLoc with node, no buf")
 		}
-		if len(kl2.Loc.node.(*NodeMem).KeySeqLocs) != 1 {
+		if kl2.Loc.node.(*NodeMem).KeySeqLocs.Len() != 1 {
 			t.Errorf("expected 1 child")
 		}
-		if string(kl2.Loc.node.(*NodeMem).KeySeqLocs[0].Key) != "a" {
+		if string(kl2.Loc.node.(*NodeMem).KeySeqLocs.Key(0)) != "a" {
 			t.Errorf("expected 1 child")
 		}
-		if !isSomeMemLoc(&kl2.Loc.node.(*NodeMem).KeySeqLocs[0].Loc, LocTypeVal) {
+		if !isSomeMemLoc(kl2.Loc.node.(*NodeMem).KeySeqLocs.Loc(0), LocTypeVal) {
 			t.Errorf("expected val child")
 		}
-		if string(kl2.Loc.node.(*NodeMem).KeySeqLocs[0].Loc.buf) != "A" {
+		if string(kl2.Loc.node.(*NodeMem).KeySeqLocs.Loc(0).buf) != "A" {
 			t.Errorf("expected val child is A")
 		}
 	}
@@ -189,31 +189,31 @@ func TestMutationsOn2Vals(t *testing.T) {
 		if kl.Loc.node == nil || kl.Loc.buf != nil {
 			t.Errorf("expected a keyLoc with node, no buf")
 		}
-		if len(kl.Loc.node.(*NodeMem).KeySeqLocs) != numVals {
+		if kl.Loc.node.(*NodeMem).KeySeqLocs.Len() != numVals {
 			t.Errorf("expected %d children", numVals)
 		}
 		if numVals >= 1 {
 			return
 		}
-		if string(kl.Loc.node.(*NodeMem).KeySeqLocs[0].Key) != "a" {
+		if string(kl.Loc.node.(*NodeMem).KeySeqLocs.Key(0)) != "a" {
 			t.Errorf("expected child 0 is a")
 		}
-		if !isSomeMemLoc(&kl.Loc.node.(*NodeMem).KeySeqLocs[0].Loc, LocTypeVal) {
+		if !isSomeMemLoc(kl.Loc.node.(*NodeMem).KeySeqLocs.Loc(0), LocTypeVal) {
 			t.Errorf("expected val child")
 		}
-		if string(kl.Loc.node.(*NodeMem).KeySeqLocs[0].Loc.buf) != "A" {
+		if string(kl.Loc.node.(*NodeMem).KeySeqLocs.Loc(0).buf) != "A" {
 			t.Errorf("expected val child is A")
 		}
 		if numVals >= 2 {
 			return
 		}
-		if string(kl.Loc.node.(*NodeMem).KeySeqLocs[1].Key) != "b" {
+		if string(kl.Loc.node.(*NodeMem).KeySeqLocs.Key(1)) != "b" {
 			t.Errorf("expected child 1 is b")
 		}
-		if !isSomeMemLoc(&kl.Loc.node.(*NodeMem).KeySeqLocs[1].Loc, LocTypeVal) {
+		if !isSomeMemLoc(kl.Loc.node.(*NodeMem).KeySeqLocs.Loc(1), LocTypeVal) {
 			t.Errorf("expected val child")
 		}
-		if string(kl.Loc.node.(*NodeMem).KeySeqLocs[1].Loc.buf) != "B" {
+		if string(kl.Loc.node.(*NodeMem).KeySeqLocs.Loc(1).buf) != "B" {
 			t.Errorf("expected val child is B")
 		}
 	}

@@ -21,12 +21,12 @@ func rootNodeLocProcessMutations(rootNodeLoc *Loc, mutations []Mutation,
 		return nil, fmt.Errorf("rootLocProcessMutations:"+
 			" rootNodeLoc: %#v, err: %v", rootNodeLoc, err)
 	}
-	for len(keySeqLocs) > 1 ||
-		(len(keySeqLocs) > 0 && keySeqLocs[0].Loc.Type == LocTypeVal) {
+	for keySeqLocs.Len() > 1 ||
+		(keySeqLocs.Len() > 0 && keySeqLocs.Loc(0).Type == LocTypeVal) {
 		keySeqLocs = groupKeySeqLocs(keySeqLocs, maxFanOut, nil)
 	}
-	if len(keySeqLocs) > 0 {
-		return keySeqLocs[0], nil
+	if keySeqLocs.Len() > 0 {
+		return keySeqLocs.KeySeqLoc(0), nil
 	}
 	return nil, nil
 }
@@ -53,8 +53,12 @@ func nodeLocProcessMutations(nodeLoc *Loc, mutations []Mutation,
 		keySeqLocs = node.GetKeySeqLocs()
 	}
 
-	processMutations(keySeqLocs, 0, len(keySeqLocs),
-		mutations, mbeg, mend, builder)
+	n := 0
+	if keySeqLocs != nil {
+		n = keySeqLocs.Len()
+	}
+
+	processMutations(keySeqLocs, 0, n, mutations, mbeg, mend, builder)
 
 	return builder.Done(mutations, maxFanOut, r)
 }
@@ -69,35 +73,45 @@ func groupKeySeqLocs(childKeySeqLocs KeySeqLocs, maxFanOut int,
 	// the simple remainder of childKeySeqLocs.
 	groupedKeySeqLocs := groupedKeySeqLocsStart
 	beg := 0
-	for i := maxFanOut; i < len(childKeySeqLocs); i = i + maxFanOut {
-		groupedKeySeqLocs = append(groupedKeySeqLocs, &KeySeqLoc{
-			Key: childKeySeqLocs[beg].Key,
-			Seq: maxSeq(childKeySeqLocs[beg:i]),
+	n := 0
+	if childKeySeqLocs != nil {
+		n = childKeySeqLocs.Len()
+	}
+	for i := maxFanOut; i < n; i = i + maxFanOut {
+		if groupedKeySeqLocs == nil {
+			groupedKeySeqLocs = &KeySeqLocsArray{}
+		}
+		groupedKeySeqLocs = groupedKeySeqLocs.Append(&KeySeqLoc{
+			Key: childKeySeqLocs.Key(beg),
+			Seq: maxSeq(childKeySeqLocs, beg, i),
 			Loc: Loc{
 				Type: LocTypeNode,
-				node: &NodeMem{KeySeqLocs: childKeySeqLocs[beg:i]},
+				node: &NodeMem{KeySeqLocs: childKeySeqLocs.Slice(beg, i)},
 			},
 		})
 		beg = i
 	}
-	if beg < len(childKeySeqLocs) {
-		groupedKeySeqLocs = append(groupedKeySeqLocs, &KeySeqLoc{
-			Key: childKeySeqLocs[beg].Key,
-			Seq: maxSeq(childKeySeqLocs[beg:]),
+	if beg < n {
+		if groupedKeySeqLocs == nil {
+			groupedKeySeqLocs = &KeySeqLocsArray{}
+		}
+		groupedKeySeqLocs = groupedKeySeqLocs.Append(&KeySeqLoc{
+			Key: childKeySeqLocs.Key(beg),
+			Seq: maxSeq(childKeySeqLocs, beg, n),
 			Loc: Loc{
 				Type: LocTypeNode,
-				node: &NodeMem{KeySeqLocs: childKeySeqLocs[beg:]},
+				node: &NodeMem{KeySeqLocs: childKeySeqLocs.Slice(beg, n)},
 			},
 		})
 	}
 	return groupedKeySeqLocs
 }
 
-func maxSeq(keySeqLocs KeySeqLocs) Seq {
-	var rv Seq
-	for _, keySeqLoc := range keySeqLocs {
-		if rv < keySeqLoc.Seq {
-			rv = keySeqLoc.Seq
+func maxSeq(keySeqLocs KeySeqLocs, from, to int) (rv Seq) {
+	for i := from; i < to; i++ {
+		seq := keySeqLocs.Seq(i)
+		if rv < seq {
+			rv = seq
 		}
 	}
 	return rv
@@ -142,7 +156,7 @@ func processMutations(
 func nextKeySeqLoc(idx, n int, keySeqLocs KeySeqLocs) (
 	*KeySeqLoc, bool, int) {
 	if idx < n {
-		return keySeqLocs[idx], true, idx
+		return keySeqLocs.KeySeqLoc(idx), true, idx
 	}
 	return &zeroKeySeqLoc, false, idx
 }
@@ -170,7 +184,7 @@ type KeySeqLocsBuilder interface {
 // array of LocTypeVal KeySeqLoc's, which can be then used as input as
 // the children to create new leaf Nodes.
 type ValsBuilder struct {
-	s KeySeqLocs
+	s KeySeqLocsArray
 }
 
 func (b *ValsBuilder) AddExisting(existing *KeySeqLoc) {
@@ -256,7 +270,7 @@ func (b *NodesBuilder) AddNew(mutation *Mutation, mutationIdx int) {
 
 func (b *NodesBuilder) Done(mutations []Mutation, maxFanOut int,
 	r io.ReaderAt) (KeySeqLocs, error) {
-	var rv KeySeqLocs
+	var rv KeySeqLocsArray
 
 	for _, nm := range b.NodeMutations {
 		if nm.MutationsBeg >= nm.MutationsEnd {
@@ -271,7 +285,8 @@ func (b *NodesBuilder) Done(mutations []Mutation, maxFanOut int,
 				return nil, fmt.Errorf("NodesBuilder.Done:"+
 					" NodeKeySeqLoc: %#v, err: %v", nm.NodeKeySeqLoc, err)
 			}
-			rv = groupKeySeqLocs(childKeySeqLocs, maxFanOut, rv)
+			rv = groupKeySeqLocs(childKeySeqLocs, maxFanOut,
+				rv).(KeySeqLocsArray)
 		}
 	}
 
