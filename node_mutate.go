@@ -72,6 +72,7 @@ func groupKeySeqLocs(childKeySeqLocs KeySeqLocs, maxFanOut int,
 	for i := maxFanOut; i < len(childKeySeqLocs); i = i + maxFanOut {
 		groupedKeySeqLocs = append(groupedKeySeqLocs, &KeySeqLoc{
 			Key: childKeySeqLocs[beg].Key,
+			Seq: maxSeq(childKeySeqLocs[beg:i]),
 			Loc: Loc{
 				Type: LocTypeNode,
 				node: &NodeMem{KeySeqLocs: childKeySeqLocs[beg:i]},
@@ -82,6 +83,7 @@ func groupKeySeqLocs(childKeySeqLocs KeySeqLocs, maxFanOut int,
 	if beg < len(childKeySeqLocs) {
 		groupedKeySeqLocs = append(groupedKeySeqLocs, &KeySeqLoc{
 			Key: childKeySeqLocs[beg].Key,
+			Seq: maxSeq(childKeySeqLocs[beg:]),
 			Loc: Loc{
 				Type: LocTypeNode,
 				node: &NodeMem{KeySeqLocs: childKeySeqLocs[beg:]},
@@ -89,6 +91,16 @@ func groupKeySeqLocs(childKeySeqLocs KeySeqLocs, maxFanOut int,
 		})
 	}
 	return groupedKeySeqLocs
+}
+
+func maxSeq(keySeqLocs KeySeqLocs) Seq {
+	var rv Seq
+	for _, keySeqLoc := range keySeqLocs {
+		if rv < keySeqLoc.Seq {
+			rv = keySeqLoc.Seq
+		}
+	}
+	return rv
 }
 
 // processMutations merges or zippers together a key-ordered sequence
@@ -186,6 +198,7 @@ func (b *ValsBuilder) Done(mutations []Mutation, maxFanOut int,
 func mutationToValKeySeqLoc(m *Mutation) *KeySeqLoc {
 	return &KeySeqLoc{
 		Key: m.Key,
+		Seq: m.Seq,
 		Loc: Loc{
 			Type: LocTypeVal,
 			Size: uint32(len(m.Val)),
