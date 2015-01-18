@@ -168,19 +168,30 @@ func (b *ValsBuilder) AddExisting(existing *KeyLoc) {
 func (b *ValsBuilder) AddUpdate(existing *KeyLoc,
 	mutation *Mutation, mutationIdx int) {
 	if mutation.Op == MUTATION_OP_UPDATE {
-		b.s = append(b.s, MutationToValKeyLoc(mutation))
+		b.s = append(b.s, mutationToValKeyLoc(mutation))
 	}
 }
 
 func (b *ValsBuilder) AddNew(mutation *Mutation, mutationIdx int) {
 	if mutation.Op == MUTATION_OP_UPDATE {
-		b.s = append(b.s, MutationToValKeyLoc(mutation))
+		b.s = append(b.s, mutationToValKeyLoc(mutation))
 	}
 }
 
 func (b *ValsBuilder) Done(mutations []Mutation, maxFanOut int,
 	r io.ReaderAt) ([]*KeyLoc, error) {
 	return b.s, nil
+}
+
+func mutationToValKeyLoc(m *Mutation) *KeyLoc {
+	return &KeyLoc{
+		Key: m.Key,
+		Loc: Loc{
+			Type: LocTypeVal,
+			Size: uint32(len(m.Val)),
+			buf:  m.Val,
+		},
+	}
 }
 
 // --------------------------------------------------
@@ -252,17 +263,4 @@ func (b *NodesBuilder) Done(mutations []Mutation, maxFanOut int,
 	}
 
 	return rv, nil
-}
-
-// --------------------------------------------------
-
-func MutationToValKeyLoc(m *Mutation) *KeyLoc {
-	return &KeyLoc{
-		Key: m.Key,
-		Loc: Loc{
-			Type: LocTypeVal,
-			Size: uint32(len(m.Val)),
-			buf:  m.Val,
-		},
-	}
 }
