@@ -166,8 +166,9 @@ var zeroKeyLoc KeyLoc
 
 // A Mutation represents a mutation request on a key.
 type Mutation struct {
-	Key []byte
-	Val []byte
+	Key Key
+	Seq Seq
+	Val Val
 	Op  MutationOp
 }
 
