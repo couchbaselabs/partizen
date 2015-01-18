@@ -70,7 +70,7 @@ type Node interface {
 
 	IsLeaf() bool
 
-	GetKeyLocs() KeyLocs
+	GetKeySeqLocs() KeySeqLocs
 
 	// --------------------------------
 
@@ -154,15 +154,17 @@ const (
 	LocTypeWALEntry uint8 = 0x04
 )
 
-// A KeyLoc associates a Key with a Loc.
-type KeyLoc struct {
+// A KeySeqLoc associates a Key with a (max) Seq and a Loc.  When Loc
+// is a node, then Seq will be the max Seq for the entire sub-tree.
+type KeySeqLoc struct {
 	Key Key
+	Seq Seq
 	Loc Loc
 }
 
-type KeyLocs []*KeyLoc
+var zeroKeySeqLoc KeySeqLoc
 
-var zeroKeyLoc KeyLoc
+type KeySeqLocs []*KeySeqLoc
 
 // A Mutation represents a mutation request on a key.
 type Mutation struct {

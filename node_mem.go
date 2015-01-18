@@ -25,7 +25,7 @@ type NodeMem struct {
 
 	// -----------------------------------
 
-	KeyLocs KeyLocs
+	KeySeqLocs KeySeqLocs
 }
 
 // A NodePartition is a variable-sized struct that holds keys of
@@ -99,8 +99,8 @@ func (n *NodeMem) IsLeaf() bool {
 	return false
 }
 
-func (n *NodeMem) GetKeyLocs() KeyLocs {
-	return n.KeyLocs
+func (n *NodeMem) GetKeySeqLocs() KeySeqLocs {
+	return n.KeySeqLocs
 }
 
 func (n *NodeMem) InsertChildLoc(partitionId PartitionId,
