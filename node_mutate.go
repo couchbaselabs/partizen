@@ -209,6 +209,7 @@ func (b *ValsBuilder) Done(mutations []Mutation, maxFanOut int,
 }
 
 func mutationToValKeySeqLoc(m *Mutation) *KeySeqLoc {
+	// TODO: Memory mgmt of these []byte buffers.
 	return &KeySeqLoc{
 		Key: append([]byte(nil), m.Key...),
 		Seq: m.Seq,
