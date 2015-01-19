@@ -210,12 +210,12 @@ func (b *ValsBuilder) Done(mutations []Mutation, maxFanOut int,
 
 func mutationToValKeySeqLoc(m *Mutation) *KeySeqLoc {
 	return &KeySeqLoc{
-		Key: m.Key,
+		Key: append([]byte(nil), m.Key...),
 		Seq: m.Seq,
 		Loc: Loc{
 			Type: LocTypeVal,
 			Size: uint32(len(m.Val)),
-			buf:  m.Val,
+			buf:  append([]byte(nil), m.Val...),
 		},
 	}
 }
