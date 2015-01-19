@@ -128,6 +128,7 @@ func processMutations(
 	mutation, mok, mcur := nextMutation(mbeg, mend, mutations)
 
 	for eok && mok {
+		// TODO: See if binary search to skip past keys here is faster?
 		c := bytes.Compare(existing.Key, mutation.Key)
 		if c < 0 {
 			builder.AddExisting(existing)
