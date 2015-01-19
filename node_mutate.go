@@ -41,20 +41,20 @@ func nodeLocProcessMutations(nodeLoc *Loc, mutations []Mutation,
 			" nodeLoc: %#v, err: %v", nodeLoc, err)
 	}
 
+	var keySeqLocs KeySeqLocs
+	if node != nil {
+		keySeqLocs = node.GetKeySeqLocs()
+	}
+	n := keySeqLocsLen(keySeqLocs)
+
 	var builder KeySeqLocsBuilder
-	if node == nil || node.IsLeaf() || node.NumChildren() <= 0 {
+	if n <= 0 || node == nil || node.IsLeaf() {
 		builder = &ValsBuilder{}
 	} else {
 		builder = &NodesBuilder{}
 	}
 
-	var keySeqLocs KeySeqLocs
-	if node != nil {
-		keySeqLocs = node.GetKeySeqLocs()
-	}
-
-	processMutations(keySeqLocs, 0, keySeqLocsLen(keySeqLocs),
-		mutations, mbeg, mend, builder)
+	processMutations(keySeqLocs, 0, n, mutations, mbeg, mend, builder)
 
 	return builder.Done(mutations, maxFanOut, r)
 }

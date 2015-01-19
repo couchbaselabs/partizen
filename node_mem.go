@@ -39,6 +39,17 @@ type NodePartition struct {
 	KeyIdxs     []uint16 // Indexes into the Node.KeySeqIdxs array.
 }
 
+func (n *NodeMem) IsLeaf() bool {
+	if n.KeySeqLocs != nil && n.KeySeqLocs.Len() > 0 {
+		return n.KeySeqLocs.Loc(0).Type == LocTypeVal
+	}
+	return false
+}
+
+func (n *NodeMem) GetKeySeqLocs() KeySeqLocs {
+	return n.KeySeqLocs
+}
+
 func (n *NodeMem) LocateNodePartition(partitionId PartitionId) (
 	found bool, nodePartitionIdx int) {
 	nodePartitionIdx = sort.Search(len(n.NodePartitions),
@@ -86,21 +97,6 @@ func (n *NodeMem) ChildLoc(childLocIdx int) *Loc {
 		return nil
 	}
 	return &n.ChildLocs[childLocIdx]
-}
-
-func (n *NodeMem) NumChildren() int {
-	return len(n.ChildLocs)
-}
-
-func (n *NodeMem) IsLeaf() bool {
-	if len(n.ChildLocs) > 0 {
-		return n.ChildLocs[0].Type == LocTypeVal
-	}
-	return false
-}
-
-func (n *NodeMem) GetKeySeqLocs() KeySeqLocs {
-	return n.KeySeqLocs
 }
 
 func (n *NodeMem) InsertChildLoc(partitionId PartitionId,
