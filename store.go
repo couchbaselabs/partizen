@@ -209,7 +209,10 @@ func (s *store) RemoveCollection(collName string) error {
 }
 
 func (s *store) HasChanges() bool {
-	return s.changes != s.footer
+	s.m.Lock()
+	rv := s.changes != s.footer
+	s.m.Unlock()
+	return rv
 }
 
 func (s *store) CommitChanges(cs *ChangeStats) error {
