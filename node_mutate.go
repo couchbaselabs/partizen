@@ -48,7 +48,7 @@ func nodeLocProcessMutations(nodeLoc *Loc, mutations []Mutation,
 	n := keySeqLocsLen(keySeqLocs)
 
 	var builder KeySeqLocsBuilder
-	if n <= 0 || node == nil || node.IsLeaf() {
+	if n <= 0 || keySeqLocs.Loc(0).Type == LocTypeVal {
 		builder = &ValsBuilder{}
 	} else {
 		builder = &NodesBuilder{}

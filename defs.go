@@ -66,11 +66,11 @@ type RootLoc struct {
 // A Node of a partizen btree has its descendent locations first
 // ordered by PartitionID, then secondarily ordered by Key.
 type Node interface {
-	IsLeaf() bool
-
 	GetKeySeqLocs() KeySeqLocs
 
 	// --------------------------------
+
+	IsLeaf() bool
 
 	ChildLoc(childLocIdx int) *Loc
 
