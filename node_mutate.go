@@ -21,12 +21,14 @@ func rootNodeLocProcessMutations(rootNodeLoc *Loc, mutations []Mutation,
 		return nil, fmt.Errorf("rootLocProcessMutations:"+
 			" rootNodeLoc: %#v, err: %v", rootNodeLoc, err)
 	}
-	for keySeqLocs.Len() > 1 ||
-		(keySeqLocs.Len() > 0 && keySeqLocs.Loc(0).Type == LocTypeVal) {
-		keySeqLocs = groupKeySeqLocs(keySeqLocs, maxFanOut, nil)
-	}
-	if keySeqLocs.Len() > 0 {
-		return keySeqLocs.KeySeqLoc(0), nil
+	if keySeqLocs != nil {
+		for keySeqLocs.Len() > 1 ||
+			(keySeqLocs.Len() > 0 && keySeqLocs.Loc(0).Type == LocTypeVal) {
+			keySeqLocs = groupKeySeqLocs(keySeqLocs, maxFanOut, nil)
+		}
+		if keySeqLocs.Len() > 0 {
+			return keySeqLocs.KeySeqLoc(0), nil
+		}
 	}
 	return nil, nil
 }
@@ -46,12 +48,13 @@ func nodeLocProcessMutations(nodeLoc *Loc, mutations []Mutation,
 		keySeqLocs = node.GetKeySeqLocs()
 	}
 	n := keySeqLocsLen(keySeqLocs)
+	m := mend - mbeg
 
 	var builder KeySeqLocsBuilder
 	if n <= 0 || keySeqLocs.Loc(0).Type == LocTypeVal {
-		builder = &ValsBuilder{}
+		builder = &ValsBuilder{s: make(PtrKeySeqLocsArray, 0, m)} // Mem mgmt.
 	} else {
-		builder = &NodesBuilder{}
+		builder = &NodesBuilder{NodeMutations: make([]NodeMutations, 0, m)}
 	}
 
 	processMutations(keySeqLocs, 0, n, mutations, mbeg, mend, builder)
@@ -123,11 +126,11 @@ func keySeqLocsSlice(a KeySeqLocs, from, to int) (KeySeqLocs, Seq) {
 	return kslArr, maxSeq
 }
 
-func keySeqLocsAppend(a KeySeqLocs, key Key, seq Seq, loc Loc) KeySeqLocs {
-	if a == nil {
+func keySeqLocsAppend(g KeySeqLocs, key Key, seq Seq, loc Loc) KeySeqLocs {
+	if g == nil {
 		return KeySeqLocsArray{KeySeqLoc{Key: key, Seq: seq, Loc: loc}}
 	}
-	return a.Append(KeySeqLoc{Key: key, Seq: seq, Loc: loc})
+	return g.Append(KeySeqLoc{Key: key, Seq: seq, Loc: loc})
 }
 
 // processMutations merges or zippers together a key-ordered sequence
@@ -198,11 +201,11 @@ type KeySeqLocsBuilder interface {
 // array of LocTypeVal KeySeqLoc's, which can be then used as input as
 // the children to create new leaf Nodes.
 type ValsBuilder struct {
-	s KeySeqLocsArray
+	s PtrKeySeqLocsArray
 }
 
 func (b *ValsBuilder) AddExisting(existing *KeySeqLoc) {
-	b.s = append(b.s, *existing)
+	b.s = append(b.s, existing)
 }
 
 func (b *ValsBuilder) AddUpdate(existing *KeySeqLoc,
@@ -223,8 +226,8 @@ func (b *ValsBuilder) Done(mutations []Mutation, maxFanOut int,
 	return b.s, nil
 }
 
-func mutationToValKeySeqLoc(m *Mutation) KeySeqLoc {
-	return KeySeqLoc{
+func mutationToValKeySeqLoc(m *Mutation) *KeySeqLoc {
+	return &KeySeqLoc{
 		Key: m.Key, // NOTE: We copy key in groupKeySeqLocs/keySeqLocsSlice.
 		Seq: m.Seq,
 		Loc: Loc{
@@ -284,12 +287,12 @@ func (b *NodesBuilder) AddNew(mutation *Mutation, mutationIdx int) {
 
 func (b *NodesBuilder) Done(mutations []Mutation, maxFanOut int,
 	r io.ReaderAt) (KeySeqLocs, error) {
-	var rv KeySeqLocsArray
+	rv := PtrKeySeqLocsArray{}
 
 	for _, nm := range b.NodeMutations {
 		if nm.MutationsBeg >= nm.MutationsEnd {
 			if nm.NodeKeySeqLoc != nil {
-				rv = append(rv, *nm.NodeKeySeqLoc)
+				rv = append(rv, nm.NodeKeySeqLoc)
 			}
 		} else {
 			childKeySeqLocs, err :=
@@ -300,7 +303,7 @@ func (b *NodesBuilder) Done(mutations []Mutation, maxFanOut int,
 					" NodeKeySeqLoc: %#v, err: %v", nm.NodeKeySeqLoc, err)
 			}
 			rv = groupKeySeqLocs(childKeySeqLocs, maxFanOut,
-				rv).(KeySeqLocsArray)
+				rv).(PtrKeySeqLocsArray)
 		}
 	}
 

@@ -201,6 +201,34 @@ func (a KeySeqLocsArray) Append(x KeySeqLoc) KeySeqLocs {
 
 // ----------------------------------------
 
+type PtrKeySeqLocsArray []*KeySeqLoc
+
+func (a PtrKeySeqLocsArray) Len() int {
+	return len(a)
+}
+
+func (a PtrKeySeqLocsArray) Key(idx int) Key {
+	return a[idx].Key
+}
+
+func (a PtrKeySeqLocsArray) Seq(idx int) Seq {
+	return a[idx].Seq
+}
+
+func (a PtrKeySeqLocsArray) Loc(idx int) *Loc {
+	return &a[idx].Loc
+}
+
+func (a PtrKeySeqLocsArray) KeySeqLoc(idx int) *KeySeqLoc {
+	return a[idx]
+}
+
+func (a PtrKeySeqLocsArray) Append(x KeySeqLoc) KeySeqLocs {
+	return append(a, &x)
+}
+
+// ----------------------------------------
+
 // A Mutation represents a mutation request on a key.
 type Mutation struct {
 	Key Key
