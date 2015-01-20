@@ -14,9 +14,31 @@ func TestInsertBatchSize1(t *testing.T) {
 		1, 1, fixture.SortedTestData[:])
 }
 
+func TestInsertBatchSize100(t *testing.T) {
+	benchmarkInsertBatchSizeN(noop,
+		1, 100, fixture.SortedTestData[:])
+}
+
+// ------------------------------------
+
 func BenchmarkInsertBatchSize1(b *testing.B) {
 	benchmarkInsertBatchSizeN(func() { b.ResetTimer() },
 		b.N, 1, fixture.SortedTestData[:])
+}
+
+func BenchmarkInsertBatchSize10(b *testing.B) {
+	benchmarkInsertBatchSizeN(func() { b.ResetTimer() },
+		b.N, 10, fixture.SortedTestData[:])
+}
+
+func BenchmarkInsertBatchSize100(b *testing.B) {
+	benchmarkInsertBatchSizeN(func() { b.ResetTimer() },
+		b.N, 100, fixture.SortedTestData[:])
+}
+
+func BenchmarkInsertBatchSize1000(b *testing.B) {
+	benchmarkInsertBatchSizeN(func() { b.ResetTimer() },
+		b.N, 1000, fixture.SortedTestData[:])
 }
 
 func benchmarkInsertBatchSizeN(markStart func(), numRuns, batchSize int,
