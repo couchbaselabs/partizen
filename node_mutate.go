@@ -295,8 +295,12 @@ func (b *NodesBuilder) Done(mutations []Mutation, maxFanOut int,
 				rv = append(rv, nm.NodeKeySeqLoc)
 			}
 		} else {
+			var nodeLoc *Loc
+			if nm.NodeKeySeqLoc != nil {
+				nodeLoc = &nm.NodeKeySeqLoc.Loc
+			}
 			childKeySeqLocs, err :=
-				nodeLocProcessMutations(&nm.NodeKeySeqLoc.Loc, mutations,
+				nodeLocProcessMutations(nodeLoc, mutations,
 					nm.MutationsBeg, nm.MutationsEnd, maxFanOut, r)
 			if err != nil {
 				return nil, fmt.Errorf("NodesBuilder.Done:"+
