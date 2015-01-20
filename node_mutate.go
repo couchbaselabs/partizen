@@ -71,22 +71,20 @@ func groupKeySeqLocs(childKeySeqLocs KeySeqLocs, maxFanOut int,
 	beg := 0
 	n := keySeqLocsLen(childKeySeqLocs)
 	for i := maxFanOut; i < n; i = i + maxFanOut {
+		a, maxSeq := keySeqLocsSlice(childKeySeqLocs, beg, i)
 		groupedKeySeqLocs = keySeqLocsAppend(groupedKeySeqLocs,
-			childKeySeqLocs.Key(beg),
-			maxSeq(childKeySeqLocs, beg, i),
-			Loc{
+			a.Key(0), maxSeq, Loc{
 				Type: LocTypeNode,
-				node: &NodeMem{KeySeqLocs: childKeySeqLocs.Slice(beg, i)},
+				node: &NodeMem{KeySeqLocs: a},
 			})
 		beg = i
 	}
 	if beg < n {
+		a, maxSeq := keySeqLocsSlice(childKeySeqLocs, beg, n)
 		groupedKeySeqLocs = keySeqLocsAppend(groupedKeySeqLocs,
-			childKeySeqLocs.Key(beg),
-			maxSeq(childKeySeqLocs, beg, n),
-			Loc{
+			a.Key(0), maxSeq, Loc{
 				Type: LocTypeNode,
-				node: &NodeMem{KeySeqLocs: childKeySeqLocs.Slice(beg, n)},
+				node: &NodeMem{KeySeqLocs: a},
 			})
 	}
 	return groupedKeySeqLocs
@@ -99,21 +97,38 @@ func keySeqLocsLen(a KeySeqLocs) int {
 	return a.Len()
 }
 
+func keySeqLocsSlice(a KeySeqLocs, from, to int) (KeySeqLocs, Seq) {
+	kslArr := make(KeySeqLocsArray, 0, to-from)
+	maxSeq := Seq(0)
+
+	lenKeys := 0
+	for i := from; i < to; i++ {
+		lenKeys = lenKeys + len(a.Key(i))
+	}
+
+	keys := make([]byte, 0, lenKeys)
+
+	for i := from; i < to; i++ {
+		key := a.Key(i)
+		keys = append(keys, key...)
+		key = keys[len(keys)-len(key):]
+
+		seq := a.Seq(i)
+		if maxSeq < seq {
+			maxSeq = seq
+		}
+
+		kslArr = append(kslArr, &KeySeqLoc{Key: key, Seq: seq, Loc: *(a.Loc(i))})
+	}
+
+	return kslArr, maxSeq
+}
+
 func keySeqLocsAppend(a KeySeqLocs, key Key, seq Seq, loc Loc) KeySeqLocs {
 	if a == nil {
 		return &KeySeqLocsArray{&KeySeqLoc{Key: key, Seq: seq, Loc: loc}}
 	}
 	return a.Append(&KeySeqLoc{Key: key, Seq: seq, Loc: loc})
-}
-
-func maxSeq(keySeqLocs KeySeqLocs, from, to int) (rv Seq) {
-	for i := from; i < to; i++ {
-		seq := keySeqLocs.Seq(i)
-		if rv < seq {
-			rv = seq
-		}
-	}
-	return rv
 }
 
 // processMutations merges or zippers together a key-ordered sequence
@@ -212,7 +227,7 @@ func (b *ValsBuilder) Done(mutations []Mutation, maxFanOut int,
 func mutationToValKeySeqLoc(m *Mutation) *KeySeqLoc {
 	// TODO: Memory mgmt of these []byte buffers.
 	return &KeySeqLoc{
-		Key: append([]byte(nil), m.Key...),
+		Key: m.Key, // NOTE: We copy key in groupKeySeqLocs/keySeqLocsSlice.
 		Seq: m.Seq,
 		Loc: Loc{
 			Type: LocTypeVal,

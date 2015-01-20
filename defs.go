@@ -168,7 +168,6 @@ type KeySeqLocs interface {
 	Seq(idx int) Seq
 	Loc(idx int) *Loc
 	KeySeqLoc(idx int) *KeySeqLoc
-	Slice(from, to int) KeySeqLocs
 	Append(*KeySeqLoc) KeySeqLocs
 }
 
@@ -192,10 +191,6 @@ func (a KeySeqLocsArray) Loc(idx int) *Loc {
 
 func (a KeySeqLocsArray) KeySeqLoc(idx int) *KeySeqLoc {
 	return a[idx]
-}
-
-func (a KeySeqLocsArray) Slice(from, to int) KeySeqLocs {
-	return a[from:to]
 }
 
 func (a KeySeqLocsArray) Append(x *KeySeqLoc) KeySeqLocs {
