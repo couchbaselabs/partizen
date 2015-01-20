@@ -107,6 +107,7 @@ func keySeqLocsSlice(a KeySeqLocs, from, to int) (KeySeqLocs, Seq) {
 	}
 
 	keys := make([]byte, 0, lenKeys)
+	kslm := make([]KeySeqLoc, to-from)
 
 	for i := from; i < to; i++ {
 		key := a.Key(i)
@@ -118,7 +119,8 @@ func keySeqLocsSlice(a KeySeqLocs, from, to int) (KeySeqLocs, Seq) {
 			maxSeq = seq
 		}
 
-		kslArr = append(kslArr, &KeySeqLoc{Key: key, Seq: seq, Loc: *(a.Loc(i))})
+		kslm[i-from] = KeySeqLoc{Key: key, Seq: seq, Loc: *(a.Loc(i))}
+		kslArr = append(kslArr, &kslm[i-from])
 	}
 
 	return kslArr, maxSeq
