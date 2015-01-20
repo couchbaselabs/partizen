@@ -98,7 +98,7 @@ func keySeqLocsLen(a KeySeqLocs) int {
 }
 
 func keySeqLocsSlice(a KeySeqLocs, from, to int) (KeySeqLocs, Seq) {
-	kslArr := make(KeySeqLocsArray, 0, to-from)
+	kslArr := make(KeySeqLocsArray, to-from)
 	maxSeq := Seq(0)
 
 	lenKeys := 0
@@ -107,8 +107,6 @@ func keySeqLocsSlice(a KeySeqLocs, from, to int) (KeySeqLocs, Seq) {
 	}
 
 	keys := make([]byte, 0, lenKeys)
-	kslm := make([]KeySeqLoc, to-from)
-
 	for i := from; i < to; i++ {
 		key := a.Key(i)
 		keys = append(keys, key...)
@@ -119,8 +117,7 @@ func keySeqLocsSlice(a KeySeqLocs, from, to int) (KeySeqLocs, Seq) {
 			maxSeq = seq
 		}
 
-		kslm[i-from] = KeySeqLoc{Key: key, Seq: seq, Loc: *(a.Loc(i))}
-		kslArr = append(kslArr, &kslm[i-from])
+		kslArr[i-from] = KeySeqLoc{Key: key, Seq: seq, Loc: *(a.Loc(i))}
 	}
 
 	return kslArr, maxSeq
@@ -128,9 +125,9 @@ func keySeqLocsSlice(a KeySeqLocs, from, to int) (KeySeqLocs, Seq) {
 
 func keySeqLocsAppend(a KeySeqLocs, key Key, seq Seq, loc Loc) KeySeqLocs {
 	if a == nil {
-		return &KeySeqLocsArray{&KeySeqLoc{Key: key, Seq: seq, Loc: loc}}
+		return KeySeqLocsArray{KeySeqLoc{Key: key, Seq: seq, Loc: loc}}
 	}
-	return a.Append(&KeySeqLoc{Key: key, Seq: seq, Loc: loc})
+	return a.Append(KeySeqLoc{Key: key, Seq: seq, Loc: loc})
 }
 
 // processMutations merges or zippers together a key-ordered sequence
@@ -205,7 +202,7 @@ type ValsBuilder struct {
 }
 
 func (b *ValsBuilder) AddExisting(existing *KeySeqLoc) {
-	b.s = append(b.s, existing)
+	b.s = append(b.s, *existing)
 }
 
 func (b *ValsBuilder) AddUpdate(existing *KeySeqLoc,
@@ -226,15 +223,14 @@ func (b *ValsBuilder) Done(mutations []Mutation, maxFanOut int,
 	return b.s, nil
 }
 
-func mutationToValKeySeqLoc(m *Mutation) *KeySeqLoc {
-	// TODO: Memory mgmt of these []byte buffers.
-	return &KeySeqLoc{
+func mutationToValKeySeqLoc(m *Mutation) KeySeqLoc {
+	return KeySeqLoc{
 		Key: m.Key, // NOTE: We copy key in groupKeySeqLocs/keySeqLocsSlice.
 		Seq: m.Seq,
 		Loc: Loc{
 			Type: LocTypeVal,
 			Size: uint32(len(m.Val)),
-			buf:  append([]byte(nil), m.Val...),
+			buf:  append([]byte(nil), m.Val...), // TODO: Memory mgmt.
 		},
 	}
 }
@@ -293,7 +289,7 @@ func (b *NodesBuilder) Done(mutations []Mutation, maxFanOut int,
 	for _, nm := range b.NodeMutations {
 		if nm.MutationsBeg >= nm.MutationsEnd {
 			if nm.NodeKeySeqLoc != nil {
-				rv = append(rv, nm.NodeKeySeqLoc)
+				rv = append(rv, *nm.NodeKeySeqLoc)
 			}
 		} else {
 			childKeySeqLocs, err :=

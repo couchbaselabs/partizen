@@ -168,10 +168,12 @@ type KeySeqLocs interface {
 	Seq(idx int) Seq
 	Loc(idx int) *Loc
 	KeySeqLoc(idx int) *KeySeqLoc
-	Append(*KeySeqLoc) KeySeqLocs
+	Append(KeySeqLoc) KeySeqLocs
 }
 
-type KeySeqLocsArray []*KeySeqLoc
+// ----------------------------------------
+
+type KeySeqLocsArray []KeySeqLoc
 
 func (a KeySeqLocsArray) Len() int {
 	return len(a)
@@ -190,12 +192,14 @@ func (a KeySeqLocsArray) Loc(idx int) *Loc {
 }
 
 func (a KeySeqLocsArray) KeySeqLoc(idx int) *KeySeqLoc {
-	return a[idx]
+	return &a[idx]
 }
 
-func (a KeySeqLocsArray) Append(x *KeySeqLoc) KeySeqLocs {
+func (a KeySeqLocsArray) Append(x KeySeqLoc) KeySeqLocs {
 	return append(a, x)
 }
+
+// ----------------------------------------
 
 // A Mutation represents a mutation request on a key.
 type Mutation struct {
