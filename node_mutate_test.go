@@ -1,8 +1,33 @@
 package partizen
 
 import (
+	"fmt"
 	"testing"
 )
+
+func printPrefix(n int) {
+	for i := 0; i < n; i++ {
+		fmt.Print(".")
+	}
+}
+
+func printTree(loc *Loc, depth int) {
+	a := loc.node.GetKeySeqLocs()
+	n := a.Len()
+	depth1 := depth + 1
+	for i := 0; i < n; i++ {
+		printPrefix(depth)
+		cloc := a.Loc(i)
+		if cloc.Type == LocTypeVal {
+			fmt.Printf("%s = %s\n", a.Key(i), cloc.buf)
+		} else if cloc.Type == LocTypeNode {
+			fmt.Printf("%s:\n", a.Key(i))
+			printTree(cloc, depth1)
+		} else {
+			fmt.Printf("UNEXPECTED TYPE: %#v", cloc)
+		}
+	}
+}
 
 func isSomeMemLoc(loc *Loc, expectedLocType uint8) bool {
 	if !(loc.Offset == 0 && loc.Flags == 0 && loc.CheckSum == 0) {
@@ -261,5 +286,31 @@ func TestMutationsOn2Vals(t *testing.T) {
 	}
 	if kl4 != nil {
 		t.Errorf("expected no keyloc")
+	}
+}
+
+func TestMutationsDepth(t *testing.T) {
+	n := 12
+	start := 0
+	delta := 1
+	if false {
+		start = n - 1
+		delta = -1
+	}
+
+	var rootNodeLoc *Loc
+	m := make([]Mutation, 1, 1)
+	m[0].Op = MUTATION_OP_UPDATE
+	for i := start; i < n && i >= 0; i = i + delta {
+		m[0].Key = []byte(fmt.Sprintf("%4d", i))
+		m[0].Val = Val(m[0].Key)
+		ksl, err := rootNodeLocProcessMutations(rootNodeLoc, m, 4, nil)
+		if err != nil {
+			t.Errorf("unexpected err: %#v", err)
+		}
+		rootNodeLoc = &ksl.Loc
+
+		fmt.Printf("================= %d\n", i)
+		printTree(rootNodeLoc, 0)
 	}
 }

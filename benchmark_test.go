@@ -12,7 +12,9 @@ func noop() {}
 func TestInsertBatchSize1(t *testing.T) {
 	benchmarkInsertBatchSizeN(noop,
 		1, 1, directBatchChoice,
-		fixture.SortedTestData[:])
+		// TODO: Theory is that unbalanced tree leads this
+		// to be too slow for full datasize.
+		fixture.SortedTestData[:200])
 }
 
 func TestInsertBatchSize100(t *testing.T) {
@@ -26,7 +28,7 @@ func TestInsertBatchSize1Reverse(t *testing.T) {
 		1, 1, reverseBatchChoice,
 		// TODO: Theory is that unbalanced tree leads this
 		// to be too slow for full datasize.
-		fixture.SortedTestData[:2000])
+		fixture.SortedTestData[:200])
 }
 
 func TestInsertBatchSize100Reverse(t *testing.T) {
@@ -66,7 +68,9 @@ func BenchmarkInsertBatchSize1000(b *testing.B) {
 func BenchmarkInsertBatchReverseSize1(b *testing.B) {
 	benchmarkInsertBatchSizeN(func() { b.ResetTimer() },
 		b.N, 1, reverseBatchChoice,
-		fixture.SortedTestData[:])
+		// TODO: Theory is that unbalanced tree leads this
+		// to be too slow for full datasize.
+		fixture.SortedTestData[:200])
 }
 
 func BenchmarkInsertBatchReverseSize10(b *testing.B) {
