@@ -78,6 +78,13 @@ func keySeqLocProcessMutations(keySeqLoc *KeySeqLoc,
 // parent nodes, where the parent nodes will meet the given maxFanOut.
 func groupKeySeqLocs(childKeySeqLocs KeySeqLocs, maxFanOut int,
 	groupedKeySeqLocsStart KeySeqLocs) KeySeqLocs {
+	// TODO: At this point, if the childKeySeqLocs are all nodes, then
+	// some of those nodes might be much smaller than others and they
+	// might benefit from rebalancing before forming up parent
+	// groupings.  Knowing whether those child nodes are either
+	// in-memory and/or are dirty would also be helpful hints as to
+	// whether to attempt some rebalancing.
+	//
 	// TODO: A more optimal grouping approach would instead partition
 	// the childKeySeqLocs more evenly, instead of the current approach
 	// where the last group might be unfairly too small as it has only
