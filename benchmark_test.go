@@ -21,6 +21,20 @@ func TestInsertBatchSize100(t *testing.T) {
 		fixture.SortedTestData[:])
 }
 
+func TestInsertBatchSize1Reverse(t *testing.T) {
+	benchmarkInsertBatchSizeN(noop,
+		1, 1, reverseBatchChoice,
+		// TODO: Theory is that unbalanced tree leads this
+		// to be too slow for full datasize.
+		fixture.SortedTestData[:2000])
+}
+
+func TestInsertBatchSize100Reverse(t *testing.T) {
+	benchmarkInsertBatchSizeN(noop,
+		1, 100, reverseBatchChoice,
+		fixture.SortedTestData[:])
+}
+
 // ------------------------------------
 
 func BenchmarkInsertBatchSize1(b *testing.B) {
@@ -77,7 +91,7 @@ func BenchmarkInsertBatchReverseSize1000(b *testing.B) {
 
 func benchmarkInsertBatchSizeN(markStart func(), numRuns,
 	batchSize int,
-	batchChoice func(mm[][]Mutation, j int) []Mutation,
+	batchChoice func(mm [][]Mutation, j int) []Mutation,
 	data []fixture.Item) error {
 	var mm [][]Mutation
 	t := 0
@@ -100,7 +114,9 @@ func benchmarkInsertBatchSizeN(markStart func(), numRuns,
 	for i := 0; i < numRuns; i++ {
 		var rootNodeLoc *Loc
 		for j := 0; j < len(mm); j++ {
-			ksl, err := rootNodeLocProcessMutations(rootNodeLoc, mm[j], 32, nil)
+			ksl, err :=
+				rootNodeLocProcessMutations(rootNodeLoc,
+					batchChoice(mm, j), 32, nil)
 			if err != nil {
 				return err
 			}
@@ -113,12 +129,12 @@ func benchmarkInsertBatchSizeN(markStart func(), numRuns,
 
 // ------------------------------------
 
-func directBatchChoice(mm[][]Mutation, j int) []Mutation {
+func directBatchChoice(mm [][]Mutation, j int) []Mutation {
 	return mm[j]
 }
 
-func reverseBatchChoice(mm[][]Mutation, j int) []Mutation {
-	return mm[len(mm) - 1 - j]
+func reverseBatchChoice(mm [][]Mutation, j int) []Mutation {
+	return mm[len(mm)-1-j]
 }
 
 // ------------------------------------
