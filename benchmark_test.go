@@ -116,15 +116,15 @@ func benchmarkInsertBatchSizeN(markStart func(), numRuns,
 	markStart()
 
 	for i := 0; i < numRuns; i++ {
-		var rootNodeLoc *Loc
+		var rootKeySeqLoc *KeySeqLoc
+		var err error
 		for j := 0; j < len(mm); j++ {
-			ksl, err :=
-				rootNodeLocProcessMutations(rootNodeLoc,
+			rootKeySeqLoc, err =
+				rootKeySeqLocProcessMutations(rootKeySeqLoc,
 					batchChoice(mm, j), 32, nil)
 			if err != nil {
 				return err
 			}
-			rootNodeLoc = &ksl.Loc
 		}
 	}
 

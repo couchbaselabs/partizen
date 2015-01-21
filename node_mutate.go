@@ -6,20 +6,21 @@ import (
 	"io"
 )
 
-// rootNodeLocProcessMutations is the entry function for applying a
-// batch of copy-on-write mutations to a tree (rootNodeLoc).  The
+// rootKeySeqLocProcessMutations is the entry function for applying a
+// batch of copy-on-write mutations to a tree (rootKeySeqLoc).  The
 // mutations must be ordered by ascending key order, and must also
 // have no duplicates.  That is, if the application has a sequence of
 // mutations on the same key, the caller must provide only the last
-// mutation for any key.  The rootNodeLoc may be nil to start off a
-// brand new tree.
-func rootNodeLocProcessMutations(rootNodeLoc *Loc, mutations []Mutation,
-	maxFanOut int, r io.ReaderAt) (*KeySeqLoc, error) {
-	keySeqLocs, err := nodeLocProcessMutations(rootNodeLoc, mutations,
-		0, len(mutations), maxFanOut, r)
+// mutation for any key.  Use nil for rootKeySeqLoc to start a brand
+// new tree.
+func rootKeySeqLocProcessMutations(rootKeySeqLoc *KeySeqLoc,
+	mutations []Mutation, maxFanOut int, r io.ReaderAt) (
+	*KeySeqLoc, error) {
+	keySeqLocs, err := keySeqLocProcessMutations(rootKeySeqLoc,
+		mutations, 0, len(mutations), maxFanOut, r)
 	if err != nil {
-		return nil, fmt.Errorf("rootLocProcessMutations:"+
-			" rootNodeLoc: %#v, err: %v", rootNodeLoc, err)
+		return nil, fmt.Errorf("rootKeySeqLocProcessMutations:"+
+			" rootKeySeqLoc: %#v, err: %v", rootKeySeqLoc, err)
 	}
 	if keySeqLocs != nil {
 		for keySeqLocs.Len() > 1 ||
@@ -33,20 +34,31 @@ func rootNodeLocProcessMutations(rootNodeLoc *Loc, mutations []Mutation,
 	return nil, nil
 }
 
-// nodeLocProcessMutations recursively applies the batch of mutations
-// down the tree, building up copy-on-write new nodes.
-func nodeLocProcessMutations(nodeLoc *Loc, mutations []Mutation,
-	mbeg, mend int, maxFanOut int, r io.ReaderAt) (KeySeqLocs, error) {
-	node, err := ReadLocNode(nodeLoc, r)
-	if err != nil {
-		return nil, fmt.Errorf("nodeLocProcessMutations:"+
-			" nodeLoc: %#v, err: %v", nodeLoc, err)
+// keySeqLocProcessMutations recursively applies the batch of
+// mutations down the tree, building up copy-on-write new nodes.
+func keySeqLocProcessMutations(keySeqLoc *KeySeqLoc,
+	mutations []Mutation, mbeg, mend int, maxFanOut int,
+	r io.ReaderAt) (KeySeqLocs, error) {
+	var keySeqLocs KeySeqLocs
+
+	if keySeqLoc != nil {
+		if keySeqLoc.Loc.Type == LocTypeNode {
+			node, err := ReadLocNode(&keySeqLoc.Loc, r)
+			if err != nil {
+				return nil, fmt.Errorf("keySeqLocProcessMutations:"+
+					" keySeqLoc: %#v, err: %v", keySeqLoc, err)
+			}
+			if node != nil {
+				keySeqLocs = node.GetKeySeqLocs()
+			}
+		} else if keySeqLoc.Loc.Type == LocTypeVal {
+			keySeqLocs = PtrKeySeqLocsArray{keySeqLoc}
+		} else {
+			return nil, fmt.Errorf("keySeqLocProcessMutations:"+
+				" unexpected keySeqLoc.Type, keySeqLoc: %#v", keySeqLoc)
+		}
 	}
 
-	var keySeqLocs KeySeqLocs
-	if node != nil {
-		keySeqLocs = node.GetKeySeqLocs()
-	}
 	n := keySeqLocsLen(keySeqLocs)
 	m := mend - mbeg
 
@@ -82,13 +94,20 @@ func groupKeySeqLocs(childKeySeqLocs KeySeqLocs, maxFanOut int,
 			})
 		beg = i
 	}
-	if beg < n {
-		a, maxSeq := keySeqLocsSlice(childKeySeqLocs, beg, n)
-		groupedKeySeqLocs = keySeqLocsAppend(groupedKeySeqLocs,
-			a.Key(0), maxSeq, Loc{
-				Type: LocTypeNode,
-				node: &NodeMem{KeySeqLocs: a},
-			})
+	if beg < n { // If there were leftovers...
+		if beg <= 0 { // If there were only leftovers...
+			a, maxSeq := keySeqLocsSlice(childKeySeqLocs, beg, n)
+			groupedKeySeqLocs = keySeqLocsAppend(groupedKeySeqLocs,
+				a.Key(0), maxSeq, Loc{
+					Type: LocTypeNode,
+					node: &NodeMem{KeySeqLocs: a},
+				})
+		} else { // Pass the leftovers upwards.
+			for i := beg; i < n; i++ {
+				groupedKeySeqLocs =
+					groupedKeySeqLocs.Append(*childKeySeqLocs.KeySeqLoc(i))
+			}
+		}
 	}
 	return groupedKeySeqLocs
 }
@@ -248,14 +267,14 @@ type NodesBuilder struct {
 }
 
 type NodeMutations struct {
-	NodeKeySeqLoc *KeySeqLoc
+	BaseKeySeqLoc *KeySeqLoc
 	MutationsBeg  int // Inclusive index into []Mutation.
 	MutationsEnd  int // Exclusive index into []Mutation.
 }
 
 func (b *NodesBuilder) AddExisting(existing *KeySeqLoc) {
 	b.NodeMutations = append(b.NodeMutations, NodeMutations{
-		NodeKeySeqLoc: existing,
+		BaseKeySeqLoc: existing,
 		MutationsBeg:  -1,
 		MutationsEnd:  -1,
 	})
@@ -264,7 +283,7 @@ func (b *NodesBuilder) AddExisting(existing *KeySeqLoc) {
 func (b *NodesBuilder) AddUpdate(existing *KeySeqLoc,
 	mutation *Mutation, mutationIdx int) {
 	b.NodeMutations = append(b.NodeMutations, NodeMutations{
-		NodeKeySeqLoc: existing,
+		BaseKeySeqLoc: existing,
 		MutationsBeg:  mutationIdx,
 		MutationsEnd:  mutationIdx + 1,
 	})
@@ -291,20 +310,16 @@ func (b *NodesBuilder) Done(mutations []Mutation, maxFanOut int,
 
 	for _, nm := range b.NodeMutations {
 		if nm.MutationsBeg >= nm.MutationsEnd {
-			if nm.NodeKeySeqLoc != nil {
-				rv = append(rv, nm.NodeKeySeqLoc)
+			if nm.BaseKeySeqLoc != nil {
+				rv = append(rv, nm.BaseKeySeqLoc)
 			}
 		} else {
-			var nodeLoc *Loc
-			if nm.NodeKeySeqLoc != nil {
-				nodeLoc = &nm.NodeKeySeqLoc.Loc
-			}
 			childKeySeqLocs, err :=
-				nodeLocProcessMutations(nodeLoc, mutations,
+				keySeqLocProcessMutations(nm.BaseKeySeqLoc, mutations,
 					nm.MutationsBeg, nm.MutationsEnd, maxFanOut, r)
 			if err != nil {
 				return nil, fmt.Errorf("NodesBuilder.Done:"+
-					" NodeKeySeqLoc: %#v, err: %v", nm.NodeKeySeqLoc, err)
+					" BaseKeySeqLoc: %#v, err: %v", nm.BaseKeySeqLoc, err)
 			}
 			rv = groupKeySeqLocs(childKeySeqLocs, maxFanOut,
 				rv).(PtrKeySeqLocsArray)
