@@ -2,35 +2,56 @@ package partizen
 
 import (
 	"fmt"
+	"io"
 )
 
-func (r *RootLoc) Get(partitionId PartitionId, key Key, withValue bool) (
+func (r *CollRoot) Get(partitionId PartitionId, key Key, withValue bool) (
 	seq Seq, val Val, err error) {
+	if partitionId != 0 {
+		return 0, nil, fmt.Errorf("partition unimplemented")
+	}
+
 	r.m.Lock()
-	node := r.node
+	rksl := r.RootKeySeqLoc // TODO: Ref count.
 	r.m.Unlock()
 
-	return r.NodeGet(node, partitionId, key, withValue)
+	ksl, err := locateKeySeqLoc(rksl, key, io.ReaderAt(nil))
+	if err != nil || ksl == nil {
+		return 0, nil, err
+	}
+	if ksl.Loc.Type != LocTypeVal {
+		return 0, nil, fmt.Errorf("unexpected type, ksl: %#v", ksl)
+	}
+	return ksl.Seq, ksl.Loc.buf, nil
 }
 
-func (r *RootLoc) Set(partitionId PartitionId, key Key, seq Seq, val Val) (
+func (r *CollRoot) Set(partitionId PartitionId, key Key, seq Seq, val Val) (
 	err error) {
+	if partitionId != 0 {
+		return fmt.Errorf("partition unimplemented")
+	}
+
 	r.store.startChanges()
 
 	r.m.Lock()
-	node := r.node
+	rksl := r.RootKeySeqLoc // TODO: Ref count.
 	r.m.Unlock()
 
-	n, err := r.NodeSet(node, partitionId, key, seq, val)
+	rksl2, err := rootKeySeqLocProcessMutations(rksl, []Mutation{
+		Mutation{
+			Key: key,
+			Seq: seq,
+			Val: val,
+			Op:  MUTATION_OP_UPDATE,
+		},
+	}, int(r.minFanOut), int(r.maxFanOut), io.ReaderAt(nil))
 	if err != nil {
 		return err
 	}
 
 	r.m.Lock()
-	if r.node == node {
-		r.Clear()
-		r.Type = LocTypeNode
-		r.node = n
+	if r.RootKeySeqLoc == rksl {
+		r.RootKeySeqLoc = rksl2
 	} else {
 		err = fmt.Errorf("concurrent modification")
 	}
@@ -39,39 +60,39 @@ func (r *RootLoc) Set(partitionId PartitionId, key Key, seq Seq, val Val) (
 	return err
 }
 
-func (r *RootLoc) Merge(partitionId PartitionId, key Key, seq Seq,
+func (r *CollRoot) Merge(partitionId PartitionId, key Key, seq Seq,
 	mergeFunc MergeFunc) error {
 	return fmt.Errorf("unimplemented")
 }
 
-func (r *RootLoc) Del(partitionId PartitionId, key Key, seq Seq) error {
+func (r *CollRoot) Del(partitionId PartitionId, key Key, seq Seq) error {
 	return fmt.Errorf("unimplemented")
 }
 
-func (r *RootLoc) Min(withValue bool) (
+func (r *CollRoot) Min(withValue bool) (
 	partitionId PartitionId, key Key, seq Seq, val Val, err error) {
 	return 0, nil, 0, nil, fmt.Errorf("unimplemented")
 }
 
-func (r *RootLoc) Max(withValue bool) (
+func (r *CollRoot) Max(withValue bool) (
 	partitionId PartitionId, key Key, seq Seq, val Val, err error) {
 	return 0, nil, 0, nil, fmt.Errorf("unimplemented")
 }
 
-func (r *RootLoc) Scan(key Key,
+func (r *CollRoot) Scan(key Key,
 	reverse bool,
 	partitionIds []PartitionId, // Use nil for all partitions.
 	withValue bool) (Cursor, error) {
 	return nil, fmt.Errorf("unimplemented")
 }
 
-func (r *RootLoc) Diff(partitionId PartitionId, seq Seq,
+func (r *CollRoot) Diff(partitionId PartitionId, seq Seq,
 	exactToSeq bool) (
 	Cursor, error) {
 	return nil, fmt.Errorf("unimplemented")
 }
 
-func (r *RootLoc) Rollback(partitionId PartitionId, seq Seq,
+func (r *CollRoot) Rollback(partitionId PartitionId, seq Seq,
 	exactToSeq bool) error {
 	return fmt.Errorf("unimplemented")
 }

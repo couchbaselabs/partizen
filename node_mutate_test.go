@@ -300,7 +300,7 @@ func TestMutationsOn2Vals(t *testing.T) {
 var PRIME = 47
 
 func TestMutationsDepth(t *testing.T) {
-	n := 100 // Num inserts.
+	n := 10 // Num inserts.
 	iStart := 0
 	iRange := 100 // Key range is [0, iRange).
 	delta := func(c, i int) int { return (i + 1) % iRange }

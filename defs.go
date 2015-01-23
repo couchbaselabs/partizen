@@ -22,8 +22,8 @@ type Footer struct {
 	WALTailLoc  WALItemLoc  // Last item of write-ahead-log.
 
 	// Locations of partizen btree root Nodes, 1 per Collection.
-	// len(Footer.CollRootLocs) equals len(StoreDef.CollDefs).
-	CollRootLocs []*RootLoc
+	// len(Footer.CollRoots) equals len(StoreDef.CollDefs).
+	CollRoots []*CollRoot
 }
 
 type StoreDefLoc struct {
@@ -47,15 +47,16 @@ type CollDef struct {
 	MaxFanOut       uint16 // Usually (2*MinFanOut)+1.
 }
 
-// A RootLoc implements the Collection interface.
-type RootLoc struct {
-	Loc
+// A CollRoot implements the Collection interface.
+type CollRoot struct {
+	RootKeySeqLoc *KeySeqLoc
+
 	store       *store // Pointer to parent store.
 	name        string
 	compareFunc CompareFunc
 	minFanOut   uint16
 	maxFanOut   uint16
-	m           sync.Mutex // Protects the Loc fields, like Loc.node.
+	m           sync.Mutex // Protects RootKeySeqLoc.
 
 	// TODO: Need more fields here to track gkvlite-esque ref-counting.
 }

@@ -104,7 +104,7 @@ func readHeader(f StoreFile, o *StoreOptions) (*Header, error) {
 func readFooter(f StoreFile, o *StoreOptions, header *Header,
 	startOffset uint64) (*Footer, error) {
 	footer := &Footer{
-		CollRootLocs: make([]*RootLoc, 0),
+		CollRoots: make([]*CollRoot, 0),
 	}
 	footer.StoreDefLoc.Type = LocTypeStoreDef
 	footer.StoreDefLoc.storeDef = &StoreDef{}
@@ -135,7 +135,7 @@ func (s *store) GetCollection(collName string) (Collection, error) {
 
 	for i, collDef := range s.changes.StoreDefLoc.storeDef.CollDefs {
 		if collDef.Name == collName {
-			return s.changes.CollRootLocs[i], nil
+			return s.changes.CollRoots[i], nil
 		}
 	}
 	return nil, fmt.Errorf("no collection, collName: %s", collName)
@@ -164,7 +164,7 @@ func (s *store) AddCollection(collName string, compareFuncName string) (
 		MinFanOut:       s.storeOptions.DefaultMinFanOut,
 		MaxFanOut:       s.storeOptions.DefaultMaxFanOut,
 	}
-	r := &RootLoc{
+	r := &CollRoot{
 		store:       s,
 		name:        c.Name,
 		compareFunc: compareFunc,
@@ -175,9 +175,9 @@ func (s *store) AddCollection(collName string, compareFuncName string) (
 	var changes = s.changes.startChanges(nil)
 
 	changes.StoreDefLoc.storeDef.CollDefs =
-		append(changes.StoreDefLoc.storeDef.CollDefs, c)
-	changes.CollRootLocs =
-		append(changes.CollRootLocs, r)
+		append(changes.StoreDefLoc.storeDef.CollDefs, c) // TODO: sort.
+	changes.CollRoots =
+		append(changes.CollRoots, r) // TODO: sort.
 
 	s.changes = changes
 
@@ -197,16 +197,16 @@ func (s *store) RemoveCollection(collName string) error {
 			a[len(a)-1] = nil
 			changes.StoreDefLoc.storeDef.CollDefs = a[:len(a)-1]
 
-			b := changes.CollRootLocs
+			b := changes.CollRoots
 			copy(b[i:], b[i+1:])
 			b[len(b)-1] = nil
-			changes.CollRootLocs = b[:len(b)-1]
+			changes.CollRoots = b[:len(b)-1]
 
 			s.changes = changes
-
 			return nil
 		}
 	}
+
 	return fmt.Errorf("unknown collection, collName: %s", collName)
 }
 
@@ -247,7 +247,7 @@ func (f *Footer) startChanges(orig *Footer) *Footer {
 		CollDefs: append([]*CollDef(nil), c.StoreDefLoc.storeDef.CollDefs...),
 	}
 
-	c.CollRootLocs = append([]*RootLoc(nil), c.CollRootLocs...)
+	c.CollRoots = append([]*CollRoot(nil), c.CollRoots...)
 
 	return &c
 }
