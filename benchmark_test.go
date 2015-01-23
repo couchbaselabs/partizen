@@ -42,7 +42,9 @@ func TestInsertBatchSize100Reverse(t *testing.T) {
 func BenchmarkInsertBatchSize1(b *testing.B) {
 	benchmarkInsertBatchSizeN(func() { b.ResetTimer() },
 		b.N, 1, directBatchChoice,
-		fixture.SortedTestData[:])
+		// TODO: Theory is that unbalanced tree leads this
+		// to be too slow for full datasize.
+		fixture.SortedTestData[:200])
 }
 
 func BenchmarkInsertBatchSize10(b *testing.B) {
@@ -121,7 +123,7 @@ func benchmarkInsertBatchSizeN(markStart func(), numRuns,
 		for j := 0; j < len(mm); j++ {
 			rootKeySeqLoc, err =
 				rootKeySeqLocProcessMutations(rootKeySeqLoc,
-					batchChoice(mm, j), 32, nil)
+				batchChoice(mm, j), 15, 32, nil)
 			if err != nil {
 				return err
 			}

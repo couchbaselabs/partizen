@@ -43,7 +43,7 @@ func isSomeMemLoc(loc *Loc, expectedLocType uint8) bool {
 }
 
 func TestEmptyMutate(t *testing.T) {
-	ksl, err := rootKeySeqLocProcessMutations(nil, nil, 32, nil)
+	ksl, err := rootKeySeqLocProcessMutations(nil, nil, 15, 32, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
 	}
@@ -57,7 +57,7 @@ func TestEmptyMutate(t *testing.T) {
 			node: &NodeMem{},
 		},
 	}
-	ksl, err = rootKeySeqLocProcessMutations(rootKeySeqLoc, nil, 32, nil)
+	ksl, err = rootKeySeqLocProcessMutations(rootKeySeqLoc, nil, 15, 32, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
 	}
@@ -66,7 +66,7 @@ func TestEmptyMutate(t *testing.T) {
 	}
 
 	m := []Mutation{}
-	ksl, err = rootKeySeqLocProcessMutations(nil, m, 32, nil)
+	ksl, err = rootKeySeqLocProcessMutations(nil, m, 15, 32, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
 	}
@@ -77,7 +77,7 @@ func TestEmptyMutate(t *testing.T) {
 	m = []Mutation{
 		Mutation{},
 	} // Mutation.Op is unknown.
-	ksl, err = rootKeySeqLocProcessMutations(nil, m, 32, nil)
+	ksl, err = rootKeySeqLocProcessMutations(nil, m, 15, 32, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
 	}
@@ -91,7 +91,7 @@ func TestEmptyMutate(t *testing.T) {
 			Op:  MUTATION_OP_DELETE,
 		},
 	}
-	ksl, err = rootKeySeqLocProcessMutations(nil, m, 32, nil)
+	ksl, err = rootKeySeqLocProcessMutations(nil, m, 15, 32, nil)
 	if err != nil {
 		t.Errorf("expected ok, missing key delete on nil root, err: %#v", err)
 	}
@@ -108,7 +108,7 @@ func TestMutationsOn1Val(t *testing.T) {
 			Op:  MUTATION_OP_UPDATE,
 		},
 	}
-	ksl, err := rootKeySeqLocProcessMutations(nil, m, 32, nil)
+	ksl, err := rootKeySeqLocProcessMutations(nil, m, 15, 32, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
 	}
@@ -146,7 +146,7 @@ func TestMutationsOn1Val(t *testing.T) {
 				Op:  MUTATION_OP_DELETE,
 			},
 		}
-		ksl2, err := rootKeySeqLocProcessMutations(ksl2, m, 32, nil)
+		ksl2, err := rootKeySeqLocProcessMutations(ksl2, m, 15, 32, nil)
 		if err != nil {
 			t.Errorf("expected ok, err: %#v", err)
 		}
@@ -182,7 +182,7 @@ func TestMutationsOn1Val(t *testing.T) {
 			Op:  MUTATION_OP_DELETE,
 		},
 	}
-	ksl3, err := rootKeySeqLocProcessMutations(ksl2, m, 32, nil)
+	ksl3, err := rootKeySeqLocProcessMutations(ksl2, m, 15, 32, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
 	}
@@ -204,7 +204,7 @@ func TestMutationsOn2Vals(t *testing.T) {
 			Op:  MUTATION_OP_UPDATE,
 		},
 	}
-	ksl, err := rootKeySeqLocProcessMutations(nil, m, 32, nil)
+	ksl, err := rootKeySeqLocProcessMutations(nil, m, 15, 32, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
 	}
@@ -262,7 +262,7 @@ func TestMutationsOn2Vals(t *testing.T) {
 				Op:  MUTATION_OP_DELETE,
 			},
 		}
-		ksl2, err := rootKeySeqLocProcessMutations(ksl2, m, 32, nil)
+		ksl2, err := rootKeySeqLocProcessMutations(ksl2, m, 15, 32, nil)
 		if err != nil {
 			t.Errorf("expected ok, err: %#v", err)
 		}
@@ -275,7 +275,7 @@ func TestMutationsOn2Vals(t *testing.T) {
 			Op:  MUTATION_OP_DELETE,
 		},
 	}
-	ksl3, err := rootKeySeqLocProcessMutations(ksl2, m, 32, nil)
+	ksl3, err := rootKeySeqLocProcessMutations(ksl2, m, 15, 32, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
 	}
@@ -288,7 +288,7 @@ func TestMutationsOn2Vals(t *testing.T) {
 			Op:  MUTATION_OP_DELETE,
 		},
 	}
-	ksl4, err := rootKeySeqLocProcessMutations(ksl3, m, 32, nil)
+	ksl4, err := rootKeySeqLocProcessMutations(ksl3, m, 15, 32, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
 	}
@@ -323,7 +323,7 @@ func TestMutationsDepth(t *testing.T) {
 		m[0].Key = []byte(fmt.Sprintf("%4d", i))
 		m[0].Val = Val(m[0].Key)
 		rootKeySeqLoc, err =
-			rootKeySeqLocProcessMutations(rootKeySeqLoc, m, 4, nil)
+			rootKeySeqLocProcessMutations(rootKeySeqLoc, m, 2, 4, nil)
 		if err != nil {
 			t.Errorf("unexpected err: %#v", err)
 		}
