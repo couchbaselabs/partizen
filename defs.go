@@ -75,26 +75,6 @@ type KeySeqLocRef struct {
 // ordered by PartitionID, then secondarily ordered by Key.
 type Node interface {
 	GetKeySeqLocs() KeySeqLocs
-
-	// --------------------------------
-
-	IsLeaf() bool
-
-	ChildLoc(childLocIdx int) *Loc
-
-	LocateNodePartition(partitionId PartitionId) (
-		found bool, nodePartitionIdx int)
-
-	LocateKeySeqIdx(nodePartitionIdx int, key Key) (
-		found bool, nodePartitionKeyIdx int, keySeqIdx KeySeqIdx)
-
-	InsertChildLoc(partitionId PartitionId,
-		nodePartitionIdx, nodePartitionKeyIdx int, key Key,
-		seq Seq, loc Loc) Node
-
-	UpdateChildLoc(partitionId PartitionId,
-		nodePartitionIdx, nodePartitionKeyIdx int,
-		seq Seq, loc Loc) Node
 }
 
 // MAX_CHILD_LOCS_PER_NODE defines the max number for
