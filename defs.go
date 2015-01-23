@@ -19,11 +19,16 @@ type Header struct {
 // there's a successful Store.Commit().
 type Footer struct {
 	StoreDefLoc StoreDefLoc // Location of StoreDef.
-	WALTailLoc  WALEntryLoc // Last entry of write-ahead-log.
+	WALTailLoc  WALItemLoc  // Last item of write-ahead-log.
 
 	// Locations of partizen btree root Nodes, 1 per Collection.
 	// len(Footer.CollRootLocs) equals len(StoreDef.CollDefs).
 	CollRootLocs []*RootLoc
+}
+
+type StoreDefLoc struct {
+	Loc
+	storeDef *StoreDef // If nil, runtime representation isn't loaded yet.
 }
 
 // A StoreDef defines a partizen Store, holding "slow-changing"
@@ -32,12 +37,6 @@ type Footer struct {
 // JSON encoding of the persisted StoreDef for debuggability.
 type StoreDef struct {
 	CollDefs []*CollDef
-}
-
-type StoreDefLoc struct {
-	Loc
-
-	storeDef *StoreDef // If nil, runtime representation isn't loaded yet.
 }
 
 // A CollDef is persisted as JSON for debuggability.
@@ -51,14 +50,12 @@ type CollDef struct {
 // A RootLoc implements the Collection interface.
 type RootLoc struct {
 	Loc
-
 	store       *store // Pointer to parent store.
 	name        string
 	compareFunc CompareFunc
 	minDegree   uint16
 	maxDegree   uint16
-
-	m sync.Mutex // Protects writes to the Loc fields.
+	m           sync.Mutex // Protects writes to the Loc fields, including Loc.node.
 
 	// TODO: Need a separate RootLocRef for gkvlite-esque ref-counting.
 }
@@ -149,7 +146,7 @@ const (
 	LocTypeNode     uint8 = 0x01
 	LocTypeVal      uint8 = 0x02
 	LocTypeStoreDef uint8 = 0x03
-	LocTypeWALEntry uint8 = 0x04
+	LocTypeWALItem  uint8 = 0x04
 )
 
 // A KeySeqLoc associates a Key with a (max) Seq and a Loc.  When Loc
@@ -249,13 +246,12 @@ const (
 	// FUTURE MutationOp's might include merging, visiting, etc.
 )
 
-type WALEntry struct {
-	// TODO: some mutation info here.
-	Prev WALEntryLoc
+type WALItemLoc struct {
+	Loc
+	walItem *WALItem // If nil, runtime representation isn't loaded yet.
 }
 
-type WALEntryLoc struct {
-	Loc
-
-	walEntry *WALEntry // If nil, runtime representation isn't loaded yet.
+type WALItem struct {
+	Mutation
+	Prev WALItemLoc
 }
