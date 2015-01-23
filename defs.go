@@ -55,7 +55,7 @@ type RootLoc struct {
 	compareFunc CompareFunc
 	minDegree   uint16
 	maxDegree   uint16
-	m           sync.Mutex // Protects writes to the Loc fields, including Loc.node.
+	m           sync.Mutex // Protects the Loc fields, like Loc.node.
 
 	// TODO: Need a separate RootLocRef for gkvlite-esque ref-counting.
 }
