@@ -148,11 +148,13 @@ func (s *store) AddCollection(collName string, compareFuncName string) (
 
 	compareFunc, exists := s.storeOptions.CompareFuncs[compareFuncName]
 	if !exists || compareFunc == nil {
-		return nil, fmt.Errorf("no compareFunc, compareFuncName: %s", compareFuncName)
+		return nil, fmt.Errorf("no compareFunc, compareFuncName: %s",
+			compareFuncName)
 	}
 	for _, collDef := range s.changes.StoreDefLoc.storeDef.CollDefs {
 		if collDef.Name == collName {
-			return nil, fmt.Errorf("collection exists, collName: %s", collName)
+			return nil, fmt.Errorf("collection exists, collName: %s",
+				collName)
 		}
 	}
 
