@@ -57,7 +57,7 @@ type RootLoc struct {
 	maxFanOut   uint16
 	m           sync.Mutex // Protects the Loc fields, like Loc.node.
 
-	// TODO: Need a separate RootLocRef for gkvlite-esque ref-counting.
+	// TODO: Need more fields here to track gkvlite-esque ref-counting.
 }
 
 // A Node of a partizen btree has its descendent locations first
