@@ -297,20 +297,29 @@ func TestMutationsOn2Vals(t *testing.T) {
 	}
 }
 
+var PRIME = 47
+
 func TestMutationsDepth(t *testing.T) {
-	n := 6
-	start := 0
-	delta := 1
-	if false {
-		start = n - 1
-		delta = -1
+	n := 100 // Num inserts.
+	iStart := 0
+	iRange := 100 // Key range is [0, iRange).
+	delta := func(c, i int) int { return (i + 1) % iRange }
+	if true {
+		// Use true for repeatably "random", false for simple increasing keys.
+		if true {
+			iStart = iRange / 2
+			delta = func(c, i int) int { return (i + PRIME) % iRange }
+		}
+	} else {
+		iStart = iRange - 1 // Reverse keys (simple decreasing keys).
+		delta = func(c, i int) int { return i - 1 }
 	}
 
 	var rootKeySeqLoc *KeySeqLoc
 	var err error
 	m := make([]Mutation, 1, 1)
 	m[0].Op = MUTATION_OP_UPDATE
-	for i := start; i < n && i >= 0; i = i + delta {
+	for c, i := 0, iStart; c < n; c, i = c+1, delta(c, i) {
 		m[0].Key = []byte(fmt.Sprintf("%4d", i))
 		m[0].Val = Val(m[0].Key)
 		rootKeySeqLoc, err =
