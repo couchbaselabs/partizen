@@ -78,20 +78,16 @@ func keySeqLocProcessMutations(keySeqLoc *KeySeqLoc,
 // parent nodes, where the parent nodes will meet the given maxFanOut.
 func groupKeySeqLocs(childKeySeqLocs KeySeqLocs, maxFanOut int,
 	groupedKeySeqLocsStart KeySeqLocs) KeySeqLocs {
-	// TODO: At this point, if the childKeySeqLocs are all nodes, then
-	// some of those nodes might be much smaller than others and they
-	// might benefit from rebalancing before forming up parent
-	// groupings.  Knowing whether those child nodes are either
-	// in-memory and/or are dirty would also be helpful hints as to
-	// whether to attempt some rebalancing.
-	//
+	groupedKeySeqLocs := groupedKeySeqLocsStart
+
+	childKeySeqLocs = rebalanceNodes(childKeySeqLocs, maxFanOut)
+
 	// TODO: A more optimal grouping approach would instead partition
 	// the childKeySeqLocs more evenly, instead of the current approach
 	// where the last group might be unfairly too small as it has only
 	// the simple remainder of childKeySeqLocs.
-	groupedKeySeqLocs := groupedKeySeqLocsStart
-	beg := 0
 	n := keySeqLocsLen(childKeySeqLocs)
+	beg := 0
 	for i := maxFanOut; i < n; i = i + maxFanOut {
 		a, maxSeq := keySeqLocsSlice(childKeySeqLocs, beg, i)
 		groupedKeySeqLocs = keySeqLocsAppend(groupedKeySeqLocs,
@@ -102,7 +98,7 @@ func groupKeySeqLocs(childKeySeqLocs KeySeqLocs, maxFanOut int,
 		beg = i
 	}
 	if beg < n { // If there were leftovers...
-		if beg <= 0 { // If there were only leftovers...
+		if beg <= 0 { // If there were only leftovers, group them...
 			a, maxSeq := keySeqLocsSlice(childKeySeqLocs, beg, n)
 			groupedKeySeqLocs = keySeqLocsAppend(groupedKeySeqLocs,
 				a.Key(0), maxSeq, Loc{
@@ -116,6 +112,7 @@ func groupKeySeqLocs(childKeySeqLocs KeySeqLocs, maxFanOut int,
 			}
 		}
 	}
+
 	return groupedKeySeqLocs
 }
 
@@ -334,4 +331,50 @@ func (b *NodesBuilder) Done(mutations []Mutation, maxFanOut int,
 	}
 
 	return rv, nil
+}
+
+// --------------------------------------------------
+
+func rebalanceNodes(keySeqLocs KeySeqLocs, maxFanOut int) KeySeqLocs {
+	// If the keySeqLocs are all nodes, then some of those nodes might
+	// be much smaller than others and might benefit from rebalancing.
+	var rebalanced KeySeqLocs
+	var rebalancing PtrKeySeqLocsArray
+
+	// TODO: Knowing whether those child nodes are either in-memory
+	// and/or are dirty would also be helpful hints as to whether to
+	// attempt some rebalancing.
+	n := keySeqLocsLen(keySeqLocs)
+	for i := 0; i < n; i++ {
+		loc := keySeqLocs.Loc(i)
+		if loc.Type != LocTypeNode || loc.node == nil {
+			return keySeqLocs // TODO: Mem mgmt.
+		}
+		kids := loc.node.GetKeySeqLocs()
+		for j := 0; j < kids.Len(); j++ {
+			rebalancing = keySeqLocsAppend(rebalancing,
+				kids.Key(j), kids.Seq(j), *kids.Loc(j)).(PtrKeySeqLocsArray)
+			if keySeqLocsLen(rebalancing) >= maxFanOut {
+				a, maxSeq := keySeqLocsSlice(rebalancing, 0, rebalancing.Len())
+				rebalanced = keySeqLocsAppend(rebalanced,
+					a.Key(0), maxSeq, Loc{
+						Type: LocTypeNode,
+						node: &NodeMem{KeySeqLocs: a},
+					})
+				rebalancing = nil
+			}
+		}
+	}
+	if rebalancing != nil {
+		a, maxSeq := keySeqLocsSlice(rebalancing, 0, rebalancing.Len())
+		rebalanced = keySeqLocsAppend(rebalanced,
+			a.Key(0), maxSeq, Loc{
+				Type: LocTypeNode,
+				node: &NodeMem{KeySeqLocs: a},
+			})
+	}
+	if rebalanced != nil {
+		return rebalanced
+	}
+	return keySeqLocs
 }
