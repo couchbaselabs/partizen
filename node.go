@@ -1,7 +1,10 @@
 package partizen
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+	"sort"
 )
 
 func (r *RootLoc) NodeGet(n Node, partitionId PartitionId,
@@ -76,4 +79,43 @@ func (r *RootLoc) NodeSet(n Node, partitionId PartitionId,
 			}), nil
 	}
 	return nil, fmt.Errorf("todo")
+}
+
+// --------------------------------------------
+
+func locateKeySeqLoc(ksl *KeySeqLoc, key Key, r io.ReaderAt) (
+	*KeySeqLoc, error) {
+	for ksl != nil {
+		if ksl.Loc.Type == LocTypeNode {
+			node, err := ReadLocNode(&ksl.Loc, r)
+			if err != nil {
+				return nil, err
+			}
+			if node == nil {
+				return nil, nil
+			}
+			ksls := node.GetKeySeqLocs()
+			if ksls == nil {
+				return nil, nil
+			}
+			n := ksls.Len()
+			c := 0
+			i := sort.Search(n, func(i int) bool {
+				c = bytes.Compare(ksls.Key(i), key)
+				return c >= 0
+			})
+			if i >= n || c > 0 {
+				return nil, nil
+			}
+			ksl = ksls.KeySeqLoc(i)
+		} else if ksl.Loc.Type == LocTypeVal {
+			if bytes.Equal(ksl.Key, key) {
+				return ksl, nil
+			}
+			return nil, nil
+		} else {
+			return nil, fmt.Errorf("locateKeySeqLoc")
+		}
+	}
+	return nil, nil
 }
