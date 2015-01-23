@@ -43,8 +43,8 @@ type StoreDef struct {
 type CollDef struct {
 	Name            string
 	CompareFuncName string
-	MinDegree       uint16
-	MaxDegree       uint16 // Usually (2*MinDegree)+1.
+	MinFanOut       uint16
+	MaxFanOut       uint16 // Usually (2*MinFanOut)+1.
 }
 
 // A RootLoc implements the Collection interface.
@@ -53,8 +53,8 @@ type RootLoc struct {
 	store       *store // Pointer to parent store.
 	name        string
 	compareFunc CompareFunc
-	minDegree   uint16
-	maxDegree   uint16
+	minFanOut   uint16
+	maxFanOut   uint16
 	m           sync.Mutex // Protects the Loc fields, like Loc.node.
 
 	// TODO: Need a separate RootLocRef for gkvlite-esque ref-counting.

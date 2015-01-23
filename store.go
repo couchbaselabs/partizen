@@ -53,8 +53,8 @@ func initStoreOptions(o *StoreOptions) *StoreOptions {
 	rv := &StoreOptions{
 		CompareFuncs:     o.CompareFuncs,
 		DefaultPageSize:  o.DefaultPageSize,
-		DefaultMinDegree: o.DefaultMinDegree,
-		DefaultMaxDegree: o.DefaultMaxDegree,
+		DefaultMinFanOut: o.DefaultMinFanOut,
+		DefaultMaxFanOut: o.DefaultMaxFanOut,
 		BufManager:       o.BufManager,
 	}
 	if rv.CompareFuncs == nil {
@@ -66,11 +66,11 @@ func initStoreOptions(o *StoreOptions) *StoreOptions {
 	if rv.DefaultPageSize <= 0 {
 		rv.DefaultPageSize = DefaultOptions.DefaultPageSize
 	}
-	if rv.DefaultMinDegree <= 0 {
-		rv.DefaultMinDegree = DefaultOptions.DefaultMinDegree
+	if rv.DefaultMinFanOut <= 0 {
+		rv.DefaultMinFanOut = DefaultOptions.DefaultMinFanOut
 	}
-	if rv.DefaultMaxDegree <= 0 {
-		rv.DefaultMaxDegree = DefaultOptions.DefaultMaxDegree
+	if rv.DefaultMaxFanOut <= 0 {
+		rv.DefaultMaxFanOut = DefaultOptions.DefaultMaxFanOut
 	}
 	if rv.BufManager == nil {
 		rv.BufManager = DefaultOptions.BufManager
@@ -81,8 +81,8 @@ func initStoreOptions(o *StoreOptions) *StoreOptions {
 var DefaultOptions = StoreOptions{
 	CompareFuncs:     map[string]CompareFunc{"": bytes.Compare},
 	DefaultPageSize:  4096,
-	DefaultMinDegree: 2, // TODO: Larger DefaultMinDegree.
-	DefaultMaxDegree: 5, // TODO: Larger DefaultMaxDegree.
+	DefaultMinFanOut: 2, // TODO: Larger DefaultMinFanOut.
+	DefaultMaxFanOut: 5, // TODO: Larger DefaultMaxFanOut.
 	BufManager:       &defaultBufManager{},
 }
 
@@ -159,15 +159,15 @@ func (s *store) AddCollection(collName string, compareFuncName string) (
 	c := &CollDef{
 		Name:            collName,
 		CompareFuncName: compareFuncName,
-		MinDegree:       s.storeOptions.DefaultMinDegree,
-		MaxDegree:       s.storeOptions.DefaultMaxDegree,
+		MinFanOut:       s.storeOptions.DefaultMinFanOut,
+		MaxFanOut:       s.storeOptions.DefaultMaxFanOut,
 	}
 	r := &RootLoc{
 		store:       s,
 		name:        c.Name,
 		compareFunc: compareFunc,
-		minDegree:   c.MinDegree,
-		maxDegree:   c.MaxDegree,
+		minFanOut:   c.MinFanOut,
+		maxFanOut:   c.MaxFanOut,
 	}
 
 	var changes = s.changes.startChanges(nil)

@@ -80,8 +80,8 @@ type StoreOptions struct {
 	CompareFuncs map[string]CompareFunc // Keyed by compareFuncName.
 
 	DefaultPageSize  uint16 // Ex: 4096.
-	DefaultMinDegree uint16
-	DefaultMaxDegree uint16 // Usually (2*DefaultMinDegree)+1.
+	DefaultMinFanOut uint16
+	DefaultMaxFanOut uint16 // Usually (2*DefaultMinFanOut)+1.
 
 	BufManager BufManager
 }
