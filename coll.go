@@ -58,20 +58,17 @@ func (r *RootLoc) Max(withValue bool) (
 	return 0, nil, 0, nil, fmt.Errorf("unimplemented")
 }
 
-func (r *RootLoc) Scan(fromKeyInclusive Key,
-	toKeyExclusive Key,
+func (r *RootLoc) Scan(key Key,
 	reverse bool,
-	partitions []PartitionId,
-	withValue bool,
-	visitorFunc VisitorFunc) error {
-	return fmt.Errorf("unimplemented")
+	partitionIds []PartitionId, // Use nil for all partitions.
+	withValue bool) (Cursor, error) {
+	return nil, fmt.Errorf("unimplemented")
 }
 
-func (r *RootLoc) Diff(partitionId PartitionId,
-	fromSeqExclusive Seq,
-	withValue bool,
-	visitorFunc VisitorFunc) error {
-	return fmt.Errorf("unimplemented")
+func (r *RootLoc) Diff(partitionId PartitionId, seq Seq,
+	exactToSeq bool) (
+	Cursor, error) {
+	return nil, fmt.Errorf("unimplemented")
 }
 
 func (r *RootLoc) Rollback(partitionId PartitionId, seq Seq,

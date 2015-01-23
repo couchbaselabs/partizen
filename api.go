@@ -53,27 +53,27 @@ type Collection interface {
 	Max(withValue bool) (
 		partitionId PartitionId, key Key, seq Seq, val Val, err error)
 
-	// Scan gives range results in [fromKeyInclusive...toKeyExclusive)
-	// sequence, even when the reverse flag is true.
-	Scan(fromKeyInclusive Key,
-		toKeyExclusive Key,
-		reverse bool, // When reverse, fromKey should be > than toKey.
+	Scan(key Key,
+		reverse bool,
 		partitionIds []PartitionId, // Use nil for all partitions.
-		withValue bool, // When !withValue, visitorFunc gets nil value.
-		visitorFunc VisitorFunc) error
+		withValue bool) (Cursor, error)
 
-	Diff(partitionId PartitionId,
-		fromSeqExclusive Seq, // Should be a Seq at some past commit point.
-		withValue bool, // When !withValue, visitorFunc gets nil value.
-		visitorFunc VisitorFunc) error
+	// The seq should be the Seq that was at or before some past
+	// commit point.
+	Diff(partitionId PartitionId, seq Seq, exactToSeq bool) (
+		Cursor, error)
 
-	// Rollback rewindws a partition back to at mox a previous seq
+	// Rollback rewinds a partition back to at mox a previous seq
 	// number.  If the rollback operation can't hit the exact seq
 	// number but must go further back into the past, then if
 	// exactToSeq is true, the rollback will error; if exactToSeq is
 	// false then the rollback may be further into the past than the
 	// seq number.
 	Rollback(partitionId PartitionId, seq Seq, exactToSeq bool) error
+}
+
+type Cursor interface {
+	// TODO.
 }
 
 type StoreOptions struct {
