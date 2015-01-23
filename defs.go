@@ -61,6 +61,16 @@ type CollRoot struct {
 	// TODO: Need more fields here to track gkvlite-esque ref-counting.
 }
 
+type KeySeqLocRef struct {
+	refs int64
+	ksl  *KeySeqLoc
+
+	// We might own a reference count on another KeySeqLocRef.  When
+	// our count drops to 0 and we're free'd, then also release our
+	// reference count on the next.
+	next *KeySeqLocRef
+}
+
 // A Node of a partizen btree has its descendent locations first
 // ordered by PartitionID, then secondarily ordered by Key.
 type Node interface {
