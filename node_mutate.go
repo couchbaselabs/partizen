@@ -12,24 +12,21 @@ import (
 // is, if the application has multiple mutations on the same key, the
 // caller must provide only the last mutation for any key.  Use nil
 // for rootKeySeqLoc to start a brand new tree.
-func rootProcessMutations(rootKeySeqLoc *KeySeqLoc,
-	mutations []Mutation, cb MutationCallback,
-	minFanOut, maxFanOut int, r io.ReaderAt) (
+func rootProcessMutations(rootKeySeqLoc *KeySeqLoc, mutations []Mutation,
+	cb MutationCallback, minFanOut, maxFanOut int, r io.ReaderAt) (
 	*KeySeqLoc, error) {
-	keySeqLocs, err := processMutations(rootKeySeqLoc,
-		mutations, 0, len(mutations), cb, minFanOut, maxFanOut, r)
+	a, err := processMutations(rootKeySeqLoc, mutations, 0, len(mutations),
+		cb, minFanOut, maxFanOut, r)
 	if err != nil {
 		return nil, fmt.Errorf("rootProcessMutations:"+
 			" rootKeySeqLoc: %#v, err: %v", rootKeySeqLoc, err)
 	}
-	if keySeqLocs != nil {
-		for keySeqLocs.Len() > 1 ||
-			(keySeqLocs.Len() > 0 && keySeqLocs.Loc(0).Type == LocTypeVal) {
-			keySeqLocs = groupKeySeqLocs(keySeqLocs, cb,
-				minFanOut, maxFanOut, nil)
+	if a != nil {
+		for a.Len() > 1 || (a.Len() > 0 && a.Loc(0).Type == LocTypeVal) {
+			a = groupKeySeqLocs(a, cb, minFanOut, maxFanOut, nil)
 		}
-		if keySeqLocs.Len() > 0 {
-			return keySeqLocs.KeySeqLoc(0), nil
+		if a.Len() > 0 {
+			return a.KeySeqLoc(0), nil
 		}
 	}
 	return nil, nil
@@ -371,22 +368,20 @@ func rebalanceNodes(keySeqLocs KeySeqLocs,
 				kids.Key(j), kids.Seq(j), *kids.Loc(j)).(PtrKeySeqLocsArray)
 			if keySeqLocsLen(rebalancing) >= maxFanOut {
 				a, maxSeq := keySeqLocsSlice(rebalancing, 0, rebalancing.Len())
-				rebalanced = keySeqLocsAppend(rebalanced,
-					a.Key(0), maxSeq, Loc{
-						Type: LocTypeNode,
-						node: &NodeMem{KeySeqLocs: a},
-					})
+				rebalanced = keySeqLocsAppend(rebalanced, a.Key(0), maxSeq, Loc{
+					Type: LocTypeNode,
+					node: &NodeMem{KeySeqLocs: a},
+				})
 				rebalancing = nil
 			}
 		}
 	}
 	if rebalancing != nil {
 		a, maxSeq := keySeqLocsSlice(rebalancing, 0, rebalancing.Len())
-		rebalanced = keySeqLocsAppend(rebalanced,
-			a.Key(0), maxSeq, Loc{
-				Type: LocTypeNode,
-				node: &NodeMem{KeySeqLocs: a},
-			})
+		rebalanced = keySeqLocsAppend(rebalanced, a.Key(0), maxSeq, Loc{
+			Type: LocTypeNode,
+			node: &NodeMem{KeySeqLocs: a},
+		})
 	}
 	if rebalanced != nil {
 		return rebalanced

@@ -23,7 +23,8 @@ func (r *CollRoot) Get(partitionId PartitionId, key Key, withValue bool) (
 		return 0, nil, err
 	}
 	if ksl.Loc.Type != LocTypeVal {
-		return 0, nil, fmt.Errorf("unexpected type, ksl: %#v", ksl)
+		return 0, nil,
+			fmt.Errorf("CollRoot.Get: unexpected type, ksl: %#v", ksl)
 	}
 
 	seq, val = ksl.Seq, ksl.Loc.buf
@@ -108,7 +109,7 @@ func (r *CollRoot) mutate(op MutationOp, partitionId PartitionId,
 			kslr.DecRef()
 		}
 	} else {
-		err = fmt.Errorf("concurrent modification")
+		err = fmt.Errorf("CollRoot.mutate: concurrent modification")
 	}
 	r.store.m.Unlock()
 
