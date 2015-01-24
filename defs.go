@@ -251,6 +251,9 @@ type Mutation struct {
 	Seq Seq
 	Val Val
 	Op  MutationOp
+
+	// A MatchSeq of NO_MATCH_SEQ is allowed.
+	MatchSeq Seq
 }
 
 var zeroMutation Mutation

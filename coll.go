@@ -19,15 +19,18 @@ func (r *CollRoot) Get(partitionId PartitionId, key Key, matchSeq Seq,
 	}
 
 	ksl, err = locateKeySeqLoc(ksl, key, io.ReaderAt(nil))
-	if err != nil || ksl == nil {
+	if err != nil {
+		return 0, nil, err
+	}
+	if matchSeq != NO_MATCH_SEQ && (ksl == nil || ksl.Seq != matchSeq) {
+		return 0, nil, ErrMatchSeq
+	}
+	if ksl == nil {
 		return 0, nil, err
 	}
 	if ksl.Loc.Type != LocTypeVal {
 		return 0, nil,
 			fmt.Errorf("CollRoot.Get: unexpected type, ksl: %#v", ksl)
-	}
-	if matchSeq != NO_MATCH_SEQ && matchSeq != ksl.Seq {
-		return 0, nil, ErrMatchSeq
 	}
 
 	seq, val = ksl.Seq, ksl.Loc.buf
@@ -92,16 +95,12 @@ func (r *CollRoot) mutate(op MutationOp, partitionId PartitionId,
 		return fmt.Errorf("partition unimplemented")
 	}
 
-	r.store.m.Lock()
-	r.store.startChanges()
-	kslr, ksl := r.RootKeySeqLocRef.AddRef()
-	r.store.m.Unlock()
-
 	var cbErr error
 	var cb MutationCallback
 	if matchSeq != NO_MATCH_SEQ {
 		cb = func(existing *KeySeqLoc, isVal bool, mutation *Mutation) bool {
-			if existing != nil && isVal && existing.Seq != matchSeq {
+			if isVal &&
+				(existing == nil || existing.Seq != mutation.MatchSeq) {
 				cbErr = ErrMatchSeq
 				return false
 			}
@@ -109,8 +108,13 @@ func (r *CollRoot) mutate(op MutationOp, partitionId PartitionId,
 		}
 	}
 
+	r.store.m.Lock()
+	r.store.startChanges()
+	kslr, ksl := r.RootKeySeqLocRef.AddRef()
+	r.store.m.Unlock()
+
 	ksl2, err := rootProcessMutations(ksl, []Mutation{
-		Mutation{Key: key, Seq: newSeq, Val: val, Op: op},
+		Mutation{Key: key, Seq: newSeq, Val: val, Op: op, MatchSeq: matchSeq},
 	}, cb, int(r.minFanOut), int(r.maxFanOut), io.ReaderAt(nil))
 	if err != nil {
 		return err

@@ -74,4 +74,49 @@ func TestSimpleMemColl(t *testing.T) {
 	if err != nil || seq != 0 || val != nil {
 		t.Errorf("expected Get on missing key to be empty")
 	}
+	wrongMatchSeq := Seq(1234321)
+	err = c.Set(0, []byte("won't-be-created"), wrongMatchSeq, 400,
+		[]byte("wrongMatchSeq"))
+	if err != ErrMatchSeq {
+		t.Errorf("expected ErrMatchSeq, err: %#v", err)
+	}
+	err = c.Set(0, []byte("a"), wrongMatchSeq, 4, []byte("wrongMatchSeq"))
+	if err != ErrMatchSeq {
+		t.Errorf("expected ErrMatchSeq, err: %#v", err)
+	}
+	err = c.Del(0, []byte("a"), wrongMatchSeq, 4)
+	if err != ErrMatchSeq {
+		t.Errorf("expected ErrMatchSeq, err: %#v", err)
+	}
+	err = c.Del(0, []byte("not-there"), wrongMatchSeq, 4)
+	if err != ErrMatchSeq {
+		t.Errorf("expected ErrMatchSeq, err: %#v", err)
+	}
+	seq, val, err = c.Get(0, []byte("not-there"), wrongMatchSeq, true)
+	if err != ErrMatchSeq {
+		t.Errorf("expected ErrMatchSeq, err: %#v", err)
+	}
+	seq, val, err = c.Get(0, []byte("a"), wrongMatchSeq, true)
+	if err != ErrMatchSeq {
+		t.Errorf("expected ErrMatchSeq, err: %#v", err)
+	}
+	seq, val, err = c.Get(0, []byte("a"), NO_MATCH_SEQ, true)
+	if err != nil {
+		t.Errorf("expected no err")
+	}
+	err = c.Set(0, []byte("a"), seq, 10, []byte("AA"))
+	if err != nil {
+		t.Errorf("expected no err on Set with correct seq")
+	}
+	_, _, err = c.Get(0, []byte("a"), seq, true)
+	if err != ErrMatchSeq {
+		t.Errorf("expected ErrMatchSeq")
+	}
+	seq, val, err = c.Get(0, []byte("a"), 10, true)
+	if err != nil || string(val) != "AA" {
+		t.Errorf("expected no err and AA")
+	}
+	if seq != 10 {
+		t.Errorf("expected seq of 10")
+	}
 }
