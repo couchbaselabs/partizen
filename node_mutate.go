@@ -80,42 +80,38 @@ func keySeqLocProcessMutations(keySeqLoc *KeySeqLoc,
 // parent nodes, where the parent nodes will meet the given maxFanOut.
 func groupKeySeqLocs(childKeySeqLocs KeySeqLocs, cb MutationCallback,
 	minFanOut, maxFanOut int, groupedKeySeqLocsStart KeySeqLocs) KeySeqLocs {
-	groupedKeySeqLocs := groupedKeySeqLocsStart
-
-	childKeySeqLocs = rebalanceNodes(childKeySeqLocs, minFanOut, maxFanOut)
+	parents := groupedKeySeqLocsStart
+	children := rebalanceNodes(childKeySeqLocs, minFanOut, maxFanOut)
 
 	// TODO: A more optimal grouping approach would instead partition
-	// the childKeySeqLocs more evenly, instead of the current approach
-	// where the last group might be unfairly too small as it has only
-	// the simple remainder of childKeySeqLocs.
-	n := keySeqLocsLen(childKeySeqLocs)
+	// the children more evenly, instead of the current approach where
+	// the last group of children might be unfairly too small as it
+	// has only the simple remainder of children.
+	n := keySeqLocsLen(children)
 	beg := 0
 	for i := maxFanOut; i < n; i = i + maxFanOut {
-		a, maxSeq := keySeqLocsSlice(childKeySeqLocs, beg, i)
-		groupedKeySeqLocs = keySeqLocsAppend(groupedKeySeqLocs,
-			a.Key(0), maxSeq, Loc{
-				Type: LocTypeNode,
-				node: &NodeMem{KeySeqLocs: a},
-			})
+		a, maxSeq := keySeqLocsSlice(children, beg, i)
+		parents = keySeqLocsAppend(parents, a.Key(0), maxSeq, Loc{
+			Type: LocTypeNode,
+			node: &NodeMem{KeySeqLocs: a},
+		})
 		beg = i
 	}
 	if beg < n { // If there were leftovers...
 		if beg <= 0 { // If there were only leftovers, group them...
-			a, maxSeq := keySeqLocsSlice(childKeySeqLocs, beg, n)
-			groupedKeySeqLocs = keySeqLocsAppend(groupedKeySeqLocs,
-				a.Key(0), maxSeq, Loc{
-					Type: LocTypeNode,
-					node: &NodeMem{KeySeqLocs: a},
-				})
+			a, maxSeq := keySeqLocsSlice(children, beg, n)
+			parents = keySeqLocsAppend(parents, a.Key(0), maxSeq, Loc{
+				Type: LocTypeNode,
+				node: &NodeMem{KeySeqLocs: a},
+			})
 		} else { // Pass the leftovers upwards.
 			for i := beg; i < n; i++ {
-				groupedKeySeqLocs =
-					groupedKeySeqLocs.Append(*childKeySeqLocs.KeySeqLoc(i))
+				parents = parents.Append(*children.KeySeqLoc(i))
 			}
 		}
 	}
 
-	return groupedKeySeqLocs
+	return parents
 }
 
 func keySeqLocsLen(a KeySeqLocs) int {
@@ -337,16 +333,15 @@ func (b *NodesBuilder) Done(mutations []Mutation, cb MutationCallback,
 				rv = append(rv, nm.BaseKeySeqLoc)
 			}
 		} else {
-			childKeySeqLocs, err :=
-				keySeqLocProcessMutations(nm.BaseKeySeqLoc, mutations,
-					nm.MutationsBeg, nm.MutationsEnd,
-					cb, minFanOut, maxFanOut, r)
+			children, err := keySeqLocProcessMutations(nm.BaseKeySeqLoc,
+				mutations, nm.MutationsBeg, nm.MutationsEnd,
+				cb, minFanOut, maxFanOut, r)
 			if err != nil {
 				return nil, fmt.Errorf("NodesBuilder.Done:"+
 					" BaseKeySeqLoc: %#v, err: %v", nm.BaseKeySeqLoc, err)
 			}
-			rv = groupKeySeqLocs(childKeySeqLocs, cb,
-				minFanOut, maxFanOut, rv).(PtrKeySeqLocsArray)
+			rv = groupKeySeqLocs(children, cb, minFanOut, maxFanOut,
+				rv).(PtrKeySeqLocsArray)
 		}
 	}
 
