@@ -40,12 +40,18 @@ type Collection interface {
 		seq Seq, val Val, err error)
 
 	// Set takes a seq number that should be monotonically increasing.
+	// The seq represents the new mutation, not the seq
+	// of the existing item, if it exists, that's to-be-overwritten.
 	Set(partitionId PartitionId, key Key, seq Seq, val Val) error
 
 	// Merge takes a seq number that should be monotonically increasing.
+	// The seq represents the new mutation, not the seq
+	// of the existing item, if it exists, that's to-be-overwritten.
 	Merge(partitionId PartitionId, key Key, seq Seq, mergeFunc MergeFunc) error
 
 	// Del takes a seq number that should be monotonically increasing.
+	// The seq represents the new deletion mutation, not the seq
+	// of the existing item, if it exists, that's to-be-deleted.
 	Del(partitionId PartitionId, key Key, seq Seq) error
 
 	Min(withValue bool) (
