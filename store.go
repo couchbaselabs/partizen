@@ -119,13 +119,12 @@ func readFooter(f StoreFile, o *StoreOptions, header *Header,
 
 func (s *store) CollectionNames() ([]string, error) {
 	s.m.Lock()
-	defer s.m.Unlock()
-
 	storeDef := s.changes.StoreDefLoc.storeDef
 	rv := make([]string, 0, len(storeDef.CollDefs))
 	for _, coll := range storeDef.CollDefs {
 		rv = append(rv, coll.Name)
 	}
+	s.m.Unlock()
 	return rv, nil
 }
 
@@ -143,14 +142,15 @@ func (s *store) GetCollection(collName string) (Collection, error) {
 
 func (s *store) AddCollection(collName string, compareFuncName string) (
 	Collection, error) {
-	s.m.Lock()
-	defer s.m.Unlock()
-
 	compareFunc, exists := s.storeOptions.CompareFuncs[compareFuncName]
 	if !exists || compareFunc == nil {
 		return nil, fmt.Errorf("no compareFunc, compareFuncName: %s",
 			compareFuncName)
 	}
+
+	s.m.Lock()
+	defer s.m.Unlock()
+
 	for _, collDef := range s.changes.StoreDefLoc.storeDef.CollDefs {
 		if collDef.Name == collName {
 			return nil, fmt.Errorf("collection exists, collName: %s",

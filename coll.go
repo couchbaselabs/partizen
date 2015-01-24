@@ -46,7 +46,7 @@ func (r *CollRoot) Merge(partitionId PartitionId, key Key, seq Seq,
 }
 
 func (r *CollRoot) Del(partitionId PartitionId, key Key, seq Seq) error {
-	return fmt.Errorf("unimplemented")
+	return r.mutate(MUTATION_OP_DELETE, partitionId, key, seq, nil)
 }
 
 func (r *CollRoot) Min(withValue bool) (
