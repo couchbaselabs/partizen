@@ -122,7 +122,7 @@ func benchmarkInsertBatchSizeN(markStart func(), numRuns,
 		var err error
 		for j := 0; j < len(mm); j++ {
 			rootKeySeqLoc, err =
-				rootKeySeqLocProcessMutations(rootKeySeqLoc,
+				rootProcessMutations(rootKeySeqLoc,
 					batchChoice(mm, j), nil, 15, 32, nil)
 			if err != nil {
 				return err
