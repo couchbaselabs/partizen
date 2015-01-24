@@ -230,12 +230,6 @@ func (s *store) AbortChanges(cs *ChangeStats) error {
 
 // --------------------------------------------
 
-func (s *store) Apply(f func()) {
-	s.m.Lock()
-	f()
-	s.m.Unlock()
-}
-
 // startChanges returns a new Footer copy that's ready for
 // modifications.  Must be invoked while store.m is locked.
 func (s *store) startChanges() *Footer {
