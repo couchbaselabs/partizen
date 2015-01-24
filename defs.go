@@ -237,6 +237,8 @@ func (a PtrKeySeqLocsArray) Append(x KeySeqLoc) KeySeqLocs {
 
 // ----------------------------------------
 
+type MutationCallback func()
+
 // A Mutation represents a mutation request on a key.
 type Mutation struct {
 	Key Key

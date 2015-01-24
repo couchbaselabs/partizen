@@ -92,7 +92,7 @@ func (r *CollRoot) mutate(op MutationOp, partitionId PartitionId,
 
 	ksl2, err := rootKeySeqLocProcessMutations(ksl, []Mutation{
 		Mutation{Key: key, Seq: seq, Val: val, Op: op},
-	}, int(r.minFanOut), int(r.maxFanOut), io.ReaderAt(nil))
+	}, nil, int(r.minFanOut), int(r.maxFanOut), io.ReaderAt(nil))
 	if err != nil {
 		return err
 	}

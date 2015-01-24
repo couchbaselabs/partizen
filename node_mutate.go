@@ -14,10 +14,11 @@ import (
 // mutation for any key.  Use nil for rootKeySeqLoc to start a brand
 // new tree.
 func rootKeySeqLocProcessMutations(rootKeySeqLoc *KeySeqLoc,
-	mutations []Mutation, minFanOut, maxFanOut int, r io.ReaderAt) (
+	mutations []Mutation, cb MutationCallback,
+	minFanOut, maxFanOut int, r io.ReaderAt) (
 	*KeySeqLoc, error) {
 	keySeqLocs, err := keySeqLocProcessMutations(rootKeySeqLoc,
-		mutations, 0, len(mutations), minFanOut, maxFanOut, r)
+		mutations, 0, len(mutations), cb, minFanOut, maxFanOut, r)
 	if err != nil {
 		return nil, fmt.Errorf("rootKeySeqLocProcessMutations:"+
 			" rootKeySeqLoc: %#v, err: %v", rootKeySeqLoc, err)
@@ -25,7 +26,8 @@ func rootKeySeqLocProcessMutations(rootKeySeqLoc *KeySeqLoc,
 	if keySeqLocs != nil {
 		for keySeqLocs.Len() > 1 ||
 			(keySeqLocs.Len() > 0 && keySeqLocs.Loc(0).Type == LocTypeVal) {
-			keySeqLocs = groupKeySeqLocs(keySeqLocs, minFanOut, maxFanOut, nil)
+			keySeqLocs = groupKeySeqLocs(keySeqLocs, cb,
+				minFanOut, maxFanOut, nil)
 		}
 		if keySeqLocs.Len() > 0 {
 			return keySeqLocs.KeySeqLoc(0), nil
@@ -37,8 +39,8 @@ func rootKeySeqLocProcessMutations(rootKeySeqLoc *KeySeqLoc,
 // keySeqLocProcessMutations recursively applies the batch of
 // mutations down the tree, building up copy-on-write new nodes.
 func keySeqLocProcessMutations(keySeqLoc *KeySeqLoc,
-	mutations []Mutation, mbeg, mend int, minFanOut, maxFanOut int,
-	r io.ReaderAt) (KeySeqLocs, error) {
+	mutations []Mutation, mbeg, mend int, cb MutationCallback,
+	minFanOut, maxFanOut int, r io.ReaderAt) (KeySeqLocs, error) {
 	var keySeqLocs KeySeqLocs
 
 	if keySeqLoc != nil {
@@ -69,18 +71,18 @@ func keySeqLocProcessMutations(keySeqLoc *KeySeqLoc,
 		builder = &NodesBuilder{NodeMutations: make([]NodeMutations, 0, m)}
 	}
 
-	processMutations(keySeqLocs, 0, n, mutations, mbeg, mend, builder)
+	processMutations(keySeqLocs, 0, n, mutations, mbeg, mend, cb, builder)
 
-	return builder.Done(mutations, minFanOut, maxFanOut, r)
+	return builder.Done(mutations, cb, minFanOut, maxFanOut, r)
 }
 
 // groupKeySeqLocs assigns a key-ordered sequence of children to new
 // parent nodes, where the parent nodes will meet the given maxFanOut.
-func groupKeySeqLocs(childKeySeqLocs KeySeqLocs, minFanOut, maxFanOut int,
-	groupedKeySeqLocsStart KeySeqLocs) KeySeqLocs {
+func groupKeySeqLocs(childKeySeqLocs KeySeqLocs, cb MutationCallback,
+	minFanOut, maxFanOut int, groupedKeySeqLocsStart KeySeqLocs) KeySeqLocs {
 	groupedKeySeqLocs := groupedKeySeqLocsStart
 
-	childKeySeqLocs = rebalanceNodes(childKeySeqLocs, minFanOut, maxFanOut)
+	childKeySeqLocs = rebalanceNodes(childKeySeqLocs, cb, minFanOut, maxFanOut)
 
 	// TODO: A more optimal grouping approach would instead partition
 	// the childKeySeqLocs more evenly, instead of the current approach
@@ -163,6 +165,7 @@ func processMutations(
 	ebeg, eend int, // Sub-range of existings[ebeg:eend] to process.
 	mutations []Mutation,
 	mbeg, mend int, // Sub-range of mutations[mbeg:mend] to process.
+	cb MutationCallback,
 	builder KeySeqLocsBuilder) {
 	existing, eok, ecur := nextKeySeqLoc(ebeg, eend, existings)
 	mutation, mok, mcur := nextMutation(mbeg, mend, mutations)
@@ -175,10 +178,10 @@ func processMutations(
 			existing, eok, ecur = nextKeySeqLoc(ecur+1, eend, existings)
 		} else {
 			if c == 0 {
-				builder.AddUpdate(existing, mutation, mcur)
+				builder.AddUpdate(existing, mutation, mcur, cb)
 				existing, eok, ecur = nextKeySeqLoc(ecur+1, eend, existings)
 			} else {
-				builder.AddNew(mutation, mcur)
+				builder.AddNew(mutation, mcur, cb)
 			}
 			mutation, mok, mcur = nextMutation(mcur+1, mend, mutations)
 		}
@@ -188,7 +191,7 @@ func processMutations(
 		existing, eok, ecur = nextKeySeqLoc(ecur+1, eend, existings)
 	}
 	for mok {
-		builder.AddNew(mutation, mcur)
+		builder.AddNew(mutation, mcur, cb)
 		mutation, mok, mcur = nextMutation(mcur+1, mend, mutations)
 	}
 }
@@ -213,10 +216,11 @@ func nextMutation(idx, n int, mutations []Mutation) (
 
 type KeySeqLocsBuilder interface {
 	AddExisting(existing *KeySeqLoc)
-	AddUpdate(existing *KeySeqLoc, mutation *Mutation, mutationIdx int)
-	AddNew(mutation *Mutation, mutationIdx int)
-	Done(mutations []Mutation, minFanOut, maxFanOut int,
-		r io.ReaderAt) (KeySeqLocs, error)
+	AddUpdate(existing *KeySeqLoc,
+		mutation *Mutation, mutationIdx int, cb MutationCallback)
+	AddNew(mutation *Mutation, mutationIdx int, cb MutationCallback)
+	Done(mutations []Mutation, cb MutationCallback,
+		minFanOut, maxFanOut int, r io.ReaderAt) (KeySeqLocs, error)
 }
 
 // --------------------------------------------------
@@ -233,20 +237,21 @@ func (b *ValsBuilder) AddExisting(existing *KeySeqLoc) {
 }
 
 func (b *ValsBuilder) AddUpdate(existing *KeySeqLoc,
-	mutation *Mutation, mutationIdx int) {
+	mutation *Mutation, mutationIdx int, cb MutationCallback) {
 	if mutation.Op == MUTATION_OP_UPDATE {
 		b.s = append(b.s, mutationToValKeySeqLoc(mutation))
 	}
 }
 
-func (b *ValsBuilder) AddNew(mutation *Mutation, mutationIdx int) {
+func (b *ValsBuilder) AddNew(
+	mutation *Mutation, mutationIdx int, cb MutationCallback) {
 	if mutation.Op == MUTATION_OP_UPDATE {
 		b.s = append(b.s, mutationToValKeySeqLoc(mutation))
 	}
 }
 
-func (b *ValsBuilder) Done(mutations []Mutation, minFanOut, maxFanOut int,
-	r io.ReaderAt) (KeySeqLocs, error) {
+func (b *ValsBuilder) Done(mutations []Mutation, cb MutationCallback,
+	minFanOut, maxFanOut int, r io.ReaderAt) (KeySeqLocs, error) {
 	return b.s, nil
 }
 
@@ -286,7 +291,7 @@ func (b *NodesBuilder) AddExisting(existing *KeySeqLoc) {
 }
 
 func (b *NodesBuilder) AddUpdate(existing *KeySeqLoc,
-	mutation *Mutation, mutationIdx int) {
+	mutation *Mutation, mutationIdx int, cb MutationCallback) {
 	b.NodeMutations = append(b.NodeMutations, NodeMutations{
 		BaseKeySeqLoc: existing,
 		MutationsBeg:  mutationIdx,
@@ -294,7 +299,8 @@ func (b *NodesBuilder) AddUpdate(existing *KeySeqLoc,
 	})
 }
 
-func (b *NodesBuilder) AddNew(mutation *Mutation, mutationIdx int) {
+func (b *NodesBuilder) AddNew(
+	mutation *Mutation, mutationIdx int, cb MutationCallback) {
 	if len(b.NodeMutations) <= 0 {
 		b.NodeMutations = append(b.NodeMutations, NodeMutations{
 			MutationsBeg: mutationIdx,
@@ -309,8 +315,8 @@ func (b *NodesBuilder) AddNew(mutation *Mutation, mutationIdx int) {
 	}
 }
 
-func (b *NodesBuilder) Done(mutations []Mutation, minFanOut, maxFanOut int,
-	r io.ReaderAt) (KeySeqLocs, error) {
+func (b *NodesBuilder) Done(mutations []Mutation, cb MutationCallback,
+	minFanOut, maxFanOut int, r io.ReaderAt) (KeySeqLocs, error) {
 	rv := PtrKeySeqLocsArray{}
 
 	for _, nm := range b.NodeMutations {
@@ -322,13 +328,13 @@ func (b *NodesBuilder) Done(mutations []Mutation, minFanOut, maxFanOut int,
 			childKeySeqLocs, err :=
 				keySeqLocProcessMutations(nm.BaseKeySeqLoc, mutations,
 					nm.MutationsBeg, nm.MutationsEnd,
-					minFanOut, maxFanOut, r)
+					cb, minFanOut, maxFanOut, r)
 			if err != nil {
 				return nil, fmt.Errorf("NodesBuilder.Done:"+
 					" BaseKeySeqLoc: %#v, err: %v", nm.BaseKeySeqLoc, err)
 			}
-			rv = groupKeySeqLocs(childKeySeqLocs, minFanOut, maxFanOut,
-				rv).(PtrKeySeqLocsArray)
+			rv = groupKeySeqLocs(childKeySeqLocs, cb,
+				minFanOut, maxFanOut, rv).(PtrKeySeqLocsArray)
 		}
 	}
 
@@ -337,7 +343,7 @@ func (b *NodesBuilder) Done(mutations []Mutation, minFanOut, maxFanOut int,
 
 // --------------------------------------------------
 
-func rebalanceNodes(keySeqLocs KeySeqLocs,
+func rebalanceNodes(keySeqLocs KeySeqLocs, cb MutationCallback,
 	minFanOut, maxFanOut int) KeySeqLocs {
 	// If the keySeqLocs are all nodes, then some of those nodes might
 	// be much smaller than others and might benefit from rebalancing.
