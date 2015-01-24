@@ -82,7 +82,7 @@ func groupKeySeqLocs(childKeySeqLocs KeySeqLocs, cb MutationCallback,
 	minFanOut, maxFanOut int, groupedKeySeqLocsStart KeySeqLocs) KeySeqLocs {
 	groupedKeySeqLocs := groupedKeySeqLocsStart
 
-	childKeySeqLocs = rebalanceNodes(childKeySeqLocs, cb, minFanOut, maxFanOut)
+	childKeySeqLocs = rebalanceNodes(childKeySeqLocs, minFanOut, maxFanOut)
 
 	// TODO: A more optimal grouping approach would instead partition
 	// the childKeySeqLocs more evenly, instead of the current approach
@@ -355,7 +355,7 @@ func (b *NodesBuilder) Done(mutations []Mutation, cb MutationCallback,
 
 // --------------------------------------------------
 
-func rebalanceNodes(keySeqLocs KeySeqLocs, cb MutationCallback,
+func rebalanceNodes(keySeqLocs KeySeqLocs,
 	minFanOut, maxFanOut int) KeySeqLocs {
 	// If the keySeqLocs are all nodes, then some of those nodes might
 	// be much smaller than others and might benefit from rebalancing.
