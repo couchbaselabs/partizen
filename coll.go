@@ -37,43 +37,7 @@ func (r *CollRoot) Get(partitionId PartitionId, key Key, withValue bool) (
 
 func (r *CollRoot) Set(partitionId PartitionId, key Key, seq Seq, val Val) (
 	err error) {
-	if partitionId != 0 {
-		return fmt.Errorf("partition unimplemented")
-	}
-
-	r.store.m.Lock()
-	r.store.startChanges()
-	kslr, ksl := r.RootKeySeqLocRef.AddRef()
-	r.store.m.Unlock()
-
-	ksl2, err := rootKeySeqLocProcessMutations(ksl, []Mutation{
-		Mutation{
-			Key: key,
-			Seq: seq,
-			Val: val,
-			Op:  MUTATION_OP_UPDATE,
-		},
-	}, int(r.minFanOut), int(r.maxFanOut), io.ReaderAt(nil))
-	if err != nil {
-		return err
-	}
-
-	r.store.m.Lock()
-	if r.RootKeySeqLocRef == kslr {
-		next := &KeySeqLocRef{R: ksl2, refs: 2}
-		if kslr != nil {
-			kslr.next = next
-		}
-		r.RootKeySeqLocRef = next
-		if kslr != nil {
-			kslr.DecRef()
-		}
-	} else {
-		err = fmt.Errorf("concurrent modification")
-	}
-	r.store.m.Unlock()
-
-	return err
+	return r.mutate(MUTATION_OP_UPDATE, partitionId, key, seq, val)
 }
 
 func (r *CollRoot) Merge(partitionId PartitionId, key Key, seq Seq,
@@ -111,4 +75,42 @@ func (r *CollRoot) Diff(partitionId PartitionId, seq Seq,
 func (r *CollRoot) Rollback(partitionId PartitionId, seq Seq,
 	exactToSeq bool) error {
 	return fmt.Errorf("unimplemented")
+}
+
+// --------------------------------------------
+
+func (r *CollRoot) mutate(op MutationOp, partitionId PartitionId,
+	key Key, seq Seq, val Val) (err error) {
+	if partitionId != 0 {
+		return fmt.Errorf("partition unimplemented")
+	}
+
+	r.store.m.Lock()
+	r.store.startChanges()
+	kslr, ksl := r.RootKeySeqLocRef.AddRef()
+	r.store.m.Unlock()
+
+	ksl2, err := rootKeySeqLocProcessMutations(ksl, []Mutation{
+		Mutation{Key: key, Seq: seq, Val: val, Op: op},
+	}, int(r.minFanOut), int(r.maxFanOut), io.ReaderAt(nil))
+	if err != nil {
+		return err
+	}
+
+	r.store.m.Lock()
+	if r.RootKeySeqLocRef == kslr {
+		next := &KeySeqLocRef{R: ksl2, refs: 2}
+		if kslr != nil {
+			kslr.next = next
+		}
+		r.RootKeySeqLocRef = next
+		if kslr != nil {
+			kslr.DecRef()
+		}
+	} else {
+		err = fmt.Errorf("concurrent modification")
+	}
+	r.store.m.Unlock()
+
+	return err
 }
