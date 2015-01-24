@@ -12,17 +12,28 @@ func (r *CollRoot) Get(partitionId PartitionId, key Key, withValue bool) (
 	}
 
 	r.m.Lock()
-	rksl := r.RootKeySeqLoc // TODO: Ref count.
+	kslr, ksl := r.RootKeySeqLocRef.AddRef()
 	r.m.Unlock()
+	if kslr == nil || ksl == nil {
+		return 0, nil, nil
+	}
 
-	ksl, err := locateKeySeqLoc(rksl, key, io.ReaderAt(nil))
+	ksl, err = locateKeySeqLoc(ksl, key, io.ReaderAt(nil))
 	if err != nil || ksl == nil {
 		return 0, nil, err
 	}
 	if ksl.Loc.Type != LocTypeVal {
 		return 0, nil, fmt.Errorf("unexpected type, ksl: %#v", ksl)
 	}
-	return ksl.Seq, ksl.Loc.buf, nil
+
+	seq = ksl.Seq
+	val = ksl.Loc.buf
+
+	r.m.Lock()
+	kslr.DecRef()
+	r.m.Unlock()
+
+	return seq, val, nil
 }
 
 func (r *CollRoot) Set(partitionId PartitionId, key Key, seq Seq, val Val) (
@@ -34,10 +45,10 @@ func (r *CollRoot) Set(partitionId PartitionId, key Key, seq Seq, val Val) (
 	r.store.startChanges()
 
 	r.m.Lock()
-	rksl := r.RootKeySeqLoc // TODO: Ref count.
+	kslr, ksl := r.RootKeySeqLocRef.AddRef()
 	r.m.Unlock()
 
-	rksl2, err := rootKeySeqLocProcessMutations(rksl, []Mutation{
+	ksl2, err := rootKeySeqLocProcessMutations(ksl, []Mutation{
 		Mutation{
 			Key: key,
 			Seq: seq,
@@ -50,8 +61,18 @@ func (r *CollRoot) Set(partitionId PartitionId, key Key, seq Seq, val Val) (
 	}
 
 	r.m.Lock()
-	if r.RootKeySeqLoc == rksl {
-		r.RootKeySeqLoc = rksl2
+	if r.RootKeySeqLocRef == kslr {
+		next := &KeySeqLocRef{
+			R: ksl2,
+			refs: 2,
+		}
+		if kslr != nil {
+			kslr.next = next
+		}
+		r.RootKeySeqLocRef = next
+		if kslr != nil {
+			kslr.DecRef()
+		}
 	} else {
 		err = fmt.Errorf("concurrent modification")
 	}

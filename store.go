@@ -249,5 +249,5 @@ func (f *Footer) startChanges(orig *Footer) *Footer {
 
 	c.CollRoots = append([]*CollRoot(nil), c.CollRoots...)
 
-	return &c
+	return &c // TODO: Mem mgmt.
 }

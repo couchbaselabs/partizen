@@ -49,26 +49,53 @@ type CollDef struct {
 
 // A CollRoot implements the Collection interface.
 type CollRoot struct {
-	RootKeySeqLoc *KeySeqLoc
+	RootKeySeqLocRef *KeySeqLocRef
 
 	store       *store // Pointer to parent store.
 	name        string
 	compareFunc CompareFunc
 	minFanOut   uint16
 	maxFanOut   uint16
-	m           sync.Mutex // Protects RootKeySeqLoc.
+	m           sync.Mutex // Protects RootKeySeqLocRef and its ref count.
 
 	// TODO: Need more fields here to track gkvlite-esque ref-counting.
 }
 
 type KeySeqLocRef struct {
-	refs int64
-	ksl  *KeySeqLoc
+	R *KeySeqLoc // Immutable.
+
+	refs int64 // Protected by CollRoot.m.
 
 	// We might own a reference count on another KeySeqLocRef.  When
-	// our count drops to 0 and we're free'd, then also release our
-	// reference count on the next.
+	// our count hits 0, also release our refcount on the next.
 	next *KeySeqLocRef
+}
+
+// AddRef must be invoked by caller with CollRoot.m locked.
+func (r *KeySeqLocRef) AddRef() (*KeySeqLocRef, *KeySeqLoc) {
+	if r == nil {
+		return nil, nil
+	}
+	if r.refs <= 0 {
+		panic("KeySeqLocRef.refs underflow")
+	}
+	r.refs++
+	return r, r.R
+}
+
+// DecRef must be invoked by caller with CollRoot.m locked.
+func (r *KeySeqLocRef) DecRef() *KeySeqLocRef {
+	if r.refs <= 0 {
+		panic("KeySeqLocRef.refs underflow")
+	}
+	r.refs--
+	if r.refs <= 0 {
+		if r.next != nil {
+			r.next.DecRef()
+		}
+		return nil
+	}
+	return r
 }
 
 // A Node of a partizen btree has its descendent locations first
