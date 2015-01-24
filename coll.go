@@ -5,8 +5,8 @@ import (
 	"io"
 )
 
-func (r *CollRoot) Get(partitionId PartitionId, key Key, withValue bool) (
-	seq Seq, val Val, err error) {
+func (r *CollRoot) Get(partitionId PartitionId, key Key, matchSeq Seq,
+	withValue bool) (seq Seq, val Val, err error) {
 	if partitionId != 0 {
 		return 0, nil, fmt.Errorf("partition unimplemented")
 	}
@@ -26,6 +26,9 @@ func (r *CollRoot) Get(partitionId PartitionId, key Key, withValue bool) (
 		return 0, nil,
 			fmt.Errorf("CollRoot.Get: unexpected type, ksl: %#v", ksl)
 	}
+	if matchSeq != NO_MATCH_SEQ && matchSeq != ksl.Seq {
+		return 0, nil, ErrMatchSeq
+	}
 
 	seq, val = ksl.Seq, ksl.Loc.buf
 
@@ -36,18 +39,21 @@ func (r *CollRoot) Get(partitionId PartitionId, key Key, withValue bool) (
 	return seq, val, nil
 }
 
-func (r *CollRoot) Set(partitionId PartitionId, key Key, seq Seq, val Val) (
-	err error) {
-	return r.mutate(MUTATION_OP_UPDATE, partitionId, key, seq, val)
+func (r *CollRoot) Set(partitionId PartitionId, key Key, matchSeq Seq,
+	newSeq Seq, val Val) (err error) {
+	return r.mutate(MUTATION_OP_UPDATE, partitionId, key, matchSeq,
+		newSeq, val)
 }
 
-func (r *CollRoot) Merge(partitionId PartitionId, key Key, seq Seq,
-	mergeFunc MergeFunc) error {
+func (r *CollRoot) Merge(partitionId PartitionId, key Key, matchSeq Seq,
+	newSeq Seq, val Val, mergeFunc MergeFunc) error {
 	return fmt.Errorf("unimplemented")
 }
 
-func (r *CollRoot) Del(partitionId PartitionId, key Key, seq Seq) error {
-	return r.mutate(MUTATION_OP_DELETE, partitionId, key, seq, nil)
+func (r *CollRoot) Del(partitionId PartitionId, key Key, matchSeq Seq,
+	newSeq Seq) error {
+	return r.mutate(MUTATION_OP_DELETE, partitionId, key, matchSeq,
+		newSeq, nil)
 }
 
 func (r *CollRoot) Min(withValue bool) (
@@ -81,7 +87,7 @@ func (r *CollRoot) Rollback(partitionId PartitionId, seq Seq,
 // --------------------------------------------
 
 func (r *CollRoot) mutate(op MutationOp, partitionId PartitionId,
-	key Key, seq Seq, val Val) (err error) {
+	key Key, matchSeq Seq, newSeq Seq, val Val) (err error) {
 	if partitionId != 0 {
 		return fmt.Errorf("partition unimplemented")
 	}
@@ -91,11 +97,26 @@ func (r *CollRoot) mutate(op MutationOp, partitionId PartitionId,
 	kslr, ksl := r.RootKeySeqLocRef.AddRef()
 	r.store.m.Unlock()
 
+	var cbErr error
+	var cb MutationCallback
+	if matchSeq != NO_MATCH_SEQ {
+		cb = func(existing *KeySeqLoc, isVal bool, mutation *Mutation) bool {
+			if existing != nil && isVal && existing.Seq != matchSeq {
+				cbErr = ErrMatchSeq
+				return false
+			}
+			return true
+		}
+	}
+
 	ksl2, err := rootProcessMutations(ksl, []Mutation{
-		Mutation{Key: key, Seq: seq, Val: val, Op: op},
-	}, nil, int(r.minFanOut), int(r.maxFanOut), io.ReaderAt(nil))
+		Mutation{Key: key, Seq: newSeq, Val: val, Op: op},
+	}, cb, int(r.minFanOut), int(r.maxFanOut), io.ReaderAt(nil))
 	if err != nil {
 		return err
+	}
+	if cbErr != nil {
+		return cbErr
 	}
 
 	r.store.m.Lock()

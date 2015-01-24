@@ -1,6 +1,7 @@
 package partizen
 
 import (
+	"errors"
 	"io"
 	"os"
 )
@@ -9,6 +10,10 @@ type Key []byte
 type Val []byte
 type PartitionId uint16
 type Seq uint64
+
+const NO_MATCH_SEQ = Seq(0xffffffffffffffff)
+
+var ErrMatchSeq = errors.New("non-matching seq")
 
 func StoreOpen(storeFile StoreFile, storeOptions *StoreOptions) (
 	Store, error) {
@@ -36,23 +41,29 @@ type Store interface {
 // TODO: Should have separation of insert versus update versus upsert?
 
 type Collection interface {
-	Get(partitionId PartitionId, key Key, withValue bool) (
-		seq Seq, val Val, err error)
+	Get(partitionId PartitionId, key Key, matchSeq Seq,
+		withValue bool) (seq Seq, val Val, err error)
 
-	// Set takes a seq number that should be monotonically increasing.
-	// The seq represents the new mutation, not the seq
-	// of the existing item, if it exists, that's to-be-overwritten.
-	Set(partitionId PartitionId, key Key, seq Seq, val Val) error
+	// Set takes a newSeq that should be monotonically increasing.
+	// The newSeq represents the new mutation, not the seq of the
+	// existing item, if it exists, that's to-be-overwritten.  Use
+	// matchSeq of NO_MATCH_SEQ if you don't want a seq match.
+	Set(partitionId PartitionId, key Key, matchSeq Seq,
+		newSeq Seq, val Val) error
 
-	// Merge takes a seq number that should be monotonically increasing.
-	// The seq represents the new mutation, not the seq
-	// of the existing item, if it exists, that's to-be-overwritten.
-	Merge(partitionId PartitionId, key Key, seq Seq, mergeFunc MergeFunc) error
+	// Merge takes a newSeq that should be monotonically increasing.
+	// The newSeq represents the new mutation, not the seq of the
+	// existing item, if it exists, that's to-be-overwritten.  Use
+	// matchSeq of NO_MATCH_SEQ if you don't want a seq match.
+	Merge(partitionId PartitionId, key Key, matchSeq Seq,
+		newSeq Seq, val Val, mergeFunc MergeFunc) error
 
-	// Del takes a seq number that should be monotonically increasing.
-	// The seq represents the new deletion mutation, not the seq
-	// of the existing item, if it exists, that's to-be-deleted.
-	Del(partitionId PartitionId, key Key, seq Seq) error
+	// Del takes a newSeq that should be monotonically increasing.
+	// The newSeq represents the new mutation, not the seq of the
+	// existing item, if it exists, that's to-be-overwritten.  Use
+	// matchSeq of NO_MATCH_SEQ if you don't want a seq match.
+	Del(partitionId PartitionId, key Key, matchSeq Seq,
+		newSeq Seq) error
 
 	Min(withValue bool) (
 		partitionId PartitionId, key Key, seq Seq, val Val, err error)
