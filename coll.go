@@ -11,9 +11,11 @@ func (r *CollRoot) Get(partitionId PartitionId, key Key, withValue bool) (
 		return 0, nil, fmt.Errorf("partition unimplemented")
 	}
 
-	r.m.Lock()
-	kslr, ksl := r.RootKeySeqLocRef.AddRef()
-	r.m.Unlock()
+	var kslr *KeySeqLocRef
+	var ksl *KeySeqLoc
+	r.store.Apply(func() {
+		kslr, ksl = r.RootKeySeqLocRef.AddRef()
+	})
 	if kslr == nil || ksl == nil {
 		return 0, nil, nil
 	}
@@ -29,9 +31,9 @@ func (r *CollRoot) Get(partitionId PartitionId, key Key, withValue bool) (
 	seq = ksl.Seq
 	val = ksl.Loc.buf
 
-	r.m.Lock()
-	kslr.DecRef()
-	r.m.Unlock()
+	r.store.Apply(func() {
+		kslr.DecRef()
+	})
 
 	return seq, val, nil
 }
@@ -42,11 +44,12 @@ func (r *CollRoot) Set(partitionId PartitionId, key Key, seq Seq, val Val) (
 		return fmt.Errorf("partition unimplemented")
 	}
 
-	r.store.startChanges()
-
-	r.m.Lock()
-	kslr, ksl := r.RootKeySeqLocRef.AddRef()
-	r.m.Unlock()
+	var kslr *KeySeqLocRef
+	var ksl *KeySeqLoc
+	r.store.Apply(func() {
+		r.store.startChanges()
+		kslr, ksl = r.RootKeySeqLocRef.AddRef()
+	})
 
 	ksl2, err := rootKeySeqLocProcessMutations(ksl, []Mutation{
 		Mutation{
@@ -60,23 +63,23 @@ func (r *CollRoot) Set(partitionId PartitionId, key Key, seq Seq, val Val) (
 		return err
 	}
 
-	r.m.Lock()
-	if r.RootKeySeqLocRef == kslr {
-		next := &KeySeqLocRef{
-			R: ksl2,
-			refs: 2,
+	r.store.Apply(func() {
+		if r.RootKeySeqLocRef == kslr {
+			next := &KeySeqLocRef{
+				R:    ksl2,
+				refs: 2,
+			}
+			if kslr != nil {
+				kslr.next = next
+			}
+			r.RootKeySeqLocRef = next
+			if kslr != nil {
+				kslr.DecRef()
+			}
+		} else {
+			err = fmt.Errorf("concurrent modification")
 		}
-		if kslr != nil {
-			kslr.next = next
-		}
-		r.RootKeySeqLocRef = next
-		if kslr != nil {
-			kslr.DecRef()
-		}
-	} else {
-		err = fmt.Errorf("concurrent modification")
-	}
-	r.m.Unlock()
+	})
 
 	return err
 }

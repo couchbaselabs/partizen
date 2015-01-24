@@ -1,9 +1,5 @@
 package partizen
 
-import (
-	"sync"
-)
-
 // A Header is stored at the head (or 0th byte) of the log file.
 type Header struct {
 	Magic0    uint64
@@ -56,15 +52,12 @@ type CollRoot struct {
 	compareFunc CompareFunc
 	minFanOut   uint16
 	maxFanOut   uint16
-	m           sync.Mutex // Protects RootKeySeqLocRef and its ref count.
-
-	// TODO: Need more fields here to track gkvlite-esque ref-counting.
 }
 
 type KeySeqLocRef struct {
 	R *KeySeqLoc // Immutable.
 
-	refs int64 // Protected by CollRoot.m.
+	refs int64
 
 	// We might own a reference count on another KeySeqLocRef.  When
 	// our count hits 0, also release our refcount on the next.

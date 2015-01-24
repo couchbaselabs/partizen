@@ -172,12 +172,15 @@ func (s *store) AddCollection(collName string, compareFuncName string) (
 		maxFanOut:   c.MaxFanOut,
 	}
 
-	var changes = s.changes.startChanges(nil)
+	var changes = s.startChanges()
 
 	changes.StoreDefLoc.storeDef.CollDefs =
-		append(changes.StoreDefLoc.storeDef.CollDefs, c) // TODO: sort.
+		append(changes.StoreDefLoc.storeDef.CollDefs, c)
 	changes.CollRoots =
-		append(changes.CollRoots, r) // TODO: sort.
+		append(changes.CollRoots, r)
+
+	// TODO: Sort the above arrays, but need to carefully ensure that
+	// positions match, perhaps by inserting at the right index.
 
 	s.changes = changes
 
@@ -190,7 +193,7 @@ func (s *store) RemoveCollection(collName string) error {
 
 	for i, collDef := range s.changes.StoreDefLoc.storeDef.CollDefs {
 		if collDef.Name == collName {
-			var changes = s.changes.startChanges(nil)
+			var changes = s.startChanges()
 
 			a := changes.StoreDefLoc.storeDef.CollDefs
 			copy(a[i:], a[i+1:])
@@ -227,27 +230,30 @@ func (s *store) AbortChanges(cs *ChangeStats) error {
 
 // --------------------------------------------
 
-func (s *store) startChanges() {
+func (s *store) Apply(f func()) {
 	s.m.Lock()
-	s.changes = s.changes.startChanges(s.footer)
+	f()
 	s.m.Unlock()
 }
 
-// --------------------------------------------
-
-// startChanges returns a new Footer copy that's ready for modifications.
-func (f *Footer) startChanges(orig *Footer) *Footer {
-	if orig != nil && f != orig {
-		return f // We're already changed compared to non-nil orig.
+// startChanges returns a new Footer copy that's ready for
+// modifications.  Must be invoked while store.m is locked.
+func (s *store) startChanges() *Footer {
+	if s.changes != s.footer {
+		// We're already changed compared to the footer.
+		return s.changes
 	}
 
-	var c Footer = *f // First, shallow copy.
+	var c Footer = *s.changes // Shallow copy.
 
 	c.StoreDefLoc.storeDef = &StoreDef{
-		CollDefs: append([]*CollDef(nil), c.StoreDefLoc.storeDef.CollDefs...),
+		CollDefs: append([]*CollDef(nil),
+			s.changes.StoreDefLoc.storeDef.CollDefs...),
 	}
 
-	c.CollRoots = append([]*CollRoot(nil), c.CollRoots...)
+	c.CollRoots = append([]*CollRoot(nil), s.changes.CollRoots...)
 
-	return &c // TODO: Mem mgmt.
+	s.changes = &c
+
+	return s.changes // TODO: Mem mgmt.
 }
