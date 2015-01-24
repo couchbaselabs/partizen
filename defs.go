@@ -237,7 +237,13 @@ func (a PtrKeySeqLocsArray) Append(x KeySeqLoc) KeySeqLocs {
 
 // ----------------------------------------
 
-type MutationCallback func()
+// MutationCallback returns true if the mutation should proceed, or
+// false if the mutation should be skipped.  In either case, the
+// processing of the batch of mutations will continue.  The existing
+// may be nil in case there's no previous item.  The isVal is true if
+// the existing is for a leaf level KeySeqLoc (e.g., LocTypeVal).
+type MutationCallback func(existing *KeySeqLoc, isVal bool,
+	mutation *Mutation) bool
 
 // A Mutation represents a mutation request on a key.
 type Mutation struct {

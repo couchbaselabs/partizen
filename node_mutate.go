@@ -238,6 +238,9 @@ func (b *ValsBuilder) AddExisting(existing *KeySeqLoc) {
 
 func (b *ValsBuilder) AddUpdate(existing *KeySeqLoc,
 	mutation *Mutation, mutationIdx int, cb MutationCallback) {
+	if cb != nil && !cb(existing, true, mutation) {
+		return
+	}
 	if mutation.Op == MUTATION_OP_UPDATE {
 		b.s = append(b.s, mutationToValKeySeqLoc(mutation))
 	}
@@ -245,6 +248,9 @@ func (b *ValsBuilder) AddUpdate(existing *KeySeqLoc,
 
 func (b *ValsBuilder) AddNew(
 	mutation *Mutation, mutationIdx int, cb MutationCallback) {
+	if cb != nil && !cb(nil, true, mutation) {
+		return
+	}
 	if mutation.Op == MUTATION_OP_UPDATE {
 		b.s = append(b.s, mutationToValKeySeqLoc(mutation))
 	}
@@ -292,6 +298,9 @@ func (b *NodesBuilder) AddExisting(existing *KeySeqLoc) {
 
 func (b *NodesBuilder) AddUpdate(existing *KeySeqLoc,
 	mutation *Mutation, mutationIdx int, cb MutationCallback) {
+	if cb != nil && !cb(existing, false, mutation) {
+		return
+	}
 	b.NodeMutations = append(b.NodeMutations, NodeMutations{
 		BaseKeySeqLoc: existing,
 		MutationsBeg:  mutationIdx,
@@ -301,6 +310,9 @@ func (b *NodesBuilder) AddUpdate(existing *KeySeqLoc,
 
 func (b *NodesBuilder) AddNew(
 	mutation *Mutation, mutationIdx int, cb MutationCallback) {
+	if cb != nil && !cb(nil, false, mutation) {
+		return
+	}
 	if len(b.NodeMutations) <= 0 {
 		b.NodeMutations = append(b.NodeMutations, NodeMutations{
 			MutationsBeg: mutationIdx,
