@@ -154,14 +154,16 @@ func TestSimpleMemColl(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected no err")
 	}
-	if partitionId != 0 || string(key) != "0" || seq != 3 || string(val) != "00" {
+	if partitionId != 0 || string(key) != "0" || seq != 3 ||
+		string(val) != "00" {
 		t.Errorf("expected min 0, got key: %s, seq: %d, val: %s", key, seq, val)
 	}
 	partitionId, key, seq, val, err = c.Max(true)
 	if err != nil {
 		t.Errorf("expected no err")
 	}
-	if partitionId != 0 || string(key) != "b" || seq != 2 || string(val) != "B" {
+	if partitionId != 0 || string(key) != "b" || seq != 2 ||
+		string(val) != "B" {
 		t.Errorf("expected max b, got key: %s, seq: %d, val: %s", key, seq, val)
 	}
 	err = c.Set(0, []byte("a"), 1, 10, []byte("AA"))
@@ -187,14 +189,16 @@ func TestSimpleMemColl(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected no err")
 	}
-	if partitionId != 0 || string(key) != "0" || seq != 3 || string(val) != "00" {
+	if partitionId != 0 || string(key) != "0" || seq != 3 ||
+		string(val) != "00" {
 		t.Errorf("expected min 0, got key: %s, seq: %d, val: %s", key, seq, val)
 	}
 	partitionId, key, seq, val, err = c.Max(true)
 	if err != nil {
 		t.Errorf("expected no err")
 	}
-	if partitionId != 0 || string(key) != "x" || seq != 11 || string(val) != "X" {
+	if partitionId != 0 || string(key) != "x" || seq != 11 ||
+		string(val) != "X" {
 		t.Errorf("expected max x, got key: %s, seq: %d, val: %s", key, seq, val)
 	}
 	err = c.Del(0, []byte("0"), 3, 20)
@@ -209,14 +213,16 @@ func TestSimpleMemColl(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected no err")
 	}
-	if partitionId != 0 || string(key) != "a" || seq != 10 || string(val) != "AA" {
+	if partitionId != 0 || string(key) != "a" || seq != 10 ||
+		string(val) != "AA" {
 		t.Errorf("expected min 0, got key: %s, seq: %d, val: %s", key, seq, val)
 	}
 	partitionId, key, seq, val, err = c.Max(true)
 	if err != nil {
 		t.Errorf("expected no err")
 	}
-	if partitionId != 0 || string(key) != "x" || seq != 11 || string(val) != "X" {
+	if partitionId != 0 || string(key) != "x" || seq != 11 ||
+		string(val) != "X" {
 		t.Errorf("expected max x, got key: %s, seq: %d, val: %s", key, seq, val)
 	}
 }
