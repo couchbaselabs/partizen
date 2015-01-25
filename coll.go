@@ -99,12 +99,13 @@ func (r *CollRoot) mutate(op MutationOp, partitionId PartitionId,
 	var cb MutationCallback
 	if matchSeq != NO_MATCH_SEQ {
 		cb = func(existing *KeySeqLoc, isVal bool, mutation *Mutation) bool {
-			if isVal &&
-				(existing == nil || existing.Seq != mutation.MatchSeq) {
-				cbErr = ErrMatchSeq
-				return false
+			if !isVal ||
+				(existing == nil && mutation.MatchSeq == CREATE_MATCH_SEQ) ||
+				(existing != nil && mutation.MatchSeq == existing.Seq) {
+				return true
 			}
-			return true
+			cbErr = ErrMatchSeq
+			return false
 		}
 	}
 

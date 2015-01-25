@@ -11,10 +11,6 @@ type Val []byte
 type PartitionId uint16
 type Seq uint64
 
-const NO_MATCH_SEQ = Seq(0xffffffffffffffff)
-
-var ErrMatchSeq = errors.New("non-matching seq")
-
 func StoreOpen(storeFile StoreFile, storeOptions *StoreOptions) (
 	Store, error) {
 	return storeOpen(storeFile, storeOptions)
@@ -38,16 +34,25 @@ type Store interface {
 	AbortChanges(*ChangeStats) error
 }
 
-// TODO: Should have separation of insert versus update versus upsert?
+// NO_MATCH_SEQ can be used for Collection.Set()'s matchSeq to specify
+// that the caller doesn't care about the existing item's Seq.
+const NO_MATCH_SEQ = Seq(0xffffffffffffffff)
+
+// CREATE_MATCH_SEQ can be used for Collection.Set()'s matchSeq to
+// specify that the caller explicitly wants a creation instead of an
+// update of an existing item.
+const CREATE_MATCH_SEQ = Seq(0xfffffffffffffffe)
+
+var ErrMatchSeq = errors.New("non-matching seq")
 
 type Collection interface {
 	Get(partitionId PartitionId, key Key, matchSeq Seq,
 		withValue bool) (seq Seq, val Val, err error)
 
 	// Set takes a newSeq that should be monotonically increasing.
-	// The newSeq represents the new mutation, not the seq of the
-	// existing item, if it exists, that's to-be-overwritten.  Use
-	// matchSeq of NO_MATCH_SEQ if you don't want a seq match.
+	// The newSeq represents the new mutation's seq.  Use matchSeq of
+	// NO_MATCH_SEQ if you don't care about the existing item, if any.
+	// Use CREATE_MATCH_SEQ for matchSeq to ensure a creation.
 	Set(partitionId PartitionId, key Key, matchSeq Seq,
 		newSeq Seq, val Val) error
 

@@ -24,6 +24,10 @@ func TestSimpleMemColl(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected Set on empty coll to work")
 	}
+	err = c.Set(0, []byte("a"), CREATE_MATCH_SEQ, 1, []byte("AAAA"))
+	if err != ErrMatchSeq {
+		t.Errorf("expected ErrMatchSeq during create on existing item")
+	}
 	seq, val, err = c.Get(0, []byte("a"), NO_MATCH_SEQ, true)
 	if err != nil || seq != 1 || string(val) != "A" {
 		t.Errorf("expected Get(a) to work, got seq: %d, val: %s, err: %v",
@@ -118,5 +122,9 @@ func TestSimpleMemColl(t *testing.T) {
 	}
 	if seq != 10 {
 		t.Errorf("expected seq of 10")
+	}
+	err = c.Set(0, []byte("x"), CREATE_MATCH_SEQ, 11, []byte("X"))
+	if err != nil {
+		t.Errorf("expected ok during clean CREATE_MATCH_SEQ")
 	}
 }
