@@ -20,11 +20,25 @@ func TestSimpleMemColl(t *testing.T) {
 	if err != nil || seq != 0 || val != nil {
 		t.Errorf("expected Get on empty coll to be empty")
 	}
+	partitionId, key, seq, val, err := c.Min(true)
+	if err != nil {
+		t.Errorf("expected no err")
+	}
+	if partitionId != 0 || key != nil || seq != 0 || val != nil {
+		t.Errorf("expected no min")
+	}
+	partitionId, key, seq, val, err = c.Max(true)
+	if err != nil {
+		t.Errorf("expected no err")
+	}
+	if partitionId != 0 || key != nil || seq != 0 || val != nil {
+		t.Errorf("expected no max")
+	}
 	err = c.Set(0, []byte("a"), NO_MATCH_SEQ, 1, []byte("A"))
 	if err != nil {
 		t.Errorf("expected Set on empty coll to work")
 	}
-	err = c.Set(0, []byte("a"), CREATE_MATCH_SEQ, 1, []byte("AAAA"))
+	err = c.Set(0, []byte("a"), CREATE_MATCH_SEQ, 1111, []byte("AAAA"))
 	if err != ErrMatchSeq {
 		t.Errorf("expected ErrMatchSeq during create on existing item")
 	}
@@ -36,6 +50,20 @@ func TestSimpleMemColl(t *testing.T) {
 	seq, val, err = c.Get(0, []byte("not-there"), NO_MATCH_SEQ, true)
 	if err != nil || seq != 0 || val != nil {
 		t.Errorf("expected Get on missing key to be empty")
+	}
+	partitionId, key, seq, val, err = c.Min(true)
+	if err != nil {
+		t.Errorf("expected no err")
+	}
+	if partitionId != 0 || string(key) != "a" || seq != 1 || string(val) != "A" {
+		t.Errorf("expected no min")
+	}
+	partitionId, key, seq, val, err = c.Max(true)
+	if err != nil {
+		t.Errorf("expected no err")
+	}
+	if partitionId != 0 || string(key) != "a" || seq != 1 || string(val) != "A" {
+		t.Errorf("expected no max")
 	}
 	err = c.Set(0, []byte("b"), NO_MATCH_SEQ, 2, []byte("B"))
 	if err != nil {
@@ -54,6 +82,20 @@ func TestSimpleMemColl(t *testing.T) {
 	seq, val, err = c.Get(0, []byte("not-there"), NO_MATCH_SEQ, true)
 	if err != nil || seq != 0 || val != nil {
 		t.Errorf("expected Get on missing key to be empty")
+	}
+	partitionId, key, seq, val, err = c.Min(true)
+	if err != nil {
+		t.Errorf("expected no err")
+	}
+	if partitionId != 0 || string(key) != "a" || seq != 1 || string(val) != "A" {
+		t.Errorf("expected min a")
+	}
+	partitionId, key, seq, val, err = c.Max(true)
+	if err != nil {
+		t.Errorf("expected no err")
+	}
+	if partitionId != 0 || string(key) != "b" || seq != 2 || string(val) != "B" {
+		t.Errorf("expected max b, got key: %s, seq: %d, val: %s", key, seq, val)
 	}
 	err = c.Set(0, []byte("0"), NO_MATCH_SEQ, 3, []byte("00"))
 	if err != nil {
@@ -108,7 +150,21 @@ func TestSimpleMemColl(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected no err")
 	}
-	err = c.Set(0, []byte("a"), seq, 10, []byte("AA"))
+	partitionId, key, seq, val, err = c.Min(true)
+	if err != nil {
+		t.Errorf("expected no err")
+	}
+	if partitionId != 0 || string(key) != "0" || seq != 3 || string(val) != "00" {
+		t.Errorf("expected min 0, got key: %s, seq: %d, val: %s", key, seq, val)
+	}
+	partitionId, key, seq, val, err = c.Max(true)
+	if err != nil {
+		t.Errorf("expected no err")
+	}
+	if partitionId != 0 || string(key) != "b" || seq != 2 || string(val) != "B" {
+		t.Errorf("expected max b, got key: %s, seq: %d, val: %s", key, seq, val)
+	}
+	err = c.Set(0, []byte("a"), 1, 10, []byte("AA"))
 	if err != nil {
 		t.Errorf("expected no err on Set with correct seq")
 	}
@@ -126,5 +182,41 @@ func TestSimpleMemColl(t *testing.T) {
 	err = c.Set(0, []byte("x"), CREATE_MATCH_SEQ, 11, []byte("X"))
 	if err != nil {
 		t.Errorf("expected ok during clean CREATE_MATCH_SEQ")
+	}
+	partitionId, key, seq, val, err = c.Min(true)
+	if err != nil {
+		t.Errorf("expected no err")
+	}
+	if partitionId != 0 || string(key) != "0" || seq != 3 || string(val) != "00" {
+		t.Errorf("expected min 0, got key: %s, seq: %d, val: %s", key, seq, val)
+	}
+	partitionId, key, seq, val, err = c.Max(true)
+	if err != nil {
+		t.Errorf("expected no err")
+	}
+	if partitionId != 0 || string(key) != "x" || seq != 11 || string(val) != "X" {
+		t.Errorf("expected max x, got key: %s, seq: %d, val: %s", key, seq, val)
+	}
+	err = c.Del(0, []byte("0"), 3, 20)
+	if err != nil {
+		t.Errorf("expected ok delete")
+	}
+	seq, val, err = c.Get(0, []byte("0"), NO_MATCH_SEQ, true)
+	if err != nil || seq != 0 || val != nil {
+		t.Errorf("expected no 0")
+	}
+	partitionId, key, seq, val, err = c.Min(true)
+	if err != nil {
+		t.Errorf("expected no err")
+	}
+	if partitionId != 0 || string(key) != "a" || seq != 10 || string(val) != "AA" {
+		t.Errorf("expected min 0, got key: %s, seq: %d, val: %s", key, seq, val)
+	}
+	partitionId, key, seq, val, err = c.Max(true)
+	if err != nil {
+		t.Errorf("expected no err")
+	}
+	if partitionId != 0 || string(key) != "x" || seq != 11 || string(val) != "X" {
+		t.Errorf("expected max x, got key: %s, seq: %d, val: %s", key, seq, val)
 	}
 }

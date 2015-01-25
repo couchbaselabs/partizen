@@ -33,7 +33,7 @@ func (r *CollRoot) Get(partitionId PartitionId, key Key, matchSeq Seq,
 			fmt.Errorf("CollRoot.Get: unexpected type, ksl: %#v", ksl)
 	}
 
-	seq, val = ksl.Seq, ksl.Loc.buf
+	seq, val = ksl.Seq, ksl.Loc.buf // TODO: Mem mgmt, need to copy buf?
 
 	r.store.m.Lock()
 	kslr.DecRef()
@@ -61,12 +61,12 @@ func (r *CollRoot) Del(partitionId PartitionId, key Key, matchSeq Seq,
 
 func (r *CollRoot) Min(withValue bool) (
 	partitionId PartitionId, key Key, seq Seq, val Val, err error) {
-	return 0, nil, 0, nil, fmt.Errorf("unimplemented")
+	return r.minMax(false, withValue)
 }
 
 func (r *CollRoot) Max(withValue bool) (
 	partitionId PartitionId, key Key, seq Seq, val Val, err error) {
-	return 0, nil, 0, nil, fmt.Errorf("unimplemented")
+	return r.minMax(true, withValue)
 }
 
 func (r *CollRoot) Scan(key Key,
@@ -140,4 +140,34 @@ func (r *CollRoot) mutate(op MutationOp, partitionId PartitionId,
 	r.store.m.Unlock()
 
 	return err
+}
+
+func (r *CollRoot) minMax(locateMax bool, withValue bool) (
+	partitionId PartitionId, key Key, seq Seq, val Val, err error) {
+	r.store.m.Lock()
+	kslr, ksl := r.RootKeySeqLocRef.AddRef()
+	r.store.m.Unlock()
+	if kslr == nil || ksl == nil {
+		return 0, nil, 0, nil, nil
+	}
+
+	ksl, err = locateMinMax(ksl, locateMax, io.ReaderAt(nil))
+	if err != nil {
+		return 0, nil, 0, nil, err
+	}
+	if ksl == nil {
+		return 0, nil, 0, nil, err
+	}
+	if ksl.Loc.Type != LocTypeVal {
+		return 0, nil, 0, nil,
+			fmt.Errorf("CollRoot.minMax: unexpected type, ksl: %#v", ksl)
+	}
+
+	key, seq, val = ksl.Key, ksl.Seq, ksl.Loc.buf // TOOD: Mem mgmt.
+
+	r.store.m.Lock()
+	kslr.DecRef()
+	r.store.m.Unlock()
+
+	return 0, key, seq, val, nil
 }

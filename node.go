@@ -41,3 +41,36 @@ func locateKeySeqLoc(ksl *KeySeqLoc, key Key, r io.ReaderAt) (
 	}
 	return nil, nil
 }
+
+func locateMinMax(ksl *KeySeqLoc, locateMax bool, r io.ReaderAt) (
+	*KeySeqLoc, error) {
+	for ksl != nil {
+		if ksl.Loc.Type == LocTypeNode {
+			node, err := ReadLocNode(&ksl.Loc, r)
+			if err != nil {
+				return nil, err
+			}
+			if node == nil {
+				return nil, nil
+			}
+			ksls := node.GetKeySeqLocs()
+			if ksls == nil {
+				return nil, nil
+			}
+			n := ksls.Len()
+			if n <= 0 {
+				return nil, nil
+			}
+			if locateMax {
+				ksl = ksls.KeySeqLoc(n - 1)
+			} else {
+				ksl = ksls.KeySeqLoc(0)
+			}
+		} else if ksl.Loc.Type == LocTypeVal {
+			return ksl, nil
+		} else {
+			return nil, fmt.Errorf("locateMinMax")
+		}
+	}
+	return nil, nil
+}
