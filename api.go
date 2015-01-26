@@ -75,8 +75,10 @@ type Collection interface {
 	Max(withValue bool) (
 		partitionId PartitionId, key Key, seq Seq, val Val, err error)
 
+	// Scan returns a Cursor positioned "before" the first result, so
+	// the caller should use Cursor.Next() to move to the first result.
 	Scan(key Key,
-		reverse bool,
+		ascending bool,
 		partitionIds []PartitionId, // Use nil for all partitions.
 		withValue bool) (Cursor, error)
 
@@ -95,7 +97,9 @@ type Collection interface {
 }
 
 type Cursor interface {
-	// TODO.
+	Close() error
+	Next() (ok bool, err error)
+	Current() (*KeySeqLoc, error)
 }
 
 type StoreOptions struct {

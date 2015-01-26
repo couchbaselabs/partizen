@@ -70,10 +70,22 @@ func (r *CollRoot) Max(withValue bool) (
 }
 
 func (r *CollRoot) Scan(key Key,
-	reverse bool,
+	ascending bool,
 	partitionIds []PartitionId, // Use nil for all partitions.
 	withValue bool) (Cursor, error) {
-	return nil, fmt.Errorf("unimplemented")
+	closeCh := make(chan struct{})
+
+	resultsCh, err := r.startCursor(key, ascending, partitionIds,
+		io.ReaderAt(nil), closeCh)
+	if err != nil {
+		close(closeCh)
+		return nil, err
+	}
+
+	return &CursorImpl{
+		closeCh:   closeCh,
+		resultsCh: resultsCh,
+	}, nil
 }
 
 func (r *CollRoot) Diff(partitionId PartitionId, seq Seq,
@@ -170,4 +182,34 @@ func (r *CollRoot) minMax(locateMax bool, withValue bool) (
 	r.store.m.Unlock()
 
 	return 0, key, seq, val, nil
+}
+
+// ----------------------------------------
+
+type CursorImpl struct {
+	closeCh   chan struct{}
+	resultsCh chan CursorResult
+	err       error
+	ksl       *KeySeqLoc
+}
+
+func (c *CursorImpl) Close() error {
+	close(c.closeCh)
+	return nil
+}
+
+func (c *CursorImpl) Next() (bool, error) {
+	r, ok := <-c.resultsCh
+	if !ok {
+		c.err = nil
+		c.ksl = nil
+		return false, nil
+	}
+	c.err = r.err
+	c.ksl = r.ksl
+	return c.err == nil, c.err
+}
+
+func (c *CursorImpl) Current() (*KeySeqLoc, error) {
+	return c.ksl, c.err
 }
