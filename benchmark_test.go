@@ -154,18 +154,19 @@ func TODO_BenchmarkSortedInsert_ReplaceOrInsert(b *testing.B) {
 	// 	}
 }
 
-func TODO_BenchmarkIterate(b *testing.B) {
-	// 	tree := btree.New(btreeDegree)
-	// 	for i := 0; i < len(fixture.TestData); i++ {
-	// 		tree.ReplaceOrInsert(googItem(fixture.TestData[i]))
-	// 	}
-	// 	b.ResetTimer()
-	//
-	// 	for i := 0; i < b.N; i++ {
-	//		tree.Ascend(func(i btree.Item) bool {
-	// 			_ = i.(googItem).Key
-	// 			_ = i.(googItem).Value
-	// 			return true
-	// 		})
-	// 	}
+func BenchmarkIterate10000(b *testing.B) {
+	s, _ := StoreOpen(nil, nil)
+	c, _ := s.AddCollection("x", "")
+	for i := 0; i < 10000 && i < len(fixture.SortedTestData); i++ {
+		key := []byte(strconv.Itoa(int(fixture.SortedTestData[i].Key)))
+		c.Set(0, key, NO_MATCH_SEQ, Seq(i), key)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		cur, _ := c.Scan([]byte(nil), true, nil, true)
+		ok := true
+		for ok {
+			ok, _ = cur.Next()
+		}
+	}
 }

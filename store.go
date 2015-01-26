@@ -81,8 +81,8 @@ func initStoreOptions(o *StoreOptions) *StoreOptions {
 var DefaultOptions = StoreOptions{
 	CompareFuncs:     map[string]CompareFunc{"": bytes.Compare},
 	DefaultPageSize:  4096,
-	DefaultMinFanOut: 2, // TODO: Larger DefaultMinFanOut.
-	DefaultMaxFanOut: 5, // TODO: Larger DefaultMaxFanOut.
+	DefaultMinFanOut: 15, // TODO: Better DefaultMinFanOut.
+	DefaultMaxFanOut: 32, // TODO: Better DefaultMaxFanOut.
 	BufManager:       &defaultBufManager{},
 }
 
