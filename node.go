@@ -120,7 +120,8 @@ func (r *CollRoot) startCursor(key Key, ascending bool,
 			i := sort.Search(n, func(i int) bool {
 				return bytes.Compare(ksls.Key(i), key) >= 0
 			})
-			if !ascending && bytes.Compare(ksls.Key(i), key) > 0 {
+			if !ascending &&
+				(i >= n || bytes.Compare(ksls.Key(i), key) > 0) {
 				i = i - 1
 			}
 			for i >= 0 && i < n {

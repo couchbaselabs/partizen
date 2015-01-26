@@ -1,6 +1,7 @@
 package partizen
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -14,48 +15,51 @@ func testSimpleCursorKeys(t *testing.T, c Collection, name string,
 	if cur == nil {
 		t.Errorf(name + ": expected Scan has cur")
 	}
-	checkCursorKeys(t, name, startKey, cur, keys)
+	checkCursorKeys(t, name, ascending, startKey, cur, keys)
 }
 
-func checkCursorKeys(t *testing.T, name, startKey string,
-	cur Cursor, keys string) {
+func checkCursorKeys(t *testing.T, name string, ascending bool,
+	startKey string, cur Cursor, keys string) {
 	if cur == nil {
 		t.Errorf(name + ": expected cur")
 	}
+
+	prefix := fmt.Sprintf("%s: startKey: %s, ascending: %t",
+		name, startKey, ascending)
 
 	if len(keys) > 0 {
 		for i, key := range strings.Split(keys, ",") {
 			ok, err := cur.Next()
 			if err != nil {
-				t.Errorf(name+": startKey: %s, expected no Next error,"+
-					" err: %#v, i: %d, key: %s", startKey, err, i, key)
+				t.Errorf(prefix+" expected no Next error,"+
+					" err: %#v, i: %d, key: %s", err, i, key)
 			}
 			if !ok {
-				t.Errorf(name+": startKey: %s, expected Next ok,"+
-					" i: %d, key: %s", startKey, i, key)
+				t.Errorf(prefix+" expected Next ok,"+
+					" i: %d, key: %s", i, key)
 			}
 			ksl, err := cur.Current()
 			if err != nil {
-				t.Errorf(name+": startKey: %s, expected no Current error,"+
-					" err: %#v, i: %d, key: %s", startKey, err, i, key)
+				t.Errorf(prefix+" expected no Current error,"+
+					" err: %#v, i: %d, key: %s", err, i, key)
 			}
 			if ksl == nil {
-				t.Errorf(name+": startKey: %s, expected Current ksl,"+
-					" err: %#v, i: %d, key: %s", startKey, err, i, key)
+				t.Errorf(prefix+" expected Current ksl,"+
+					" err: %#v, i: %d, key: %s", err, i, key)
 			}
 			if key != string(ksl.Key) {
-				t.Errorf(name+": startKey: %s, expected Current key: %s,"+
-					" ksl: %#v, i: %d", startKey, key, ksl, i)
+				t.Errorf(prefix+" expected Current key: %s,"+
+					" ksl: %#v, i: %d", key, ksl, i)
 			}
 		}
 	}
 
 	ok, err := cur.Next()
 	if err != nil {
-		t.Errorf("expected last Next to have no err, got: %#v", err)
+		t.Errorf(prefix+" expected last Next to have no err, got: %#v", err)
 	}
 	if ok {
-		t.Errorf("expected last Next to be done")
+		t.Errorf(prefix+" expected last Next to be done, cur: %#v", cur)
 	}
 }
 
@@ -89,8 +93,12 @@ func TestSimpleMemOps(t *testing.T) {
 	if partitionId != 0 || key != nil || seq != 0 || val != nil {
 		t.Errorf("expected no max")
 	}
+
 	testSimpleCursorKeys(t, c, "empty coll", true, "", "")
 	testSimpleCursorKeys(t, c, "empty coll", true, "a", "")
+
+	testSimpleCursorKeys(t, c, "empty coll", false, "", "")
+	testSimpleCursorKeys(t, c, "empty coll", false, "a", "")
 
 	// ------------------------------------------------
 	err = c.Set(0, []byte("a"), NO_MATCH_SEQ, 1, []byte("A"))
@@ -126,10 +134,16 @@ func TestSimpleMemOps(t *testing.T) {
 		string(val) != "A" {
 		t.Errorf("expected no max")
 	}
+
 	testSimpleCursorKeys(t, c, "1 key", true, "a", "a")
 	testSimpleCursorKeys(t, c, "1 key", true, "0", "a")
 	testSimpleCursorKeys(t, c, "1 key", true, "aa", "")
 	testSimpleCursorKeys(t, c, "1 key", true, "z", "")
+
+	testSimpleCursorKeys(t, c, "1 key", false, "a", "a")
+	testSimpleCursorKeys(t, c, "1 key", false, "0", "")
+	testSimpleCursorKeys(t, c, "1 key", false, "aa", "a")
+	testSimpleCursorKeys(t, c, "1 key", false, "z", "a")
 
 	// ------------------------------------------------
 	err = c.Set(0, []byte("b"), NO_MATCH_SEQ, 2, []byte("B"))
@@ -164,10 +178,18 @@ func TestSimpleMemOps(t *testing.T) {
 	if partitionId != 0 || string(key) != "b" || seq != 2 || string(val) != "B" {
 		t.Errorf("expected max b, got key: %s, seq: %d, val: %s", key, seq, val)
 	}
+
 	testSimpleCursorKeys(t, c, "2 key", true, "a", "a,b")
+	testSimpleCursorKeys(t, c, "2 key", true, "b", "b")
 	testSimpleCursorKeys(t, c, "2 key", true, "0", "a,b")
 	testSimpleCursorKeys(t, c, "2 key", true, "aa", "b")
 	testSimpleCursorKeys(t, c, "2 key", true, "z", "")
+
+	testSimpleCursorKeys(t, c, "2 key", false, "a", "a")
+	testSimpleCursorKeys(t, c, "2 key", false, "b", "b,a")
+	testSimpleCursorKeys(t, c, "2 key", false, "0", "")
+	testSimpleCursorKeys(t, c, "2 key", false, "aa", "a")
+	testSimpleCursorKeys(t, c, "2 key", false, "z", "b,a")
 
 	// ------------------------------------------------
 	err = c.Set(0, []byte("0"), NO_MATCH_SEQ, 3, []byte("00"))
@@ -239,10 +261,16 @@ func TestSimpleMemOps(t *testing.T) {
 		string(val) != "B" {
 		t.Errorf("expected max b, got key: %s, seq: %d, val: %s", key, seq, val)
 	}
+
 	testSimpleCursorKeys(t, c, "3 key", true, "a", "a,b")
 	testSimpleCursorKeys(t, c, "3 key", true, "0", "0,a,b")
 	testSimpleCursorKeys(t, c, "3 key", true, "aa", "b")
 	testSimpleCursorKeys(t, c, "3 key", true, "z", "")
+
+	testSimpleCursorKeys(t, c, "3 key", false, "a", "a,0")
+	testSimpleCursorKeys(t, c, "3 key", false, "0", "0")
+	testSimpleCursorKeys(t, c, "3 key", false, "aa", "a,0")
+	testSimpleCursorKeys(t, c, "3 key", false, "z", "b,a,0")
 
 	// ------------------------------------------------
 	err = c.Set(0, []byte("a"), 1, 10, []byte("AA"))
@@ -260,10 +288,23 @@ func TestSimpleMemOps(t *testing.T) {
 	if seq != 10 {
 		t.Errorf("expected seq of 10")
 	}
+	seq, val, err = c.Get(0, []byte("a"), NO_MATCH_SEQ, true)
+	if err != nil || string(val) != "AA" {
+		t.Errorf("expected no err and AA")
+	}
+	if seq != 10 {
+		t.Errorf("expected seq of 10")
+	}
+
 	testSimpleCursorKeys(t, c, "3 key after update", true, "a", "a,b")
 	testSimpleCursorKeys(t, c, "3 key after update", true, "0", "0,a,b")
 	testSimpleCursorKeys(t, c, "3 key after update", true, "aa", "b")
 	testSimpleCursorKeys(t, c, "3 key after update", true, "z", "")
+
+	testSimpleCursorKeys(t, c, "3 key after update", false, "a", "a,0")
+	testSimpleCursorKeys(t, c, "3 key after update", false, "0", "0")
+	testSimpleCursorKeys(t, c, "3 key after update", false, "aa", "a,0")
+	testSimpleCursorKeys(t, c, "3 key after update", false, "z", "b,a,0")
 
 	// ------------------------------------------------
 	err = c.Set(0, []byte("x"), CREATE_MATCH_SEQ, 11, []byte("X"))
@@ -286,6 +327,7 @@ func TestSimpleMemOps(t *testing.T) {
 		string(val) != "X" {
 		t.Errorf("expected max x, got key: %s, seq: %d, val: %s", key, seq, val)
 	}
+
 	testSimpleCursorKeys(t, c, "4 key", true, "a", "a,b,x")
 	testSimpleCursorKeys(t, c, "4 key", true, "0", "0,a,b,x")
 	testSimpleCursorKeys(t, c, "4 key", true, "aa", "b,x")
@@ -293,6 +335,15 @@ func TestSimpleMemOps(t *testing.T) {
 	testSimpleCursorKeys(t, c, "4 key", true, "c", "x")
 	testSimpleCursorKeys(t, c, "4 key", true, "x", "x")
 	testSimpleCursorKeys(t, c, "4 key", true, "z", "")
+
+	testSimpleCursorKeys(t, c, "4 key", false, "a", "a,0")
+	testSimpleCursorKeys(t, c, "4 key", false, ".", "") // "." < "0"
+	testSimpleCursorKeys(t, c, "4 key", false, "0", "0")
+	testSimpleCursorKeys(t, c, "4 key", false, "aa", "a,0")
+	testSimpleCursorKeys(t, c, "4 key", false, "b", "b,a,0")
+	testSimpleCursorKeys(t, c, "4 key", false, "c", "b,a,0")
+	testSimpleCursorKeys(t, c, "4 key", false, "x", "x,b,a,0")
+	testSimpleCursorKeys(t, c, "4 key", false, "z", "x,b,a,0")
 
 	// ------------------------------------------------
 	err = c.Del(0, []byte("0"), 3, 20)
@@ -319,6 +370,7 @@ func TestSimpleMemOps(t *testing.T) {
 		string(val) != "X" {
 		t.Errorf("expected max x, got key: %s, seq: %d, val: %s", key, seq, val)
 	}
+
 	testSimpleCursorKeys(t, c, "3 key after del 0", true, "a", "a,b,x")
 	testSimpleCursorKeys(t, c, "3 key after del 0", true, "0", "a,b,x")
 	testSimpleCursorKeys(t, c, "3 key after del 0", true, "aa", "b,x")
@@ -326,4 +378,13 @@ func TestSimpleMemOps(t *testing.T) {
 	testSimpleCursorKeys(t, c, "3 key after del 0", true, "c", "x")
 	testSimpleCursorKeys(t, c, "3 key after del 0", true, "x", "x")
 	testSimpleCursorKeys(t, c, "3 key after del 0", true, "z", "")
+
+	testSimpleCursorKeys(t, c, "3 key after del 0", false, "a", "a")
+	testSimpleCursorKeys(t, c, "3 key after del 0", false, ".", "")
+	testSimpleCursorKeys(t, c, "3 key after del 0", false, "0", "")
+	testSimpleCursorKeys(t, c, "3 key after del 0", false, "aa", "a")
+	testSimpleCursorKeys(t, c, "3 key after del 0", false, "b", "b,a")
+	testSimpleCursorKeys(t, c, "3 key after del 0", false, "c", "b,a")
+	testSimpleCursorKeys(t, c, "3 key after del 0", false, "x", "x,b,a")
+	testSimpleCursorKeys(t, c, "3 key after del 0", false, "z", "x,b,a")
 }
