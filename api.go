@@ -32,6 +32,8 @@ type Store interface {
 	HasChanges() bool
 	CommitChanges(*ChangeStats) error
 	AbortChanges(*ChangeStats) error
+
+	// TODO: Store-level read-only snapshots.
 }
 
 // NO_MATCH_SEQ can be used for Collection.Set()'s matchSeq to specify
@@ -44,8 +46,11 @@ const NO_MATCH_SEQ = Seq(0xffffffffffffffff)
 const CREATE_MATCH_SEQ = Seq(0xfffffffffffffffe)
 
 var ErrMatchSeq = errors.New("non-matching seq")
+var ErrReadOnly = errors.New("read-only")
 
 type Collection interface {
+	Close() error
+
 	Get(partitionId PartitionId, key Key, matchSeq Seq,
 		withValue bool) (seq Seq, val Val, err error)
 
@@ -81,6 +86,9 @@ type Collection interface {
 		ascending bool,
 		partitionIds []PartitionId, // Use nil for all partitions.
 		withValue bool) (Cursor, error)
+
+	// Snapshot returns a read-only snapshot of the Collection.
+	Snapshot() (Collection, error)
 
 	// The seq should be the Seq that was at or before some past
 	// commit point.

@@ -5,6 +5,14 @@ import (
 	"io"
 )
 
+func (r *CollRoot) Close() error {
+	r.store.m.Lock()
+	r.RootKeySeqLocRef.DecRef()
+	r.RootKeySeqLocRef = nil
+	r.store.m.Unlock()
+	return nil
+}
+
 func (r *CollRoot) Get(partitionId PartitionId, key Key, matchSeq Seq,
 	withValue bool) (seq Seq, val Val, err error) {
 	if partitionId != 0 {
@@ -88,6 +96,16 @@ func (r *CollRoot) Scan(key Key,
 	}, nil
 }
 
+func (r *CollRoot) Snapshot() (Collection, error) {
+	r.store.m.Lock()
+	r.RootKeySeqLocRef.AddRef()
+	x := *r // Shallow copy.
+	r.store.m.Unlock()
+
+	x.readOnly = true
+	return &x, nil
+}
+
 func (r *CollRoot) Diff(partitionId PartitionId, seq Seq,
 	exactToSeq bool) (
 	Cursor, error) {
@@ -103,6 +121,9 @@ func (r *CollRoot) Rollback(partitionId PartitionId, seq Seq,
 
 func (r *CollRoot) mutate(op MutationOp, partitionId PartitionId,
 	key Key, matchSeq Seq, newSeq Seq, val Val) (err error) {
+	if r.readOnly {
+		return ErrReadOnly
+	}
 	if partitionId != 0 {
 		return fmt.Errorf("partition unimplemented")
 	}

@@ -168,15 +168,18 @@ func TestSimpleMemOps(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected no err")
 	}
-	if partitionId != 0 || string(key) != "a" || seq != 1 || string(val) != "A" {
+	if partitionId != 0 || string(key) != "a" || seq != 1 ||
+		string(val) != "A" {
 		t.Errorf("expected min a")
 	}
 	partitionId, key, seq, val, err = c.Max(true)
 	if err != nil {
 		t.Errorf("expected no err")
 	}
-	if partitionId != 0 || string(key) != "b" || seq != 2 || string(val) != "B" {
-		t.Errorf("expected max b, got key: %s, seq: %d, val: %s", key, seq, val)
+	if partitionId != 0 || string(key) != "b" || seq != 2 ||
+		string(val) != "B" {
+		t.Errorf("expected max b, got key: %s, seq: %d, val: %s",
+			key, seq, val)
 	}
 
 	testSimpleCursorKeys(t, c, "2 key", true, "a", "a,b")
@@ -251,7 +254,8 @@ func TestSimpleMemOps(t *testing.T) {
 	}
 	if partitionId != 0 || string(key) != "0" || seq != 3 ||
 		string(val) != "00" {
-		t.Errorf("expected min 0, got key: %s, seq: %d, val: %s", key, seq, val)
+		t.Errorf("expected min 0, got key: %s, seq: %d, val: %s",
+			key, seq, val)
 	}
 	partitionId, key, seq, val, err = c.Max(true)
 	if err != nil {
@@ -259,7 +263,8 @@ func TestSimpleMemOps(t *testing.T) {
 	}
 	if partitionId != 0 || string(key) != "b" || seq != 2 ||
 		string(val) != "B" {
-		t.Errorf("expected max b, got key: %s, seq: %d, val: %s", key, seq, val)
+		t.Errorf("expected max b, got key: %s, seq: %d, val: %s",
+			key, seq, val)
 	}
 
 	testSimpleCursorKeys(t, c, "3 key", true, "a", "a,b")
@@ -307,6 +312,30 @@ func TestSimpleMemOps(t *testing.T) {
 	testSimpleCursorKeys(t, c, "3 key after update", false, "z", "b,a,0")
 
 	// ------------------------------------------------
+	c2, err := c.Snapshot()
+	if err != nil || c2 == nil {
+		t.Errorf("expected ss to work")
+	}
+	err = c2.Set(0, []byte("snapshot-update"), NO_MATCH_SEQ, 30, []byte("t"))
+	if err != ErrReadOnly {
+		t.Errorf("expected update on snapshot to fail")
+	}
+	err = c2.Del(0, []byte("snapshot-delete"), NO_MATCH_SEQ, 30)
+	if err != ErrReadOnly {
+		t.Errorf("expected delete on snapshot to fail")
+	}
+
+	testSimpleCursorKeys(t, c2, "3 key after update", true, "a", "a,b")
+	testSimpleCursorKeys(t, c2, "3 key after update", true, "0", "0,a,b")
+	testSimpleCursorKeys(t, c2, "3 key after update", true, "aa", "b")
+	testSimpleCursorKeys(t, c2, "3 key after update", true, "z", "")
+
+	testSimpleCursorKeys(t, c2, "3 key after update", false, "a", "a,0")
+	testSimpleCursorKeys(t, c2, "3 key after update", false, "0", "0")
+	testSimpleCursorKeys(t, c2, "3 key after update", false, "aa", "a,0")
+	testSimpleCursorKeys(t, c2, "3 key after update", false, "z", "b,a,0")
+
+	// ------------------------------------------------
 	err = c.Set(0, []byte("x"), CREATE_MATCH_SEQ, 11, []byte("X"))
 	if err != nil {
 		t.Errorf("expected ok during clean CREATE_MATCH_SEQ")
@@ -317,7 +346,8 @@ func TestSimpleMemOps(t *testing.T) {
 	}
 	if partitionId != 0 || string(key) != "0" || seq != 3 ||
 		string(val) != "00" {
-		t.Errorf("expected min 0, got key: %s, seq: %d, val: %s", key, seq, val)
+		t.Errorf("expected min 0, got key: %s, seq: %d, val: %s",
+			key, seq, val)
 	}
 	partitionId, key, seq, val, err = c.Max(true)
 	if err != nil {
@@ -325,7 +355,8 @@ func TestSimpleMemOps(t *testing.T) {
 	}
 	if partitionId != 0 || string(key) != "x" || seq != 11 ||
 		string(val) != "X" {
-		t.Errorf("expected max x, got key: %s, seq: %d, val: %s", key, seq, val)
+		t.Errorf("expected max x, got key: %s, seq: %d, val: %s",
+			key, seq, val)
 	}
 
 	testSimpleCursorKeys(t, c, "4 key", true, "a", "a,b,x")
@@ -345,6 +376,16 @@ func TestSimpleMemOps(t *testing.T) {
 	testSimpleCursorKeys(t, c, "4 key", false, "x", "x,b,a,0")
 	testSimpleCursorKeys(t, c, "4 key", false, "z", "x,b,a,0")
 
+	testSimpleCursorKeys(t, c2, "3 key after update", true, "a", "a,b")
+	testSimpleCursorKeys(t, c2, "3 key after update", true, "0", "0,a,b")
+	testSimpleCursorKeys(t, c2, "3 key after update", true, "aa", "b")
+	testSimpleCursorKeys(t, c2, "3 key after update", true, "z", "")
+
+	testSimpleCursorKeys(t, c2, "3 key after update", false, "a", "a,0")
+	testSimpleCursorKeys(t, c2, "3 key after update", false, "0", "0")
+	testSimpleCursorKeys(t, c2, "3 key after update", false, "aa", "a,0")
+	testSimpleCursorKeys(t, c2, "3 key after update", false, "z", "b,a,0")
+
 	// ------------------------------------------------
 	err = c.Del(0, []byte("0"), 3, 20)
 	if err != nil {
@@ -360,7 +401,8 @@ func TestSimpleMemOps(t *testing.T) {
 	}
 	if partitionId != 0 || string(key) != "a" || seq != 10 ||
 		string(val) != "AA" {
-		t.Errorf("expected min 0, got key: %s, seq: %d, val: %s", key, seq, val)
+		t.Errorf("expected min 0, got key: %s, seq: %d, val: %s",
+			key, seq, val)
 	}
 	partitionId, key, seq, val, err = c.Max(true)
 	if err != nil {
@@ -368,7 +410,8 @@ func TestSimpleMemOps(t *testing.T) {
 	}
 	if partitionId != 0 || string(key) != "x" || seq != 11 ||
 		string(val) != "X" {
-		t.Errorf("expected max x, got key: %s, seq: %d, val: %s", key, seq, val)
+		t.Errorf("expected max x, got key: %s, seq: %d, val: %s",
+			key, seq, val)
 	}
 
 	testSimpleCursorKeys(t, c, "3 key after del 0", true, "a", "a,b,x")
@@ -387,4 +430,14 @@ func TestSimpleMemOps(t *testing.T) {
 	testSimpleCursorKeys(t, c, "3 key after del 0", false, "c", "b,a")
 	testSimpleCursorKeys(t, c, "3 key after del 0", false, "x", "x,b,a")
 	testSimpleCursorKeys(t, c, "3 key after del 0", false, "z", "x,b,a")
+
+	testSimpleCursorKeys(t, c2, "3 key after update", true, "a", "a,b")
+	testSimpleCursorKeys(t, c2, "3 key after update", true, "0", "0,a,b")
+	testSimpleCursorKeys(t, c2, "3 key after update", true, "aa", "b")
+	testSimpleCursorKeys(t, c2, "3 key after update", true, "z", "")
+
+	testSimpleCursorKeys(t, c2, "3 key after update", false, "a", "a,0")
+	testSimpleCursorKeys(t, c2, "3 key after update", false, "0", "0")
+	testSimpleCursorKeys(t, c2, "3 key after update", false, "aa", "a,0")
+	testSimpleCursorKeys(t, c2, "3 key after update", false, "z", "b,a,0")
 }

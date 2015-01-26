@@ -52,6 +52,7 @@ type CollRoot struct {
 	compareFunc CompareFunc
 	minFanOut   uint16
 	maxFanOut   uint16
+	readOnly    bool
 }
 
 type KeySeqLocRef struct {
@@ -64,7 +65,7 @@ type KeySeqLocRef struct {
 	next *KeySeqLocRef
 }
 
-// AddRef must be invoked by caller with CollRoot.m locked.
+// AddRef must be invoked by caller with CollRoot.store.m locked.
 func (r *KeySeqLocRef) AddRef() (*KeySeqLocRef, *KeySeqLoc) {
 	if r == nil {
 		return nil, nil
@@ -76,7 +77,7 @@ func (r *KeySeqLocRef) AddRef() (*KeySeqLocRef, *KeySeqLoc) {
 	return r, r.R
 }
 
-// DecRef must be invoked by caller with CollRoot.m locked.
+// DecRef must be invoked by caller with CollRoot.store.m locked.
 func (r *KeySeqLocRef) DecRef() *KeySeqLocRef {
 	if r.refs <= 0 {
 		panic("KeySeqLocRef.refs underflow")
