@@ -325,15 +325,18 @@ func TestSimpleMemOps(t *testing.T) {
 		t.Errorf("expected delete on snapshot to fail")
 	}
 
-	testSimpleCursorKeys(t, c2, "3 key after update", true, "a", "a,b")
-	testSimpleCursorKeys(t, c2, "3 key after update", true, "0", "0,a,b")
-	testSimpleCursorKeys(t, c2, "3 key after update", true, "aa", "b")
-	testSimpleCursorKeys(t, c2, "3 key after update", true, "z", "")
+	testSnapshotIsUnchanged := func() {
+		testSimpleCursorKeys(t, c2, "3 key after update", true, "a", "a,b")
+		testSimpleCursorKeys(t, c2, "3 key after update", true, "0", "0,a,b")
+		testSimpleCursorKeys(t, c2, "3 key after update", true, "aa", "b")
+		testSimpleCursorKeys(t, c2, "3 key after update", true, "z", "")
 
-	testSimpleCursorKeys(t, c2, "3 key after update", false, "a", "a,0")
-	testSimpleCursorKeys(t, c2, "3 key after update", false, "0", "0")
-	testSimpleCursorKeys(t, c2, "3 key after update", false, "aa", "a,0")
-	testSimpleCursorKeys(t, c2, "3 key after update", false, "z", "b,a,0")
+		testSimpleCursorKeys(t, c2, "3 key after update", false, "a", "a,0")
+		testSimpleCursorKeys(t, c2, "3 key after update", false, "0", "0")
+		testSimpleCursorKeys(t, c2, "3 key after update", false, "aa", "a,0")
+		testSimpleCursorKeys(t, c2, "3 key after update", false, "z", "b,a,0")
+	}
+	testSnapshotIsUnchanged()
 
 	// ------------------------------------------------
 	err = c.Set(0, []byte("x"), CREATE_MATCH_SEQ, 11, []byte("X"))
@@ -376,15 +379,7 @@ func TestSimpleMemOps(t *testing.T) {
 	testSimpleCursorKeys(t, c, "4 key", false, "x", "x,b,a,0")
 	testSimpleCursorKeys(t, c, "4 key", false, "z", "x,b,a,0")
 
-	testSimpleCursorKeys(t, c2, "3 key after update", true, "a", "a,b")
-	testSimpleCursorKeys(t, c2, "3 key after update", true, "0", "0,a,b")
-	testSimpleCursorKeys(t, c2, "3 key after update", true, "aa", "b")
-	testSimpleCursorKeys(t, c2, "3 key after update", true, "z", "")
-
-	testSimpleCursorKeys(t, c2, "3 key after update", false, "a", "a,0")
-	testSimpleCursorKeys(t, c2, "3 key after update", false, "0", "0")
-	testSimpleCursorKeys(t, c2, "3 key after update", false, "aa", "a,0")
-	testSimpleCursorKeys(t, c2, "3 key after update", false, "z", "b,a,0")
+	testSnapshotIsUnchanged()
 
 	// ------------------------------------------------
 	err = c.Del(0, []byte("0"), 3, 20)
@@ -431,13 +426,5 @@ func TestSimpleMemOps(t *testing.T) {
 	testSimpleCursorKeys(t, c, "3 key after del 0", false, "x", "x,b,a")
 	testSimpleCursorKeys(t, c, "3 key after del 0", false, "z", "x,b,a")
 
-	testSimpleCursorKeys(t, c2, "3 key after update", true, "a", "a,b")
-	testSimpleCursorKeys(t, c2, "3 key after update", true, "0", "0,a,b")
-	testSimpleCursorKeys(t, c2, "3 key after update", true, "aa", "b")
-	testSimpleCursorKeys(t, c2, "3 key after update", true, "z", "")
-
-	testSimpleCursorKeys(t, c2, "3 key after update", false, "a", "a,0")
-	testSimpleCursorKeys(t, c2, "3 key after update", false, "0", "0")
-	testSimpleCursorKeys(t, c2, "3 key after update", false, "aa", "a,0")
-	testSimpleCursorKeys(t, c2, "3 key after update", false, "z", "b,a,0")
+	testSnapshotIsUnchanged()
 }
