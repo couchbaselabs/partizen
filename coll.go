@@ -14,12 +14,16 @@ func (r *CollRoot) decRef(kslr *KeySeqLocRef) {
 	r.store.m.Unlock()
 }
 
-func (r *CollRoot) Close() error {
+func (r *CollRoot) DecRef() {
 	r.store.m.Lock()
-	r.RootKeySeqLocRef.DecRef()
-	r.RootKeySeqLocRef = nil
+	r.RootKeySeqLocRef = r.RootKeySeqLocRef.DecRef()
 	r.store.m.Unlock()
-	return nil
+}
+
+func (r *CollRoot) AddRef() {
+	r.store.m.Lock()
+	r.RootKeySeqLocRef.AddRef()
+	r.store.m.Unlock()
 }
 
 func (r *CollRoot) Get(partitionId PartitionId, key Key, matchSeq Seq,

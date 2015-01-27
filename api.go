@@ -49,7 +49,8 @@ var ErrMatchSeq = errors.New("non-matching seq")
 var ErrReadOnly = errors.New("read-only")
 
 type Collection interface {
-	Close() error
+	AddRef()
+	DecRef()
 
 	Get(partitionId PartitionId, key Key, matchSeq Seq,
 		withValue bool) (seq Seq, val Val, err error)
