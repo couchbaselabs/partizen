@@ -137,10 +137,6 @@ type StoreOptions struct {
 	BufManager BufManager
 }
 
-type VisitorFunc func(partitionId PartitionId, key Key, seq Seq, val Val) bool
-
-type MergeFunc func(base, a, b []byte) ([]byte, error)
-
 // A CompareFunc should return 0 if a == b, -1 if a < b,
 // and +1 if a > b.  For example: bytes.Compare()
 type CompareFunc func(a, b []byte) int
