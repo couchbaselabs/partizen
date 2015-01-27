@@ -9,7 +9,7 @@ import (
 
 func noop() {}
 
-func TestInsertBatchSize1(t *testing.T) {
+func TestInsertBatchSize1Items200(t *testing.T) {
 	benchmarkInsertBatchSizeN(noop,
 		1, 1, directBatchChoice,
 		// TODO: Theory is that unbalanced tree leads this
@@ -23,7 +23,7 @@ func TestInsertBatchSize100(t *testing.T) {
 		fixture.SortedTestData[:])
 }
 
-func TestInsertBatchSize1Reverse(t *testing.T) {
+func TestInsertBatchSize1Items200Reverse(t *testing.T) {
 	benchmarkInsertBatchSizeN(noop,
 		1, 1, reverseBatchChoice,
 		// TODO: Theory is that unbalanced tree leads this
@@ -39,7 +39,7 @@ func TestInsertBatchSize100Reverse(t *testing.T) {
 
 // ------------------------------------
 
-func BenchmarkInsertBatchSize1(b *testing.B) {
+func BenchmarkInsertBatchSize1Items200(b *testing.B) {
 	benchmarkInsertBatchSizeN(func() { b.ResetTimer() },
 		b.N, 1, directBatchChoice,
 		// TODO: Theory is that unbalanced tree leads this
@@ -67,7 +67,7 @@ func BenchmarkInsertBatchSize1000(b *testing.B) {
 
 // ------------------------------------
 
-func BenchmarkInsertBatchReverseSize1(b *testing.B) {
+func BenchmarkInsertBatchSize1Items200Reverse(b *testing.B) {
 	benchmarkInsertBatchSizeN(func() { b.ResetTimer() },
 		b.N, 1, reverseBatchChoice,
 		// TODO: Theory is that unbalanced tree leads this
@@ -75,19 +75,19 @@ func BenchmarkInsertBatchReverseSize1(b *testing.B) {
 		fixture.SortedTestData[:200])
 }
 
-func BenchmarkInsertBatchReverseSize10(b *testing.B) {
+func BenchmarkInsertBatchSize10Reverse(b *testing.B) {
 	benchmarkInsertBatchSizeN(func() { b.ResetTimer() },
 		b.N, 10, reverseBatchChoice,
 		fixture.SortedTestData[:])
 }
 
-func BenchmarkInsertBatchReverseSize100(b *testing.B) {
+func BenchmarkInsertBatcheSize100Reverse(b *testing.B) {
 	benchmarkInsertBatchSizeN(func() { b.ResetTimer() },
 		b.N, 100, reverseBatchChoice,
 		fixture.SortedTestData[:])
 }
 
-func BenchmarkInsertBatchReverseSize1000(b *testing.B) {
+func BenchmarkInsertBatchSize1000Reverse(b *testing.B) {
 	benchmarkInsertBatchSizeN(func() { b.ResetTimer() },
 		b.N, 1000, reverseBatchChoice,
 		fixture.SortedTestData[:])
@@ -154,13 +154,32 @@ func TODO_BenchmarkSortedInsert_ReplaceOrInsert(b *testing.B) {
 	// 	}
 }
 
-func BenchmarkIterate10000(b *testing.B) {
+func BenchmarkIterate(b *testing.B) {
 	s, _ := StoreOpen(nil, nil)
 	c, _ := s.AddCollection("x", "")
-	for i := 0; i < 10000 && i < len(fixture.SortedTestData); i++ {
-		key := []byte(strconv.Itoa(int(fixture.SortedTestData[i].Key)))
-		c.Set(0, key, NO_MATCH_SEQ, Seq(i), key)
+
+	batchSize := 10000
+	data := fixture.SortedTestData
+	m := make([]Mutation, 0, batchSize)
+	t := 0
+	for t < len(data) {
+		m = m[0:0]
+		i := 0
+		for i < cap(m) && t < len(data) {
+			m = append(m, Mutation{
+				Key:      []byte(strconv.Itoa(int(data[t].Key))),
+				Op:       MUTATION_OP_UPDATE,
+				MatchSeq: NO_MATCH_SEQ,
+			})
+			i++
+			t++
+		}
+		err := c.Batch(m)
+		if err != nil {
+			b.Errorf("batch err: %#v", err)
+		}
 	}
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		cur, _ := c.Scan([]byte(nil), true, nil, true)
