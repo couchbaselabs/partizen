@@ -61,11 +61,6 @@ func (r *CollRoot) Set(partitionId PartitionId, key Key, matchSeq Seq,
 	}})
 }
 
-func (r *CollRoot) Merge(partitionId PartitionId, key Key, matchSeq Seq,
-	newSeq Seq, val Val, mergeFunc MergeFunc) error {
-	return fmt.Errorf("unimplemented")
-}
-
 func (r *CollRoot) Del(partitionId PartitionId, key Key, matchSeq Seq,
 	newSeq Seq) error {
 	return r.mutate([]Mutation{Mutation{
