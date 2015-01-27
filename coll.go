@@ -210,8 +210,6 @@ func (r *CollRoot) minMax(locateMax bool, withValue bool) (
 type CursorImpl struct {
 	closeCh   chan struct{}
 	resultsCh chan CursorResult
-	err       error
-	ksl       *KeySeqLoc
 }
 
 func (c *CursorImpl) Close() error {
@@ -219,18 +217,10 @@ func (c *CursorImpl) Close() error {
 	return nil
 }
 
-func (c *CursorImpl) Next() (bool, error) {
+func (c *CursorImpl) Next() (PartitionId, Key, Seq, Val, error) {
 	r, ok := <-c.resultsCh
 	if !ok {
-		c.err = nil
-		c.ksl = nil
-		return false, nil
+		return 0, nil, 0, nil, nil // TODO: PartitionId.
 	}
-	c.err = r.err
-	c.ksl = r.ksl
-	return c.err == nil, c.err
-}
-
-func (c *CursorImpl) Current() (*KeySeqLoc, error) {
-	return c.ksl, c.err
+	return 0, r.ksl.Key, r.ksl.Seq, r.ksl.Loc.buf, r.err // TODO: Mem mgmt.
 }

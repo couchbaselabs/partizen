@@ -81,7 +81,7 @@ type Collection interface {
 		partitionId PartitionId, key Key, seq Seq, val Val, err error)
 
 	// Scan returns a Cursor positioned "before" the first result, so
-	// the caller should use Cursor.Next() to move to the first result.
+	// the caller should use Cursor.Next() for the first result.
 	Scan(key Key,
 		ascending bool,
 		partitionIds []PartitionId, // Use nil for all partitions.
@@ -106,8 +106,9 @@ type Collection interface {
 
 type Cursor interface {
 	Close() error
-	Next() (ok bool, err error)
-	Current() (*KeySeqLoc, error)
+
+	// Next returns a nil Key if the Cursor is done.
+	Next() (PartitionId, Key, Seq, Val, error)
 }
 
 type StoreOptions struct {

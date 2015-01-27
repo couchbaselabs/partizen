@@ -29,37 +29,28 @@ func checkCursorKeys(t *testing.T, name string, ascending bool,
 
 	if len(keys) > 0 {
 		for i, key := range strings.Split(keys, ",") {
-			ok, err := cur.Next()
+			partitionId, keyRes, seq, val, err := cur.Next()
 			if err != nil {
 				t.Errorf(prefix+" expected no Next error,"+
 					" err: %#v, i: %d, key: %s", err, i, key)
 			}
-			if !ok {
-				t.Errorf(prefix+" expected Next ok,"+
+			if partitionId != 0 || seq == 0 || val == nil {
+				t.Errorf(prefix+" expected 0 partitionId, seq, val"+
 					" i: %d, key: %s", i, key)
 			}
-			ksl, err := cur.Current()
-			if err != nil {
-				t.Errorf(prefix+" expected no Current error,"+
-					" err: %#v, i: %d, key: %s", err, i, key)
-			}
-			if ksl == nil {
-				t.Errorf(prefix+" expected Current ksl,"+
-					" err: %#v, i: %d, key: %s", err, i, key)
-			}
-			if key != string(ksl.Key) {
-				t.Errorf(prefix+" expected Current key: %s,"+
-					" ksl: %#v, i: %d", key, ksl, i)
+			if keyRes == nil || key != string(keyRes) {
+				t.Errorf(prefix+" expected key: %s,"+
+					" keyRes: %s, i: %d", key, keyRes, i)
 			}
 		}
 	}
 
-	ok, err := cur.Next()
+	_, key, _, _, err := cur.Next()
 	if err != nil {
 		t.Errorf(prefix+" expected last Next to have no err, got: %#v", err)
 	}
-	if ok {
-		t.Errorf(prefix+" expected last Next to be done, cur: %#v", cur)
+	if key != nil {
+		t.Errorf(prefix+" expected last Next to be done, key: %s", key)
 	}
 }
 
