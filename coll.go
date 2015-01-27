@@ -30,8 +30,13 @@ func (r *CollRoot) Get(partitionId PartitionId, key Key, matchSeq Seq,
 	if err != nil {
 		return 0, nil, err
 	}
-	if matchSeq != NO_MATCH_SEQ && (ksl == nil || ksl.Seq != matchSeq) {
-		return 0, nil, ErrMatchSeq
+	if matchSeq != NO_MATCH_SEQ {
+		if ksl != nil && matchSeq != ksl.Seq {
+			return 0, nil, ErrMatchSeq
+		}
+		if ksl == nil && matchSeq != CREATE_MATCH_SEQ {
+			return 0, nil, ErrMatchSeq
+		}
 	}
 	if ksl == nil {
 		return 0, nil, err

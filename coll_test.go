@@ -84,6 +84,10 @@ func TestSimpleMemOps(t *testing.T) {
 	if partitionId != 0 || key != nil || seq != 0 || val != nil {
 		t.Errorf("expected no max")
 	}
+	seq, val, err = c.Get(0, []byte("a"), CREATE_MATCH_SEQ, true)
+	if err != nil || seq != 0 || val != nil {
+		t.Errorf("expected no error for CREATE_MATCH_SEQ get on empty")
+	}
 
 	testSimpleCursorKeys(t, c, "empty coll", true, "", "")
 	testSimpleCursorKeys(t, c, "empty coll", true, "a", "")
@@ -124,6 +128,18 @@ func TestSimpleMemOps(t *testing.T) {
 	if partitionId != 0 || string(key) != "a" || seq != 1 ||
 		string(val) != "A" {
 		t.Errorf("expected no max")
+	}
+	seq, val, err = c.Get(0, []byte("a"), CREATE_MATCH_SEQ, true)
+	if err != ErrMatchSeq {
+		t.Errorf("expected ErrMatchSeq for CREATE_MATCH_SEQ get on real key")
+	}
+	seq, val, err = c.Get(0, []byte("a"), 100, true)
+	if err != ErrMatchSeq {
+		t.Errorf("expected ErrMatchSeq for wrong seq get on real key")
+	}
+	seq, val, err = c.Get(0, []byte("x"), CREATE_MATCH_SEQ, true)
+	if err != nil || seq != 0 || val != nil {
+		t.Errorf("expected no error for CREATE_MATCH_SEQ get on mising key")
 	}
 
 	testSimpleCursorKeys(t, c, "1 key", true, "a", "a")
