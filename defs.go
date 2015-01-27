@@ -246,28 +246,7 @@ func (a PtrKeySeqLocsArray) Append(x KeySeqLoc) KeySeqLocs {
 type MutationCallback func(existing *KeySeqLoc, isVal bool,
 	mutation *Mutation) bool
 
-// A Mutation represents a mutation request on a key.
-type Mutation struct {
-	Key Key
-	Seq Seq
-	Val Val
-	Op  MutationOp
-
-	// A MatchSeq of NO_MATCH_SEQ is allowed.
-	MatchSeq Seq
-}
-
 var zeroMutation Mutation
-
-type MutationOp uint8
-
-const (
-	MUTATION_OP_NONE   MutationOp = 0
-	MUTATION_OP_UPDATE MutationOp = 1
-	MUTATION_OP_DELETE MutationOp = 2
-
-	// FUTURE MutationOp's might include merging, visiting, etc.
-)
 
 type WALItemLoc struct {
 	Loc

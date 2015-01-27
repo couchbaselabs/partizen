@@ -75,6 +75,8 @@ type Collection interface {
 	Del(partitionId PartitionId, key Key, matchSeq Seq,
 		newSeq Seq) error
 
+	Batch([]Mutation) error
+
 	Min(withValue bool) (
 		partitionId PartitionId, key Key, seq Seq, val Val, err error)
 	Max(withValue bool) (
@@ -110,6 +112,27 @@ type Cursor interface {
 	// Next returns a nil Key if the Cursor is done.
 	Next() (PartitionId, Key, Seq, Val, error)
 }
+
+// A Mutation represents a mutation request on a key.
+type Mutation struct {
+	Key Key
+	Seq Seq
+	Val Val
+	Op  MutationOp
+
+	// A MatchSeq of NO_MATCH_SEQ is allowed.
+	MatchSeq Seq
+}
+
+type MutationOp uint8
+
+const (
+	MUTATION_OP_NONE   MutationOp = 0
+	MUTATION_OP_UPDATE MutationOp = 1
+	MUTATION_OP_DELETE MutationOp = 2
+
+	// FUTURE MutationOp's might include merging, visiting, etc.
+)
 
 type StoreOptions struct {
 	CompareFuncs map[string]CompareFunc // Keyed by compareFuncName.

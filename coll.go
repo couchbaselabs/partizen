@@ -52,8 +52,13 @@ func (r *CollRoot) Get(partitionId PartitionId, key Key, matchSeq Seq,
 
 func (r *CollRoot) Set(partitionId PartitionId, key Key, matchSeq Seq,
 	newSeq Seq, val Val) (err error) {
-	return r.mutate(MUTATION_OP_UPDATE, partitionId, key, matchSeq,
-		newSeq, val)
+	return r.mutate([]Mutation{Mutation{
+		Key:      key,
+		Seq:      newSeq,
+		Val:      val,
+		Op:       MUTATION_OP_UPDATE,
+		MatchSeq: matchSeq,
+	}})
 }
 
 func (r *CollRoot) Merge(partitionId PartitionId, key Key, matchSeq Seq,
@@ -63,8 +68,16 @@ func (r *CollRoot) Merge(partitionId PartitionId, key Key, matchSeq Seq,
 
 func (r *CollRoot) Del(partitionId PartitionId, key Key, matchSeq Seq,
 	newSeq Seq) error {
-	return r.mutate(MUTATION_OP_DELETE, partitionId, key, matchSeq,
-		newSeq, nil)
+	return r.mutate([]Mutation{Mutation{
+		Key:      key,
+		Seq:      newSeq,
+		Op:       MUTATION_OP_DELETE,
+		MatchSeq: matchSeq,
+	}})
+}
+
+func (r *CollRoot) Batch(mutations []Mutation) error {
+	return r.mutate(mutations)
 }
 
 func (r *CollRoot) Min(withValue bool) (
@@ -119,27 +132,21 @@ func (r *CollRoot) Rollback(partitionId PartitionId, seq Seq,
 
 // --------------------------------------------
 
-func (r *CollRoot) mutate(op MutationOp, partitionId PartitionId,
-	key Key, matchSeq Seq, newSeq Seq, val Val) (err error) {
+func (r *CollRoot) mutate(mutations []Mutation) (err error) {
 	if r.readOnly {
 		return ErrReadOnly
 	}
-	if partitionId != 0 {
-		return fmt.Errorf("partition unimplemented")
-	}
 
 	var cbErr error
-	var cb MutationCallback
-	if matchSeq != NO_MATCH_SEQ {
-		cb = func(existing *KeySeqLoc, isVal bool, mutation *Mutation) bool {
-			if !isVal ||
-				(existing == nil && mutation.MatchSeq == CREATE_MATCH_SEQ) ||
-				(existing != nil && mutation.MatchSeq == existing.Seq) {
-				return true
-			}
-			cbErr = ErrMatchSeq
-			return false
+	cb := func(existing *KeySeqLoc, isVal bool, mutation *Mutation) bool {
+		if !isVal ||
+			mutation.MatchSeq == NO_MATCH_SEQ ||
+			(existing == nil && mutation.MatchSeq == CREATE_MATCH_SEQ) ||
+			(existing != nil && mutation.MatchSeq == existing.Seq) {
+			return true
 		}
+		cbErr = ErrMatchSeq
+		return false
 	}
 
 	r.store.m.Lock()
@@ -147,9 +154,8 @@ func (r *CollRoot) mutate(op MutationOp, partitionId PartitionId,
 	kslr, ksl := r.RootKeySeqLocRef.AddRef()
 	r.store.m.Unlock()
 
-	ksl2, err := rootProcessMutations(ksl, []Mutation{
-		Mutation{Key: key, Seq: newSeq, Val: val, Op: op, MatchSeq: matchSeq},
-	}, cb, int(r.minFanOut), int(r.maxFanOut), io.ReaderAt(nil))
+	ksl2, err := rootProcessMutations(ksl, mutations, cb,
+		int(r.minFanOut), int(r.maxFanOut), io.ReaderAt(nil))
 	if err != nil {
 		return err
 	}
