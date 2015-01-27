@@ -5,6 +5,15 @@ import (
 	"io"
 )
 
+func (r *CollRoot) decRef(kslr *KeySeqLocRef) {
+	if kslr == nil {
+		return
+	}
+	r.store.m.Lock()
+	kslr.DecRef()
+	r.store.m.Unlock()
+}
+
 func (r *CollRoot) Close() error {
 	r.store.m.Lock()
 	r.RootKeySeqLocRef.DecRef()
@@ -28,30 +37,32 @@ func (r *CollRoot) Get(partitionId PartitionId, key Key, matchSeq Seq,
 
 	ksl, err = locateKeySeqLoc(ksl, key, io.ReaderAt(nil))
 	if err != nil {
+		r.decRef(kslr)
 		return 0, nil, err
 	}
 	if matchSeq != NO_MATCH_SEQ {
 		if ksl != nil && matchSeq != ksl.Seq {
+			r.decRef(kslr)
 			return 0, nil, ErrMatchSeq
 		}
 		if ksl == nil && matchSeq != CREATE_MATCH_SEQ {
+			r.decRef(kslr)
 			return 0, nil, ErrMatchSeq
 		}
 	}
 	if ksl == nil {
+		r.decRef(kslr)
 		return 0, nil, err
 	}
 	if ksl.Loc.Type != LocTypeVal {
+		r.decRef(kslr)
 		return 0, nil,
 			fmt.Errorf("CollRoot.Get: unexpected type, ksl: %#v", ksl)
 	}
 
 	seq, val = ksl.Seq, ksl.Loc.buf // TODO: Mem mgmt, need to copy buf?
 
-	r.store.m.Lock()
-	kslr.DecRef()
-	r.store.m.Unlock()
-
+	r.decRef(kslr)
 	return seq, val, nil
 }
 
@@ -187,27 +198,28 @@ func (r *CollRoot) minMax(locateMax bool, withValue bool) (
 	kslr, ksl := r.RootKeySeqLocRef.AddRef()
 	r.store.m.Unlock()
 	if kslr == nil || ksl == nil {
+		r.decRef(kslr)
 		return 0, nil, 0, nil, nil
 	}
 
 	ksl, err = locateMinMax(ksl, locateMax, io.ReaderAt(nil))
 	if err != nil {
+		r.decRef(kslr)
 		return 0, nil, 0, nil, err
 	}
 	if ksl == nil {
+		r.decRef(kslr)
 		return 0, nil, 0, nil, err
 	}
 	if ksl.Loc.Type != LocTypeVal {
+		r.decRef(kslr)
 		return 0, nil, 0, nil,
 			fmt.Errorf("CollRoot.minMax: unexpected type, ksl: %#v", ksl)
 	}
 
 	key, seq, val = ksl.Key, ksl.Seq, ksl.Loc.buf // TOOD: Mem mgmt.
 
-	r.store.m.Lock()
-	kslr.DecRef()
-	r.store.m.Unlock()
-
+	r.decRef(kslr)
 	return 0, key, seq, val, nil
 }
 
