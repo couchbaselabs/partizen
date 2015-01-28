@@ -50,34 +50,32 @@ func (r *CollRoot) Get(partitionId PartitionId, key Key, matchSeq Seq,
 		return 0, nil, fmt.Errorf("partition unimplemented")
 	}
 
+	var hitSeq Seq
+	var hitType uint8
+	var hitBuf []byte // TODO: Mem mgmt of hitBuf.
+
 	kslr, ksl := r.rootAddRef()
-	defer r.rootDecRef(kslr)
-
-	if kslr == nil || ksl == nil {
-		return 0, nil, nil
+	hit, err := locateKeySeqLoc(ksl, key, io.ReaderAt(nil))
+	if err == nil && hit != nil {
+		hitSeq, hitType, hitBuf = hit.Seq, hit.Loc.Type, hit.Loc.buf
 	}
+	r.rootDecRef(kslr)
 
-	ksl, err = locateKeySeqLoc(ksl, key, io.ReaderAt(nil))
 	if err != nil {
 		return 0, nil, err
 	}
 	if matchSeq != NO_MATCH_SEQ {
-		if ksl != nil && matchSeq != ksl.Seq {
+		if hit != nil && matchSeq != hitSeq {
 			return 0, nil, ErrMatchSeq
 		}
-		if ksl == nil && matchSeq != CREATE_MATCH_SEQ {
+		if hit == nil && matchSeq != CREATE_MATCH_SEQ {
 			return 0, nil, ErrMatchSeq
 		}
 	}
-	if ksl == nil {
-		return 0, nil, err
+	if hit != nil && hitType != LocTypeVal {
+		return 0, nil, fmt.Errorf("CollRoot.Get: bad type: %#v", hitType)
 	}
-	if ksl.Loc.Type != LocTypeVal {
-		return 0, nil,
-			fmt.Errorf("CollRoot.Get: unexpected type, ksl: %#v", ksl)
-	}
-
-	return ksl.Seq, ksl.Loc.buf, nil // TODO: Mem mgmt, need to copy buf?
+	return hitSeq, hitBuf, nil
 }
 
 func (r *CollRoot) Set(partitionId PartitionId, key Key, matchSeq Seq,
@@ -175,14 +173,15 @@ func (r *CollRoot) mutate(mutations []Mutation) (err error) {
 	}
 
 	kslr, ksl := r.rootAddRef()
-	defer r.rootDecRef(kslr)
 
 	ksl2, err := rootProcessMutations(ksl, mutations, cb,
 		int(r.minFanOut), int(r.maxFanOut), io.ReaderAt(nil))
 	if err != nil {
+		r.rootDecRef(kslr)
 		return err
 	}
 	if cbErr != nil {
+		r.rootDecRef(kslr)
 		return cbErr
 	}
 
@@ -199,30 +198,34 @@ func (r *CollRoot) mutate(mutations []Mutation) (err error) {
 	}
 	r.store.m.Unlock()
 
+	r.rootDecRef(kslr)
 	return err
 }
 
 func (r *CollRoot) minMax(locateMax bool, withValue bool) (
 	partitionId PartitionId, key Key, seq Seq, val Val, err error) {
 	kslr, ksl := r.rootAddRef()
-	defer r.rootDecRef(kslr)
-
 	if kslr == nil || ksl == nil {
+		r.rootDecRef(kslr)
 		return 0, nil, 0, nil, nil
 	}
 
 	ksl, err = locateMinMax(ksl, locateMax, io.ReaderAt(nil))
 	if err != nil {
+		r.rootDecRef(kslr)
 		return 0, nil, 0, nil, err
 	}
 	if ksl == nil {
+		r.rootDecRef(kslr)
 		return 0, nil, 0, nil, err
 	}
 	if ksl.Loc.Type != LocTypeVal {
+		r.rootDecRef(kslr)
 		return 0, nil, 0, nil,
 			fmt.Errorf("CollRoot.minMax: unexpected type, ksl: %#v", ksl)
 	}
 
+	r.rootDecRef(kslr)
 	return 0, ksl.Key, ksl.Seq, ksl.Loc.buf, nil // TOOD: Mem mgmt.
 }
 
