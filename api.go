@@ -49,7 +49,8 @@ const CREATE_MATCH_SEQ = Seq(0xfffffffffffffffe)
 
 var ErrMatchSeq = errors.New("non-matching seq")
 var ErrReadOnly = errors.New("read-only")
-var ErrConcurrentModification = errors.New("concurrent modification")
+var ErrConcurrentMutation = errors.New("concurrent mutation")
+var ErrConcurrentMutationChain = errors.New("concurrent mutation chain")
 
 type Collection interface {
 	Close() error

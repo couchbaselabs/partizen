@@ -187,9 +187,9 @@ func (r *CollRoot) mutate(mutations []Mutation) (err error) {
 
 	r.store.m.Lock()
 	if kslr != r.RootKeySeqLocRef {
-		err = ErrConcurrentModification
+		err = ErrConcurrentMutation
 	} else if kslr != nil && kslr.next != nil {
-		err = fmt.Errorf("CollRoot.mutate: concurrent modification next chain")
+		err = ErrConcurrentMutationChain
 	} else {
 		r.RootKeySeqLocRef = &KeySeqLocRef{R: ksl2, refs: 1}
 		if kslr != nil {
