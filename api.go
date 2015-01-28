@@ -23,6 +23,10 @@ type StoreFile interface {
 	Truncate(size int64) error
 }
 
+var ErrNoCompareFunc = errors.New("no compare func")
+var ErrUnknownCollection = errors.New("unknown collection")
+var ErrCollectionExists = errors.New("collection exists")
+
 type Store interface {
 	CollectionNames() ([]string, error)
 

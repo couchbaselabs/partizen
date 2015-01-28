@@ -136,15 +136,14 @@ func (s *store) GetCollection(collName string) (Collection, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("no collection, collName: %s", collName)
+	return nil, ErrUnknownCollection
 }
 
 func (s *store) AddCollection(collName string, compareFuncName string) (
 	Collection, error) {
 	compareFunc, exists := s.storeOptions.CompareFuncs[compareFuncName]
 	if !exists || compareFunc == nil {
-		return nil, fmt.Errorf("no compareFunc, compareFuncName: %s",
-			compareFuncName)
+		return nil, ErrNoCompareFunc
 	}
 
 	s.m.Lock()
@@ -152,8 +151,7 @@ func (s *store) AddCollection(collName string, compareFuncName string) (
 
 	for _, collDef := range s.footer.StoreDefLoc.storeDef.CollDefs {
 		if collDef.Name == collName {
-			return nil, fmt.Errorf("collection exists, collName: %s",
-				collName)
+			return nil, ErrCollectionExists
 		}
 	}
 
@@ -208,5 +206,5 @@ func (s *store) RemoveCollection(collName string) error {
 		}
 	}
 
-	return fmt.Errorf("unknown collection, collName: %s", collName)
+	return ErrUnknownCollection
 }
