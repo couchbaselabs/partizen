@@ -21,9 +21,8 @@ type store struct {
 	header       *Header
 
 	// These fields are mutable, protected by the m lock.
-	m       sync.Mutex
-	footer  *Footer
-	changes *Footer // Unpersisted changes to a store.
+	m      sync.Mutex
+	footer *Footer
 }
 
 func storeOpen(storeFile StoreFile, storeOptions *StoreOptions) (
@@ -42,7 +41,6 @@ func storeOpen(storeFile StoreFile, storeOptions *StoreOptions) (
 		storeOptions: *storeOptions,
 		header:       header,
 		footer:       footer,
-		changes:      footer,
 	}, nil
 }
 
@@ -111,7 +109,7 @@ func readFooter(f StoreFile, o *StoreOptions, header *Header,
 	if f == nil { // Memory only case.
 		return footer, nil
 	}
-	// TODO: Actually scan and read the footer from f, and initialize changes.
+	// TODO: Actually scan and read the footer from f.
 	// TODO: Footer should have copies of magic & uuid bytes for double-check.
 	// TODO: Read WALEntry log and apply to footer.
 	return footer, nil
@@ -119,7 +117,7 @@ func readFooter(f StoreFile, o *StoreOptions, header *Header,
 
 func (s *store) CollectionNames() ([]string, error) {
 	s.m.Lock()
-	storeDef := s.changes.StoreDefLoc.storeDef
+	storeDef := s.footer.StoreDefLoc.storeDef
 	rv := make([]string, 0, len(storeDef.CollDefs))
 	for _, coll := range storeDef.CollDefs {
 		rv = append(rv, coll.Name)
@@ -132,11 +130,12 @@ func (s *store) GetCollection(collName string) (Collection, error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	for i, collDef := range s.changes.StoreDefLoc.storeDef.CollDefs {
+	for i, collDef := range s.footer.StoreDefLoc.storeDef.CollDefs {
 		if collDef.Name == collName {
-			return s.changes.CollRoots[i], nil
+			return s.footer.CollRoots[i].addRefUnlocked(), nil
 		}
 	}
+
 	return nil, fmt.Errorf("no collection, collName: %s", collName)
 }
 
@@ -151,7 +150,7 @@ func (s *store) AddCollection(collName string, compareFuncName string) (
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	for _, collDef := range s.changes.StoreDefLoc.storeDef.CollDefs {
+	for _, collDef := range s.footer.StoreDefLoc.storeDef.CollDefs {
 		if collDef.Name == collName {
 			return nil, fmt.Errorf("collection exists, collName: %s",
 				collName)
@@ -165,6 +164,7 @@ func (s *store) AddCollection(collName string, compareFuncName string) (
 		MaxFanOut:       s.storeOptions.DefaultMaxFanOut,
 	}
 	r := &CollRoot{
+		refs:        1,
 		store:       s,
 		name:        c.Name,
 		compareFunc: compareFunc,
@@ -172,82 +172,41 @@ func (s *store) AddCollection(collName string, compareFuncName string) (
 		maxFanOut:   c.MaxFanOut,
 	}
 
-	var changes = s.startChanges()
-
-	changes.StoreDefLoc.storeDef.CollDefs =
-		append(changes.StoreDefLoc.storeDef.CollDefs, c)
-	changes.CollRoots =
-		append(changes.CollRoots, r)
+	s.footer.StoreDefLoc.storeDef.CollDefs =
+		append(s.footer.StoreDefLoc.storeDef.CollDefs, c)
+	s.footer.CollRoots =
+		append(s.footer.CollRoots, r)
 
 	// TODO: Sort the above arrays, but need to carefully ensure that
 	// positions match, perhaps by inserting at the right index.
 
-	s.changes = changes
-
-	return r, nil
+	return r.addRefUnlocked(), nil
 }
 
 func (s *store) RemoveCollection(collName string) error {
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	for i, collDef := range s.changes.StoreDefLoc.storeDef.CollDefs {
+	for i, collDef := range s.footer.StoreDefLoc.storeDef.CollDefs {
 		if collDef.Name == collName {
-			var changes = s.startChanges()
+			c := s.footer.CollRoots[i]
 
-			a := changes.StoreDefLoc.storeDef.CollDefs
+			// TODO: Keep CollDefs sorted.
+			a := s.footer.StoreDefLoc.storeDef.CollDefs
 			copy(a[i:], a[i+1:])
 			a[len(a)-1] = nil
-			changes.StoreDefLoc.storeDef.CollDefs = a[:len(a)-1]
+			s.footer.StoreDefLoc.storeDef.CollDefs = a[:len(a)-1]
 
-			b := changes.CollRoots
+			// TODO: Keep CollRoots sorted.
+			b := s.footer.CollRoots
 			copy(b[i:], b[i+1:])
 			b[len(b)-1] = nil
-			changes.CollRoots = b[:len(b)-1]
+			s.footer.CollRoots = b[:len(b)-1]
 
-			s.changes = changes
+			c.decRefUnlocked()
 			return nil
 		}
 	}
 
 	return fmt.Errorf("unknown collection, collName: %s", collName)
-}
-
-func (s *store) HasChanges() bool {
-	s.m.Lock()
-	rv := s.changes != s.footer
-	s.m.Unlock()
-	return rv
-}
-
-func (s *store) CommitChanges(cs *ChangeStats) error {
-	return fmt.Errorf("unimplemented")
-}
-
-func (s *store) AbortChanges(cs *ChangeStats) error {
-	return fmt.Errorf("unimplemented")
-}
-
-// --------------------------------------------
-
-// startChanges returns a new Footer copy that's ready for
-// modifications.  Must be invoked while store.m is locked.
-func (s *store) startChanges() *Footer {
-	if s.changes != s.footer {
-		// We're already changed compared to the footer.
-		return s.changes
-	}
-
-	var c Footer = *s.changes // Shallow copy.
-
-	c.StoreDefLoc.storeDef = &StoreDef{
-		CollDefs: append([]*CollDef(nil),
-			s.changes.StoreDefLoc.storeDef.CollDefs...),
-	}
-
-	c.CollRoots = append([]*CollRoot(nil), s.changes.CollRoots...)
-
-	s.changes = &c
-
-	return s.changes // TODO: Mem mgmt.
 }

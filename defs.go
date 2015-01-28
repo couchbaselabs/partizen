@@ -45,8 +45,10 @@ type CollDef struct {
 
 // A CollRoot implements the Collection interface.
 type CollRoot struct {
-	RootKeySeqLocRef *KeySeqLocRef
+	RootKeySeqLocRef *KeySeqLocRef // Mutator must have store.m locked.
+	refs             int32         // Mutator must have store.m locked.
 
+	// The following fields are immutable.
 	store       *store // Pointer to parent store.
 	name        string
 	compareFunc CompareFunc
@@ -58,35 +60,37 @@ type CollRoot struct {
 type KeySeqLocRef struct {
 	R *KeySeqLoc // Immutable.
 
-	refs int64
+	refs int32 // Mutator must have store.m locked.
 
 	// We might own a reference count on another KeySeqLocRef.  When
 	// our count hits 0, also release our refcount on the next.
-	next *KeySeqLocRef
+	next *KeySeqLocRef // Mutator must have store.m locked.
 }
 
 // AddRef must be invoked by caller with CollRoot.store.m locked.
-func (r *KeySeqLocRef) AddRef() (*KeySeqLocRef, *KeySeqLoc) {
+func (r *KeySeqLocRef) addRef() (*KeySeqLocRef, *KeySeqLoc) {
 	if r == nil {
 		return nil, nil
 	}
 	if r.refs <= 0 {
-		panic("KeySeqLocRef.refs underflow")
+		panic("KeySeqLocRef.refs addRef saw underflow")
 	}
 	r.refs++
 	return r, r.R
 }
 
 // DecRef must be invoked by caller with CollRoot.store.m locked.
-func (r *KeySeqLocRef) DecRef() *KeySeqLocRef {
+func (r *KeySeqLocRef) decRef() *KeySeqLocRef {
+	if r == nil {
+		return nil
+	}
 	if r.refs <= 0 {
-		panic("KeySeqLocRef.refs underflow")
+		panic("KeySeqLocRef.refs defRef saw underflow")
 	}
 	r.refs--
 	if r.refs <= 0 {
-		if r.next != nil {
-			r.next.DecRef()
-		}
+		r.next.decRef()
+		r.next = nil
 		return nil
 	}
 	return r

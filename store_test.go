@@ -18,22 +18,13 @@ func TestMemStoreOpen(t *testing.T) {
 	if err == nil || coll != nil {
 		t.Errorf("expected not-there collection to not be there")
 	}
-	if s.HasChanges() {
-		t.Errorf("expected new coll to have no changes")
-	}
 	err = s.RemoveCollection("not-there")
 	if err == nil {
 		t.Errorf("expected not-there collection to not be there")
 	}
-	if s.HasChanges() {
-		t.Errorf("expected new coll to have no changes")
-	}
 	coll, err = s.AddCollection("x", "")
 	if err != nil || coll == nil {
 		t.Errorf("expected AddCollection to work")
-	}
-	if !s.HasChanges() {
-		t.Errorf("expected coll to have changes after AddCollection()")
 	}
 	names, err = s.CollectionNames()
 	if err != nil || names == nil || len(names) != 1 {

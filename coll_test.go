@@ -63,9 +63,6 @@ func TestSimpleMemOps(t *testing.T) {
 	if err != nil || c == nil {
 		t.Errorf("expected AddCollection to work")
 	}
-	if !s.HasChanges() {
-		t.Errorf("expected coll to have changes after AddCollection()")
-	}
 	seq, val, err := c.Get(0, []byte("a"), NO_MATCH_SEQ, true)
 	if err != nil || seq != 0 || val != nil {
 		t.Errorf("expected Get on empty coll to be empty")

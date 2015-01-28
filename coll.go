@@ -1,28 +1,46 @@
 package partizen
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"io"
+	"sort"
 )
 
-func (r *CollRoot) decRef(kslr *KeySeqLocRef) {
-	if kslr == nil {
-		return
+func (r *CollRoot) Close() error {
+	r.store.m.Lock()
+	r.decRefUnlocked()
+	r.store.m.Unlock()
+	return nil
+}
+
+// Must be invoked while caller has store.m locked.
+func (r *CollRoot) addRefUnlocked() *CollRoot {
+	r.refs++
+	return r
+}
+
+// Must be invoked while caller has store.m locked.
+func (r *CollRoot) decRefUnlocked() {
+	r.refs--
+	if r.refs <= 0 {
+		r.RootKeySeqLocRef.decRef()
+		r.RootKeySeqLocRef = nil
+		r.readOnly = true
 	}
-	r.store.m.Lock()
-	kslr.DecRef()
-	r.store.m.Unlock()
 }
 
-func (r *CollRoot) DecRef() {
+func (r *CollRoot) rootAddRef() (*KeySeqLocRef, *KeySeqLoc) {
 	r.store.m.Lock()
-	r.RootKeySeqLocRef = r.RootKeySeqLocRef.DecRef()
+	kslr, ksl := r.RootKeySeqLocRef.addRef()
 	r.store.m.Unlock()
+	return kslr, ksl
 }
 
-func (r *CollRoot) AddRef() {
+func (r *CollRoot) rootDecRef(kslr *KeySeqLocRef) {
 	r.store.m.Lock()
-	r.RootKeySeqLocRef.AddRef()
+	kslr.decRef()
 	r.store.m.Unlock()
 }
 
@@ -32,42 +50,34 @@ func (r *CollRoot) Get(partitionId PartitionId, key Key, matchSeq Seq,
 		return 0, nil, fmt.Errorf("partition unimplemented")
 	}
 
-	r.store.m.Lock()
-	kslr, ksl := r.RootKeySeqLocRef.AddRef()
-	r.store.m.Unlock()
+	kslr, ksl := r.rootAddRef()
+	defer r.rootDecRef(kslr)
+
 	if kslr == nil || ksl == nil {
 		return 0, nil, nil
 	}
 
 	ksl, err = locateKeySeqLoc(ksl, key, io.ReaderAt(nil))
 	if err != nil {
-		r.decRef(kslr)
 		return 0, nil, err
 	}
 	if matchSeq != NO_MATCH_SEQ {
 		if ksl != nil && matchSeq != ksl.Seq {
-			r.decRef(kslr)
 			return 0, nil, ErrMatchSeq
 		}
 		if ksl == nil && matchSeq != CREATE_MATCH_SEQ {
-			r.decRef(kslr)
 			return 0, nil, ErrMatchSeq
 		}
 	}
 	if ksl == nil {
-		r.decRef(kslr)
 		return 0, nil, err
 	}
 	if ksl.Loc.Type != LocTypeVal {
-		r.decRef(kslr)
 		return 0, nil,
 			fmt.Errorf("CollRoot.Get: unexpected type, ksl: %#v", ksl)
 	}
 
-	seq, val = ksl.Seq, ksl.Loc.buf // TODO: Mem mgmt, need to copy buf?
-
-	r.decRef(kslr)
-	return seq, val, nil
+	return ksl.Seq, ksl.Loc.buf, nil // TODO: Mem mgmt, need to copy buf?
 }
 
 func (r *CollRoot) Set(partitionId PartitionId, key Key, matchSeq Seq,
@@ -126,11 +136,11 @@ func (r *CollRoot) Scan(key Key,
 
 func (r *CollRoot) Snapshot() (Collection, error) {
 	r.store.m.Lock()
-	r.RootKeySeqLocRef.AddRef()
 	x := *r // Shallow copy.
-	r.store.m.Unlock()
-
+	x.RootKeySeqLocRef.addRef()
+	x.refs = 1
 	x.readOnly = true
+	r.store.m.Unlock()
 	return &x, nil
 }
 
@@ -164,10 +174,8 @@ func (r *CollRoot) mutate(mutations []Mutation) (err error) {
 		return false
 	}
 
-	r.store.m.Lock()
-	r.store.startChanges()
-	kslr, ksl := r.RootKeySeqLocRef.AddRef()
-	r.store.m.Unlock()
+	kslr, ksl := r.rootAddRef()
+	defer r.rootDecRef(kslr)
 
 	ksl2, err := rootProcessMutations(ksl, mutations, cb,
 		int(r.minFanOut), int(r.maxFanOut), io.ReaderAt(nil))
@@ -179,17 +187,15 @@ func (r *CollRoot) mutate(mutations []Mutation) (err error) {
 	}
 
 	r.store.m.Lock()
-	if r.RootKeySeqLocRef == kslr {
-		next := &KeySeqLocRef{R: ksl2, refs: 2}
-		if kslr != nil {
-			kslr.next = next
-		}
-		r.RootKeySeqLocRef = next
-		if kslr != nil {
-			kslr.DecRef()
-		}
+	if kslr != r.RootKeySeqLocRef {
+		err = ErrConcurrentModification
+	} else if kslr != nil && kslr.next != nil {
+		err = fmt.Errorf("CollRoot.mutate: concurrent modification next chain")
 	} else {
-		err = fmt.Errorf("CollRoot.mutate: concurrent modification")
+		r.RootKeySeqLocRef = &KeySeqLocRef{R: ksl2, refs: 1}
+		if kslr != nil {
+			kslr.next, _ = r.RootKeySeqLocRef.addRef()
+		}
 	}
 	r.store.m.Unlock()
 
@@ -198,33 +204,26 @@ func (r *CollRoot) mutate(mutations []Mutation) (err error) {
 
 func (r *CollRoot) minMax(locateMax bool, withValue bool) (
 	partitionId PartitionId, key Key, seq Seq, val Val, err error) {
-	r.store.m.Lock()
-	kslr, ksl := r.RootKeySeqLocRef.AddRef()
-	r.store.m.Unlock()
+	kslr, ksl := r.rootAddRef()
+	defer r.rootDecRef(kslr)
+
 	if kslr == nil || ksl == nil {
-		r.decRef(kslr)
 		return 0, nil, 0, nil, nil
 	}
 
 	ksl, err = locateMinMax(ksl, locateMax, io.ReaderAt(nil))
 	if err != nil {
-		r.decRef(kslr)
 		return 0, nil, 0, nil, err
 	}
 	if ksl == nil {
-		r.decRef(kslr)
 		return 0, nil, 0, nil, err
 	}
 	if ksl.Loc.Type != LocTypeVal {
-		r.decRef(kslr)
 		return 0, nil, 0, nil,
 			fmt.Errorf("CollRoot.minMax: unexpected type, ksl: %#v", ksl)
 	}
 
-	key, seq, val = ksl.Key, ksl.Seq, ksl.Loc.buf // TOOD: Mem mgmt.
-
-	r.decRef(kslr)
-	return 0, key, seq, val, nil
+	return 0, ksl.Key, ksl.Seq, ksl.Loc.buf, nil // TOOD: Mem mgmt.
 }
 
 // ----------------------------------------
@@ -245,4 +244,94 @@ func (c *CursorImpl) Next() (PartitionId, Key, Seq, Val, error) {
 		return 0, nil, 0, nil, nil // TODO: PartitionId.
 	}
 	return 0, r.ksl.Key, r.ksl.Seq, r.ksl.Loc.buf, r.err // TODO: Mem mgmt.
+}
+
+// --------------------------------------------
+
+var ErrCursorClosed = errors.New("cursor closed sentinel")
+
+type CursorResult struct {
+	err error
+	ksl *KeySeqLoc
+}
+
+func (r *CollRoot) startCursor(key Key, ascending bool,
+	partitionIds []PartitionId, readerAt io.ReaderAt,
+	closeCh chan struct{}) (resultsCh chan CursorResult, err error) {
+	if partitionIds != nil {
+		return nil, fmt.Errorf("partitionsIds unimplemented")
+	}
+
+	resultsCh = make(chan CursorResult) // TODO: Channel buffer.
+
+	kslr, ksl := r.rootAddRef()
+
+	var visit func(ksl *KeySeqLoc) error
+	visit = func(ksl *KeySeqLoc) error {
+		if ksl == nil {
+			return nil
+		}
+		if ksl.Loc.Type == LocTypeNode {
+			node, err := ReadLocNode(&ksl.Loc, readerAt)
+			if err != nil {
+				return err
+			}
+			if node == nil {
+				return nil
+			}
+			ksls := node.GetKeySeqLocs()
+			if ksls == nil {
+				return nil
+			}
+			n := ksls.Len()
+			if n <= 0 {
+				return nil
+			}
+			i := sort.Search(n, func(i int) bool {
+				return bytes.Compare(ksls.Key(i), key) >= 0
+			})
+			if !ascending &&
+				(i >= n || bytes.Compare(ksls.Key(i), key) > 0) {
+				i = i - 1
+			}
+			for i >= 0 && i < n {
+				err := visit(ksls.KeySeqLoc(i))
+				if err != nil {
+					return err
+				}
+				if ascending {
+					i++
+				} else {
+					i--
+				}
+			}
+			return nil
+		}
+
+		if ksl.Loc.Type == LocTypeVal {
+			select {
+			case <-closeCh:
+				return ErrCursorClosed
+			case resultsCh <- CursorResult{err: nil, ksl: ksl}:
+				// TODO: Mem mgmt.
+			}
+			return nil
+		}
+
+		return fmt.Errorf("startCursor.visit:",
+			" unexpected Loc.Type, ksl: %#v", ksl)
+	}
+
+	go func() {
+		err := visit(ksl)
+
+		r.rootDecRef(kslr)
+
+		if err != nil && err != ErrCursorClosed {
+			resultsCh <- CursorResult{err: err}
+		}
+		close(resultsCh)
+	}()
+
+	return resultsCh, nil
 }

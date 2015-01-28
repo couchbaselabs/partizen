@@ -2,7 +2,6 @@ package partizen
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"sort"
@@ -74,98 +73,4 @@ func locateMinMax(ksl *KeySeqLoc, locateMax bool, r io.ReaderAt) (
 		}
 	}
 	return nil, nil
-}
-
-var ErrCursorClosed = errors.New("cursor closed sentinel")
-
-type CursorResult struct {
-	err error
-	ksl *KeySeqLoc
-}
-
-func (r *CollRoot) startCursor(key Key, ascending bool,
-	partitionIds []PartitionId, readerAt io.ReaderAt,
-	closeCh chan struct{}) (resultsCh chan CursorResult, err error) {
-	if partitionIds != nil {
-		return nil, fmt.Errorf("partitionsIds unimplemented")
-	}
-
-	resultsCh = make(chan CursorResult) // TODO: Channel buffer.
-
-	r.store.m.Lock()
-	kslr, ksl := r.RootKeySeqLocRef.AddRef()
-	r.store.m.Unlock()
-
-	var visit func(ksl *KeySeqLoc) error
-	visit = func(ksl *KeySeqLoc) error {
-		if ksl == nil {
-			return nil
-		}
-		if ksl.Loc.Type == LocTypeNode {
-			node, err := ReadLocNode(&ksl.Loc, readerAt)
-			if err != nil {
-				return err
-			}
-			if node == nil {
-				return nil
-			}
-			ksls := node.GetKeySeqLocs()
-			if ksls == nil {
-				return nil
-			}
-			n := ksls.Len()
-			if n <= 0 {
-				return nil
-			}
-			i := sort.Search(n, func(i int) bool {
-				return bytes.Compare(ksls.Key(i), key) >= 0
-			})
-			if !ascending &&
-				(i >= n || bytes.Compare(ksls.Key(i), key) > 0) {
-				i = i - 1
-			}
-			for i >= 0 && i < n {
-				err := visit(ksls.KeySeqLoc(i))
-				if err != nil {
-					return err
-				}
-				if ascending {
-					i++
-				} else {
-					i--
-				}
-			}
-			return nil
-		}
-
-		if ksl.Loc.Type == LocTypeVal {
-			select {
-			case <-closeCh:
-				return ErrCursorClosed
-			case resultsCh <- CursorResult{err: nil, ksl: ksl}:
-				// TODO: Mem mgmt.
-			}
-			return nil
-		}
-
-		return fmt.Errorf("startCursor.visit:",
-			" unexpected Loc.Type, ksl: %#v", ksl)
-	}
-
-	go func() {
-		err := visit(ksl)
-
-		if kslr != nil {
-			r.store.m.Lock()
-			kslr.DecRef()
-			r.store.m.Unlock()
-		}
-
-		if err != nil && err != ErrCursorClosed {
-			resultsCh <- CursorResult{err: err}
-		}
-		close(resultsCh)
-	}()
-
-	return resultsCh, nil
 }

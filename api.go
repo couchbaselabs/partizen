@@ -25,14 +25,16 @@ type StoreFile interface {
 
 type Store interface {
 	CollectionNames() ([]string, error)
+
+	// Caller should Close() the returned Collection.
 	GetCollection(collName string) (Collection, error)
+
+	// Caller should Close() the returned Collection.
 	AddCollection(collName string, compareFuncName string) (Collection, error)
+
 	RemoveCollection(collName string) error
 
-	HasChanges() bool
-	CommitChanges(*ChangeStats) error
-	AbortChanges(*ChangeStats) error
-
+	// TODO: Commit changes.
 	// TODO: Store-level read-only snapshots.
 }
 
@@ -47,10 +49,10 @@ const CREATE_MATCH_SEQ = Seq(0xfffffffffffffffe)
 
 var ErrMatchSeq = errors.New("non-matching seq")
 var ErrReadOnly = errors.New("read-only")
+var ErrConcurrentModification = errors.New("concurrent modification")
 
 type Collection interface {
-	AddRef()
-	DecRef()
+	Close() error
 
 	Get(partitionId PartitionId, key Key, matchSeq Seq,
 		withValue bool) (seq Seq, val Val, err error)
@@ -84,6 +86,7 @@ type Collection interface {
 		withValue bool) (Cursor, error)
 
 	// Snapshot returns a read-only snapshot of the Collection.
+	// Caller should Close() the returned read-only Collection.
 	Snapshot() (Collection, error)
 
 	// The seq should be the Seq that was at or before some past
