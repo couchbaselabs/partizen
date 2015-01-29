@@ -115,6 +115,10 @@ func readFooter(f StoreFile, o *StoreOptions, header *Header,
 	return footer, nil
 }
 
+func (s *store) Close() error {
+	return nil // TODO.
+}
+
 func (s *store) CollectionNames() ([]string, error) {
 	s.m.Lock()
 	storeDef := s.footer.StoreDefLoc.storeDef

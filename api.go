@@ -28,6 +28,8 @@ var ErrUnknownCollection = errors.New("unknown collection")
 var ErrCollectionExists = errors.New("collection exists")
 
 type Store interface {
+	Close() error
+
 	CollectionNames() ([]string, error)
 
 	// Caller should Close() the returned Collection.
