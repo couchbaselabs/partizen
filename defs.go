@@ -102,28 +102,6 @@ type Node interface {
 	GetKeySeqLocs() KeySeqLocs
 }
 
-// MAX_CHILD_LOCS_PER_NODE defines the max number for
-// Node.NumChildLocs per Node. Although Node.NumChildLocs is a uint8,
-// the max fan-out of a Node is 255, not 256, because ChildLoc index
-// 0xff is reserved to mark deletions.
-const MAX_CHILD_LOCS_PER_NODE = 255        // (2^8)-1.
-const MAX_NODE_PARTITIONS_PER_NODE = 65535 // (2^16)-1.
-
-// A KeySeqIdx tracks a single key.
-type KeySeqIdx struct {
-	Key Key
-
-	// The meaning of this Seq field depends on the ChildLoc's type...
-	// If this KeySeqIdx points to a Val (or to a deleted Val), this
-	// Seq is for that leaf data item.  If this KeySeqIdx points to a
-	// Node, this Seq is the Node's max Seq for a Partition.
-	Seq Seq
-
-	// An index into Node.ChildLocs; and, to support Diff(), a
-	// ChildLocsIdx of uint8(0xff) means a deleted item.
-	Idx uint8
-}
-
 // A Loc represents the location of a byte range persisted or
 // soon-to-be-persisted to the storage file.  Field sizes are
 // carefully chosed to add up to 128 bits.
