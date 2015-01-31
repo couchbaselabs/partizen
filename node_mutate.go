@@ -7,26 +7,26 @@ import (
 )
 
 // rootProcessMutations is the entry function for applying a batch of
-// copy-on-write mutations to a tree (rootKeySeqLoc).  The mutations
+// copy-on-write mutations to a tree (rootItemLoc).  The mutations
 // must be ascending key ordered, and must have no duplicates.  That
 // is, if the application has multiple mutations on the same key, the
 // caller must provide only the last mutation for any key.  Use nil
-// for rootKeySeqLoc to start a brand new tree.
-func rootProcessMutations(rootKeySeqLoc *KeySeqLoc, mutations []Mutation,
+// for rootItemLoc to start a brand new tree.
+func rootProcessMutations(rootItemLoc *ItemLoc, mutations []Mutation,
 	cb MutationCallback, minFanOut, maxFanOut int, r io.ReaderAt) (
-	*KeySeqLoc, error) {
-	a, err := processMutations(rootKeySeqLoc, mutations, 0, len(mutations),
+	*ItemLoc, error) {
+	a, err := processMutations(rootItemLoc, mutations, 0, len(mutations),
 		cb, minFanOut, maxFanOut, r)
 	if err != nil {
 		return nil, fmt.Errorf("rootProcessMutations:"+
-			" rootKeySeqLoc: %#v, err: %v", rootKeySeqLoc, err)
+			" rootItemLoc: %#v, err: %v", rootItemLoc, err)
 	}
 	if a != nil {
 		for a.Len() > 1 || (a.Len() > 0 && a.Loc(0).Type == LocTypeVal) {
-			a = groupKeySeqLocs(a, cb, minFanOut, maxFanOut, nil)
+			a = groupItemLocs(a, cb, minFanOut, maxFanOut, nil)
 		}
 		if a.Len() > 0 {
-			return a.KeySeqLoc(0), nil
+			return a.ItemLoc(0), nil
 		}
 	}
 	return nil, nil
@@ -34,75 +34,75 @@ func rootProcessMutations(rootKeySeqLoc *KeySeqLoc, mutations []Mutation,
 
 // processMutations recursively applies the batch of
 // mutations down the tree, building up copy-on-write new nodes.
-func processMutations(keySeqLoc *KeySeqLoc,
+func processMutations(itemLoc *ItemLoc,
 	mutations []Mutation, mbeg, mend int, cb MutationCallback,
-	minFanOut, maxFanOut int, r io.ReaderAt) (KeySeqLocs, error) {
-	var keySeqLocs KeySeqLocs
+	minFanOut, maxFanOut int, r io.ReaderAt) (ItemLocs, error) {
+	var itemLocs ItemLocs
 
-	if keySeqLoc != nil {
-		if keySeqLoc.Loc.Type == LocTypeNode {
-			node, err := ReadLocNode(&keySeqLoc.Loc, r)
+	if itemLoc != nil {
+		if itemLoc.Loc.Type == LocTypeNode {
+			node, err := ReadLocNode(&itemLoc.Loc, r)
 			if err != nil {
 				return nil, fmt.Errorf("processMutations:"+
-					" keySeqLoc: %#v, err: %v", keySeqLoc, err)
+					" itemLoc: %#v, err: %v", itemLoc, err)
 			}
 			if node != nil {
-				keySeqLocs = node.GetKeySeqLocs()
+				itemLocs = node.GetItemLocs()
 			}
-		} else if keySeqLoc.Loc.Type == LocTypeVal {
-			keySeqLocs = PtrKeySeqLocsArray{keySeqLoc}
+		} else if itemLoc.Loc.Type == LocTypeVal {
+			itemLocs = PtrItemLocsArray{itemLoc}
 		} else {
 			return nil, fmt.Errorf("processMutations:"+
-				" unexpected keySeqLoc.Type, keySeqLoc: %#v", keySeqLoc)
+				" unexpected itemLoc.Type, itemLoc: %#v", itemLoc)
 		}
 	}
 
-	n := keySeqLocsLen(keySeqLocs)
+	n := itemLocsLen(itemLocs)
 	m := mend - mbeg
 
-	var builder KeySeqLocsBuilder
-	if n <= 0 || keySeqLocs.Loc(0).Type == LocTypeVal {
-		builder = &ValsBuilder{s: make(PtrKeySeqLocsArray, 0, m)} // Mem mgmt.
+	var builder ItemLocsBuilder
+	if n <= 0 || itemLocs.Loc(0).Type == LocTypeVal {
+		builder = &ValsBuilder{s: make(PtrItemLocsArray, 0, m)} // Mem mgmt.
 	} else {
 		builder = &NodesBuilder{NodeMutations: make([]NodeMutations, 0, m)}
 	}
 
-	mergeMutations(keySeqLocs, 0, n, mutations, mbeg, mend, cb, builder)
+	mergeMutations(itemLocs, 0, n, mutations, mbeg, mend, cb, builder)
 
 	return builder.Done(mutations, cb, minFanOut, maxFanOut, r)
 }
 
-// groupKeySeqLocs assigns a key-ordered sequence of children to new
+// groupItemLocs assigns a key-ordered sequence of children to new
 // parent nodes, where the parent nodes will meet the given maxFanOut.
-func groupKeySeqLocs(childKeySeqLocs KeySeqLocs, cb MutationCallback,
-	minFanOut, maxFanOut int, groupedKeySeqLocsStart KeySeqLocs) KeySeqLocs {
-	parents := groupedKeySeqLocsStart
-	children := rebalanceNodes(childKeySeqLocs, minFanOut, maxFanOut)
+func groupItemLocs(childItemLocs ItemLocs, cb MutationCallback,
+	minFanOut, maxFanOut int, groupedItemLocsStart ItemLocs) ItemLocs {
+	parents := groupedItemLocsStart
+	children := rebalanceNodes(childItemLocs, minFanOut, maxFanOut)
 
 	// TODO: A more optimal grouping approach would instead partition
 	// the children more evenly, instead of the current approach where
 	// the last group of children might be unfairly too small as it
 	// has only the simple remainder of children.
-	n := keySeqLocsLen(children)
+	n := itemLocsLen(children)
 	beg := 0
 	for i := maxFanOut; i < n; i = i + maxFanOut {
-		a, maxSeq := keySeqLocsSlice(children, beg, i)
-		parents = keySeqLocsAppend(parents, a.Key(0), maxSeq, Loc{
+		a, maxSeq := itemLocsSlice(children, beg, i)
+		parents = itemLocsAppend(parents, a.Key(0), maxSeq, Loc{
 			Type: LocTypeNode,
-			node: &NodeMem{KeySeqLocs: a},
+			node: &NodeMem{ItemLocs: a},
 		})
 		beg = i
 	}
 	if beg < n { // If there were leftovers...
 		if beg <= 0 { // If there were only leftovers, group them...
-			a, maxSeq := keySeqLocsSlice(children, beg, n)
-			parents = keySeqLocsAppend(parents, a.Key(0), maxSeq, Loc{
+			a, maxSeq := itemLocsSlice(children, beg, n)
+			parents = itemLocsAppend(parents, a.Key(0), maxSeq, Loc{
 				Type: LocTypeNode,
-				node: &NodeMem{KeySeqLocs: a},
+				node: &NodeMem{ItemLocs: a},
 			})
 		} else { // Pass the leftovers upwards.
 			for i := beg; i < n; i++ {
-				parents = parents.Append(*children.KeySeqLoc(i))
+				parents = parents.Append(*children.ItemLoc(i))
 			}
 		}
 	}
@@ -110,15 +110,15 @@ func groupKeySeqLocs(childKeySeqLocs KeySeqLocs, cb MutationCallback,
 	return parents
 }
 
-func keySeqLocsLen(a KeySeqLocs) int {
+func itemLocsLen(a ItemLocs) int {
 	if a == nil {
 		return 0
 	}
 	return a.Len()
 }
 
-func keySeqLocsSlice(a KeySeqLocs, from, to int) (KeySeqLocs, Seq) {
-	kslArr := make(KeySeqLocsArray, to-from)
+func itemLocsSlice(a ItemLocs, from, to int) (ItemLocs, Seq) {
+	kslArr := make(ItemLocsArray, to-from)
 	maxSeq := Seq(0)
 
 	lenKeys := 0
@@ -137,29 +137,29 @@ func keySeqLocsSlice(a KeySeqLocs, from, to int) (KeySeqLocs, Seq) {
 			maxSeq = seq
 		}
 
-		kslArr[i-from] = KeySeqLoc{Key: key, Seq: seq, Loc: *(a.Loc(i))}
+		kslArr[i-from] = ItemLoc{Key: key, Seq: seq, Loc: *(a.Loc(i))}
 	}
 
 	return kslArr, maxSeq
 }
 
-func keySeqLocsAppend(g KeySeqLocs, key Key, seq Seq, loc Loc) KeySeqLocs {
+func itemLocsAppend(g ItemLocs, key Key, seq Seq, loc Loc) ItemLocs {
 	if g == nil {
-		return KeySeqLocsArray{KeySeqLoc{Key: key, Seq: seq, Loc: loc}}
+		return ItemLocsArray{ItemLoc{Key: key, Seq: seq, Loc: loc}}
 	}
-	return g.Append(KeySeqLoc{Key: key, Seq: seq, Loc: loc})
+	return g.Append(ItemLoc{Key: key, Seq: seq, Loc: loc})
 }
 
 // mergeMutations applies or zippers together a key-ordered sequence
-// of existing KeySeqLoc's with a key-ordered sequence of mutations.
+// of existing ItemLoc's with a key-ordered sequence of mutations.
 func mergeMutations(
-	existings KeySeqLocs,
+	existings ItemLocs,
 	ebeg, eend int, // Sub-range of existings[ebeg:eend] to process.
 	mutations []Mutation,
 	mbeg, mend int, // Sub-range of mutations[mbeg:mend] to process.
 	cb MutationCallback,
-	builder KeySeqLocsBuilder) {
-	existing, eok, ecur := nextKeySeqLoc(ebeg, eend, existings)
+	builder ItemLocsBuilder) {
+	existing, eok, ecur := nextItemLoc(ebeg, eend, existings)
 	mutation, mok, mcur := nextMutation(mbeg, mend, mutations)
 
 	for eok && mok {
@@ -167,11 +167,11 @@ func mergeMutations(
 		c := bytes.Compare(existing.Key, mutation.Key)
 		if c < 0 {
 			builder.AddExisting(existing)
-			existing, eok, ecur = nextKeySeqLoc(ecur+1, eend, existings)
+			existing, eok, ecur = nextItemLoc(ecur+1, eend, existings)
 		} else {
 			if c == 0 {
 				builder.AddUpdate(existing, mutation, mcur, cb)
-				existing, eok, ecur = nextKeySeqLoc(ecur+1, eend, existings)
+				existing, eok, ecur = nextItemLoc(ecur+1, eend, existings)
 			} else {
 				builder.AddNew(mutation, mcur, cb)
 			}
@@ -180,7 +180,7 @@ func mergeMutations(
 	}
 	for eok {
 		builder.AddExisting(existing)
-		existing, eok, ecur = nextKeySeqLoc(ecur+1, eend, existings)
+		existing, eok, ecur = nextItemLoc(ecur+1, eend, existings)
 	}
 	for mok {
 		builder.AddNew(mutation, mcur, cb)
@@ -188,12 +188,12 @@ func mergeMutations(
 	}
 }
 
-func nextKeySeqLoc(idx, n int, keySeqLocs KeySeqLocs) (
-	*KeySeqLoc, bool, int) {
+func nextItemLoc(idx, n int, itemLocs ItemLocs) (
+	*ItemLoc, bool, int) {
 	if idx < n {
-		return keySeqLocs.KeySeqLoc(idx), true, idx
+		return itemLocs.ItemLoc(idx), true, idx
 	}
-	return &zeroKeySeqLoc, false, idx
+	return &zeroItemLoc, false, idx
 }
 
 func nextMutation(idx, n int, mutations []Mutation) (
@@ -206,35 +206,35 @@ func nextMutation(idx, n int, mutations []Mutation) (
 
 // --------------------------------------------------
 
-type KeySeqLocsBuilder interface {
-	AddExisting(existing *KeySeqLoc)
-	AddUpdate(existing *KeySeqLoc,
+type ItemLocsBuilder interface {
+	AddExisting(existing *ItemLoc)
+	AddUpdate(existing *ItemLoc,
 		mutation *Mutation, mutationIdx int, cb MutationCallback)
 	AddNew(mutation *Mutation, mutationIdx int, cb MutationCallback)
 	Done(mutations []Mutation, cb MutationCallback,
-		minFanOut, maxFanOut int, r io.ReaderAt) (KeySeqLocs, error)
+		minFanOut, maxFanOut int, r io.ReaderAt) (ItemLocs, error)
 }
 
 // --------------------------------------------------
 
-// A ValsBuilder implements the KeySeqLocsBuilder interface to return an
-// array of LocTypeVal KeySeqLoc's, which can be then used as input as
+// A ValsBuilder implements the ItemLocsBuilder interface to return an
+// array of LocTypeVal ItemLoc's, which can be then used as input as
 // the children to create new leaf Nodes.
 type ValsBuilder struct {
-	s PtrKeySeqLocsArray
+	s PtrItemLocsArray
 }
 
-func (b *ValsBuilder) AddExisting(existing *KeySeqLoc) {
+func (b *ValsBuilder) AddExisting(existing *ItemLoc) {
 	b.s = append(b.s, existing)
 }
 
-func (b *ValsBuilder) AddUpdate(existing *KeySeqLoc,
+func (b *ValsBuilder) AddUpdate(existing *ItemLoc,
 	mutation *Mutation, mutationIdx int, cb MutationCallback) {
 	if cb != nil && !cb(existing, true, mutation) {
 		return
 	}
 	if mutation.Op == MUTATION_OP_UPDATE {
-		b.s = append(b.s, mutationToValKeySeqLoc(mutation))
+		b.s = append(b.s, mutationToValItemLoc(mutation))
 	}
 }
 
@@ -244,18 +244,18 @@ func (b *ValsBuilder) AddNew(
 		return
 	}
 	if mutation.Op == MUTATION_OP_UPDATE {
-		b.s = append(b.s, mutationToValKeySeqLoc(mutation))
+		b.s = append(b.s, mutationToValItemLoc(mutation))
 	}
 }
 
 func (b *ValsBuilder) Done(mutations []Mutation, cb MutationCallback,
-	minFanOut, maxFanOut int, r io.ReaderAt) (KeySeqLocs, error) {
+	minFanOut, maxFanOut int, r io.ReaderAt) (ItemLocs, error) {
 	return b.s, nil
 }
 
-func mutationToValKeySeqLoc(m *Mutation) *KeySeqLoc {
-	return &KeySeqLoc{
-		Key: m.Key, // NOTE: We copy key in groupKeySeqLocs/keySeqLocsSlice.
+func mutationToValItemLoc(m *Mutation) *ItemLoc {
+	return &ItemLoc{
+		Key: m.Key, // NOTE: We copy key in groupItemLocs/itemLocsSlice.
 		Seq: m.Seq,
 		Loc: Loc{
 			Type: LocTypeVal,
@@ -267,36 +267,36 @@ func mutationToValKeySeqLoc(m *Mutation) *KeySeqLoc {
 
 // --------------------------------------------------
 
-// An NodesBuilder implements the KeySeqLocsBuilder interface to return an
-// array of LocTypeNode KeySeqLoc's, which can be then used as input as
+// An NodesBuilder implements the ItemLocsBuilder interface to return an
+// array of LocTypeNode ItemLoc's, which can be then used as input as
 // the children to create new interior Nodes.
 type NodesBuilder struct {
 	NodeMutations []NodeMutations
 }
 
 type NodeMutations struct {
-	BaseKeySeqLoc *KeySeqLoc
-	MutationsBeg  int // Inclusive index into []Mutation.
-	MutationsEnd  int // Exclusive index into []Mutation.
+	BaseItemLoc  *ItemLoc
+	MutationsBeg int // Inclusive index into []Mutation.
+	MutationsEnd int // Exclusive index into []Mutation.
 }
 
-func (b *NodesBuilder) AddExisting(existing *KeySeqLoc) {
+func (b *NodesBuilder) AddExisting(existing *ItemLoc) {
 	b.NodeMutations = append(b.NodeMutations, NodeMutations{
-		BaseKeySeqLoc: existing,
-		MutationsBeg:  -1,
-		MutationsEnd:  -1,
+		BaseItemLoc:  existing,
+		MutationsBeg: -1,
+		MutationsEnd: -1,
 	})
 }
 
-func (b *NodesBuilder) AddUpdate(existing *KeySeqLoc,
+func (b *NodesBuilder) AddUpdate(existing *ItemLoc,
 	mutation *Mutation, mutationIdx int, cb MutationCallback) {
 	if cb != nil && !cb(existing, false, mutation) {
 		return
 	}
 	b.NodeMutations = append(b.NodeMutations, NodeMutations{
-		BaseKeySeqLoc: existing,
-		MutationsBeg:  mutationIdx,
-		MutationsEnd:  mutationIdx + 1,
+		BaseItemLoc:  existing,
+		MutationsBeg: mutationIdx,
+		MutationsEnd: mutationIdx + 1,
 	})
 }
 
@@ -320,24 +320,24 @@ func (b *NodesBuilder) AddNew(
 }
 
 func (b *NodesBuilder) Done(mutations []Mutation, cb MutationCallback,
-	minFanOut, maxFanOut int, r io.ReaderAt) (KeySeqLocs, error) {
-	rv := PtrKeySeqLocsArray{}
+	minFanOut, maxFanOut int, r io.ReaderAt) (ItemLocs, error) {
+	rv := PtrItemLocsArray{}
 
 	for _, nm := range b.NodeMutations {
 		if nm.MutationsBeg >= nm.MutationsEnd {
-			if nm.BaseKeySeqLoc != nil {
-				rv = append(rv, nm.BaseKeySeqLoc)
+			if nm.BaseItemLoc != nil {
+				rv = append(rv, nm.BaseItemLoc)
 			}
 		} else {
-			children, err := processMutations(nm.BaseKeySeqLoc,
+			children, err := processMutations(nm.BaseItemLoc,
 				mutations, nm.MutationsBeg, nm.MutationsEnd,
 				cb, minFanOut, maxFanOut, r)
 			if err != nil {
 				return nil, fmt.Errorf("NodesBuilder.Done:"+
-					" BaseKeySeqLoc: %#v, err: %v", nm.BaseKeySeqLoc, err)
+					" BaseItemLoc: %#v, err: %v", nm.BaseItemLoc, err)
 			}
-			rv = groupKeySeqLocs(children, cb, minFanOut, maxFanOut,
-				rv).(PtrKeySeqLocsArray)
+			rv = groupItemLocs(children, cb, minFanOut, maxFanOut,
+				rv).(PtrItemLocsArray)
 		}
 	}
 
@@ -346,45 +346,45 @@ func (b *NodesBuilder) Done(mutations []Mutation, cb MutationCallback,
 
 // --------------------------------------------------
 
-func rebalanceNodes(keySeqLocs KeySeqLocs,
-	minFanOut, maxFanOut int) KeySeqLocs {
-	// If the keySeqLocs are all nodes, then some of those nodes might
+func rebalanceNodes(itemLocs ItemLocs,
+	minFanOut, maxFanOut int) ItemLocs {
+	// If the itemLocs are all nodes, then some of those nodes might
 	// be much smaller than others and might benefit from rebalancing.
-	var rebalanced KeySeqLocs
-	var rebalancing PtrKeySeqLocsArray
+	var rebalanced ItemLocs
+	var rebalancing PtrItemLocsArray
 
 	// TODO: Knowing whether those child nodes are either in-memory
 	// and/or are dirty would also be helpful hints as to whether to
 	// attempt some rebalancing.
-	n := keySeqLocsLen(keySeqLocs)
+	n := itemLocsLen(itemLocs)
 	for i := 0; i < n; i++ {
-		loc := keySeqLocs.Loc(i)
+		loc := itemLocs.Loc(i)
 		if loc.Type != LocTypeNode || loc.node == nil {
-			return keySeqLocs // TODO: Mem mgmt.
+			return itemLocs // TODO: Mem mgmt.
 		}
-		kids := loc.node.GetKeySeqLocs()
+		kids := loc.node.GetItemLocs()
 		for j := 0; j < kids.Len(); j++ {
-			rebalancing = keySeqLocsAppend(rebalancing,
-				kids.Key(j), kids.Seq(j), *kids.Loc(j)).(PtrKeySeqLocsArray)
-			if keySeqLocsLen(rebalancing) >= maxFanOut {
-				a, maxSeq := keySeqLocsSlice(rebalancing, 0, rebalancing.Len())
-				rebalanced = keySeqLocsAppend(rebalanced, a.Key(0), maxSeq, Loc{
+			rebalancing = itemLocsAppend(rebalancing,
+				kids.Key(j), kids.Seq(j), *kids.Loc(j)).(PtrItemLocsArray)
+			if itemLocsLen(rebalancing) >= maxFanOut {
+				a, maxSeq := itemLocsSlice(rebalancing, 0, rebalancing.Len())
+				rebalanced = itemLocsAppend(rebalanced, a.Key(0), maxSeq, Loc{
 					Type: LocTypeNode,
-					node: &NodeMem{KeySeqLocs: a},
+					node: &NodeMem{ItemLocs: a},
 				})
 				rebalancing = nil
 			}
 		}
 	}
 	if rebalancing != nil {
-		a, maxSeq := keySeqLocsSlice(rebalancing, 0, rebalancing.Len())
-		rebalanced = keySeqLocsAppend(rebalanced, a.Key(0), maxSeq, Loc{
+		a, maxSeq := itemLocsSlice(rebalancing, 0, rebalancing.Len())
+		rebalanced = itemLocsAppend(rebalanced, a.Key(0), maxSeq, Loc{
 			Type: LocTypeNode,
-			node: &NodeMem{KeySeqLocs: a},
+			node: &NodeMem{ItemLocs: a},
 		})
 	}
 	if rebalanced != nil {
 		return rebalanced
 	}
-	return keySeqLocs
+	return itemLocs
 }

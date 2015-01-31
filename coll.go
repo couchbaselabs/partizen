@@ -25,20 +25,20 @@ func (r *CollRoot) addRefUnlocked() *CollRoot {
 func (r *CollRoot) decRefUnlocked() {
 	r.refs--
 	if r.refs <= 0 {
-		r.RootKeySeqLocRef.decRef()
-		r.RootKeySeqLocRef = nil
+		r.RootItemLocRef.decRef()
+		r.RootItemLocRef = nil
 		r.readOnly = true
 	}
 }
 
-func (r *CollRoot) rootAddRef() (*KeySeqLocRef, *KeySeqLoc) {
+func (r *CollRoot) rootAddRef() (*ItemLocRef, *ItemLoc) {
 	r.store.m.Lock()
-	kslr, ksl := r.RootKeySeqLocRef.addRef()
+	kslr, ksl := r.RootItemLocRef.addRef()
 	r.store.m.Unlock()
 	return kslr, ksl
 }
 
-func (r *CollRoot) rootDecRef(kslr *KeySeqLocRef) {
+func (r *CollRoot) rootDecRef(kslr *ItemLocRef) {
 	r.store.m.Lock()
 	kslr.decRef()
 	r.store.m.Unlock()
@@ -55,7 +55,7 @@ func (r *CollRoot) Get(partitionId PartitionId, key Key, matchSeq Seq,
 	var hitBuf []byte // TODO: Mem mgmt of hitBuf.
 
 	kslr, ksl := r.rootAddRef()
-	hit, err := locateKeySeqLoc(ksl, key, io.ReaderAt(nil))
+	hit, err := locateItemLoc(ksl, key, io.ReaderAt(nil))
 	if err == nil && hit != nil {
 		hitSeq, hitType, hitBuf = hit.Seq, hit.Loc.Type, hit.Loc.buf
 	}
@@ -135,7 +135,7 @@ func (r *CollRoot) Scan(key Key,
 func (r *CollRoot) Snapshot() (Collection, error) {
 	r.store.m.Lock()
 	x := *r // Shallow copy.
-	x.RootKeySeqLocRef.addRef()
+	x.RootItemLocRef.addRef()
 	x.refs = 1
 	x.readOnly = true
 	r.store.m.Unlock()
@@ -161,7 +161,7 @@ func (r *CollRoot) mutate(mutations []Mutation) (err error) {
 	}
 
 	var cbErr error
-	cb := func(existing *KeySeqLoc, isVal bool, mutation *Mutation) bool {
+	cb := func(existing *ItemLoc, isVal bool, mutation *Mutation) bool {
 		if !isVal ||
 			mutation.MatchSeq == NO_MATCH_SEQ ||
 			(existing == nil && mutation.MatchSeq == CREATE_MATCH_SEQ) ||
@@ -186,14 +186,14 @@ func (r *CollRoot) mutate(mutations []Mutation) (err error) {
 	}
 
 	r.store.m.Lock()
-	if kslr != r.RootKeySeqLocRef {
+	if kslr != r.RootItemLocRef {
 		err = ErrConcurrentMutation
 	} else if kslr != nil && kslr.next != nil {
 		err = ErrConcurrentMutationChain
 	} else {
-		r.RootKeySeqLocRef = &KeySeqLocRef{R: ksl2, refs: 1}
+		r.RootItemLocRef = &ItemLocRef{R: ksl2, refs: 1}
 		if kslr != nil {
-			kslr.next, _ = r.RootKeySeqLocRef.addRef()
+			kslr.next, _ = r.RootItemLocRef.addRef()
 		}
 	}
 	r.store.m.Unlock()
@@ -255,7 +255,7 @@ var ErrCursorClosed = errors.New("cursor closed sentinel")
 
 type CursorResult struct {
 	err error
-	ksl *KeySeqLoc
+	ksl *ItemLoc
 }
 
 func (r *CollRoot) startCursor(key Key, ascending bool,
@@ -269,8 +269,8 @@ func (r *CollRoot) startCursor(key Key, ascending bool,
 
 	kslr, ksl := r.rootAddRef()
 
-	var visit func(ksl *KeySeqLoc) error
-	visit = func(ksl *KeySeqLoc) error {
+	var visit func(ksl *ItemLoc) error
+	visit = func(ksl *ItemLoc) error {
 		if ksl == nil {
 			return nil
 		}
@@ -282,7 +282,7 @@ func (r *CollRoot) startCursor(key Key, ascending bool,
 			if node == nil {
 				return nil
 			}
-			ksls := node.GetKeySeqLocs()
+			ksls := node.GetItemLocs()
 			if ksls == nil {
 				return nil
 			}
@@ -298,7 +298,7 @@ func (r *CollRoot) startCursor(key Key, ascending bool,
 				i = i - 1
 			}
 			for i >= 0 && i < n {
-				err := visit(ksls.KeySeqLoc(i))
+				err := visit(ksls.ItemLoc(i))
 				if err != nil {
 					return err
 				}

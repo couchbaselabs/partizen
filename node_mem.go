@@ -1,9 +1,9 @@
 package partizen
 
 type NodeMem struct {
-	KeySeqLocs KeySeqLocs
+	ItemLocs ItemLocs
 }
 
-func (n *NodeMem) GetKeySeqLocs() KeySeqLocs {
-	return n.KeySeqLocs
+func (n *NodeMem) GetItemLocs() ItemLocs {
+	return n.ItemLocs
 }

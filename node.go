@@ -7,8 +7,8 @@ import (
 	"sort"
 )
 
-func locateKeySeqLoc(ksl *KeySeqLoc, key Key, r io.ReaderAt) (
-	*KeySeqLoc, error) {
+func locateItemLoc(ksl *ItemLoc, key Key, r io.ReaderAt) (
+	*ItemLoc, error) {
 	for ksl != nil {
 		if ksl.Loc.Type == LocTypeNode {
 			node, err := ReadLocNode(&ksl.Loc, r)
@@ -18,7 +18,7 @@ func locateKeySeqLoc(ksl *KeySeqLoc, key Key, r io.ReaderAt) (
 			if node == nil {
 				return nil, nil
 			}
-			ksls := node.GetKeySeqLocs()
+			ksls := node.GetItemLocs()
 			if ksls == nil {
 				return nil, nil
 			}
@@ -29,21 +29,21 @@ func locateKeySeqLoc(ksl *KeySeqLoc, key Key, r io.ReaderAt) (
 			if i >= n || !bytes.Equal(ksls.Key(i), key) {
 				return nil, nil
 			}
-			ksl = ksls.KeySeqLoc(i)
+			ksl = ksls.ItemLoc(i)
 		} else if ksl.Loc.Type == LocTypeVal {
 			if bytes.Equal(ksl.Key, key) {
 				return ksl, nil
 			}
 			return nil, nil
 		} else {
-			return nil, fmt.Errorf("locateKeySeqLoc")
+			return nil, fmt.Errorf("locateItemLoc")
 		}
 	}
 	return nil, nil
 }
 
-func locateMinMax(ksl *KeySeqLoc, locateMax bool, r io.ReaderAt) (
-	*KeySeqLoc, error) {
+func locateMinMax(ksl *ItemLoc, locateMax bool, r io.ReaderAt) (
+	*ItemLoc, error) {
 	for ksl != nil {
 		if ksl.Loc.Type == LocTypeNode {
 			node, err := ReadLocNode(&ksl.Loc, r)
@@ -53,7 +53,7 @@ func locateMinMax(ksl *KeySeqLoc, locateMax bool, r io.ReaderAt) (
 			if node == nil {
 				return nil, nil
 			}
-			ksls := node.GetKeySeqLocs()
+			ksls := node.GetItemLocs()
 			if ksls == nil {
 				return nil, nil
 			}
@@ -62,9 +62,9 @@ func locateMinMax(ksl *KeySeqLoc, locateMax bool, r io.ReaderAt) (
 				return nil, nil
 			}
 			if locateMax {
-				ksl = ksls.KeySeqLoc(n - 1)
+				ksl = ksls.ItemLoc(n - 1)
 			} else {
-				ksl = ksls.KeySeqLoc(0)
+				ksl = ksls.ItemLoc(0)
 			}
 		} else if ksl.Loc.Type == LocTypeVal {
 			return ksl, nil

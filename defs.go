@@ -45,8 +45,8 @@ type CollDef struct {
 
 // A CollRoot implements the Collection interface.
 type CollRoot struct {
-	RootKeySeqLocRef *KeySeqLocRef // Mutator must have store.m locked.
-	refs             int32         // Mutator must have store.m locked.
+	RootItemLocRef *ItemLocRef // Mutator must have store.m locked.
+	refs           int32       // Mutator must have store.m locked.
 
 	// The following fields are immutable.
 	store       *store // Pointer to parent store.
@@ -57,35 +57,35 @@ type CollRoot struct {
 	readOnly    bool
 }
 
-type KeySeqLocRef struct {
-	R *KeySeqLoc // Immutable.
+type ItemLocRef struct {
+	R *ItemLoc // Immutable.
 
 	refs int32 // Mutator must have store.m locked.
 
-	// We might own a reference count on another KeySeqLocRef.  When
+	// We might own a reference count on another ItemLocRef.  When
 	// our count hits 0, also release our refcount on the next.
-	next *KeySeqLocRef // Mutator must have store.m locked.
+	next *ItemLocRef // Mutator must have store.m locked.
 }
 
 // AddRef must be invoked by caller with CollRoot.store.m locked.
-func (r *KeySeqLocRef) addRef() (*KeySeqLocRef, *KeySeqLoc) {
+func (r *ItemLocRef) addRef() (*ItemLocRef, *ItemLoc) {
 	if r == nil {
 		return nil, nil
 	}
 	if r.refs <= 0 {
-		panic("KeySeqLocRef.refs addRef saw underflow")
+		panic("ItemLocRef.refs addRef saw underflow")
 	}
 	r.refs++
 	return r, r.R
 }
 
 // DecRef must be invoked by caller with CollRoot.store.m locked.
-func (r *KeySeqLocRef) decRef() *KeySeqLocRef {
+func (r *ItemLocRef) decRef() *ItemLocRef {
 	if r == nil {
 		return nil
 	}
 	if r.refs <= 0 {
-		panic("KeySeqLocRef.refs defRef saw underflow")
+		panic("ItemLocRef.refs defRef saw underflow")
 	}
 	r.refs--
 	if r.refs <= 0 {
@@ -99,7 +99,7 @@ func (r *KeySeqLocRef) decRef() *KeySeqLocRef {
 // A Node of a partizen btree has its descendent locations first
 // ordered by PartitionID, then secondarily ordered by Key.
 type Node interface {
-	GetKeySeqLocs() KeySeqLocs
+	GetItemLocs() ItemLocs
 }
 
 // A Loc represents the location of a byte range persisted or
@@ -143,78 +143,78 @@ const (
 	LocTypeWALItem  uint8 = 0x04
 )
 
-// A KeySeqLoc associates a Key with a (max) Seq and a Loc.  When Loc
+// An ItemLoc associates a Key with a (max) Seq and a Loc.  When Loc
 // is a node, then Seq will be the max Seq for the entire sub-tree.
-type KeySeqLoc struct {
+type ItemLoc struct {
 	Key Key
 	Seq Seq
 	Loc Loc
 }
 
-var zeroKeySeqLoc KeySeqLoc
+var zeroItemLoc ItemLoc
 
-type KeySeqLocs interface {
+type ItemLocs interface {
 	Len() int
 	Key(idx int) Key
 	Seq(idx int) Seq
 	Loc(idx int) *Loc
-	KeySeqLoc(idx int) *KeySeqLoc
-	Append(KeySeqLoc) KeySeqLocs
+	ItemLoc(idx int) *ItemLoc
+	Append(ItemLoc) ItemLocs
 }
 
 // ----------------------------------------
 
-type KeySeqLocsArray []KeySeqLoc
+type ItemLocsArray []ItemLoc
 
-func (a KeySeqLocsArray) Len() int {
+func (a ItemLocsArray) Len() int {
 	return len(a)
 }
 
-func (a KeySeqLocsArray) Key(idx int) Key {
+func (a ItemLocsArray) Key(idx int) Key {
 	return a[idx].Key
 }
 
-func (a KeySeqLocsArray) Seq(idx int) Seq {
+func (a ItemLocsArray) Seq(idx int) Seq {
 	return a[idx].Seq
 }
 
-func (a KeySeqLocsArray) Loc(idx int) *Loc {
+func (a ItemLocsArray) Loc(idx int) *Loc {
 	return &a[idx].Loc
 }
 
-func (a KeySeqLocsArray) KeySeqLoc(idx int) *KeySeqLoc {
+func (a ItemLocsArray) ItemLoc(idx int) *ItemLoc {
 	return &a[idx]
 }
 
-func (a KeySeqLocsArray) Append(x KeySeqLoc) KeySeqLocs {
+func (a ItemLocsArray) Append(x ItemLoc) ItemLocs {
 	return append(a, x)
 }
 
 // ----------------------------------------
 
-type PtrKeySeqLocsArray []*KeySeqLoc
+type PtrItemLocsArray []*ItemLoc
 
-func (a PtrKeySeqLocsArray) Len() int {
+func (a PtrItemLocsArray) Len() int {
 	return len(a)
 }
 
-func (a PtrKeySeqLocsArray) Key(idx int) Key {
+func (a PtrItemLocsArray) Key(idx int) Key {
 	return a[idx].Key
 }
 
-func (a PtrKeySeqLocsArray) Seq(idx int) Seq {
+func (a PtrItemLocsArray) Seq(idx int) Seq {
 	return a[idx].Seq
 }
 
-func (a PtrKeySeqLocsArray) Loc(idx int) *Loc {
+func (a PtrItemLocsArray) Loc(idx int) *Loc {
 	return &a[idx].Loc
 }
 
-func (a PtrKeySeqLocsArray) KeySeqLoc(idx int) *KeySeqLoc {
+func (a PtrItemLocsArray) ItemLoc(idx int) *ItemLoc {
 	return a[idx]
 }
 
-func (a PtrKeySeqLocsArray) Append(x KeySeqLoc) KeySeqLocs {
+func (a PtrItemLocsArray) Append(x ItemLoc) ItemLocs {
 	return append(a, &x)
 }
 
@@ -224,8 +224,8 @@ func (a PtrKeySeqLocsArray) Append(x KeySeqLoc) KeySeqLocs {
 // false if the mutation should be skipped.  In either case, the
 // processing of the batch of mutations will continue.  The existing
 // may be nil in case there's no previous item.  The isVal is true if
-// the existing is for a leaf level KeySeqLoc (e.g., LocTypeVal).
-type MutationCallback func(existing *KeySeqLoc, isVal bool,
+// the existing is for a leaf level ItemLoc (e.g., LocTypeVal).
+type MutationCallback func(existing *ItemLoc, isVal bool,
 	mutation *Mutation) bool
 
 var zeroMutation Mutation
