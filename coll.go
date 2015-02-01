@@ -75,27 +75,29 @@ func (r *CollRoot) Get(partitionId PartitionId, key Key, matchSeq Seq,
 	if hit != nil && hitType != LocTypeVal {
 		return 0, nil, fmt.Errorf("CollRoot.Get: bad type: %#v", hitType)
 	}
-	return hitSeq, hitBuf, nil
+	return hitSeq, hitBuf, nil // TODO: What if partitionId doesn't match?
 }
 
 func (r *CollRoot) Set(partitionId PartitionId, key Key, matchSeq Seq,
 	newSeq Seq, val Val) (err error) {
 	return r.mutate([]Mutation{Mutation{
-		Key:      key,
-		Seq:      newSeq,
-		Val:      val,
-		Op:       MUTATION_OP_UPDATE,
-		MatchSeq: matchSeq,
+		PartitionId: partitionId,
+		Key:         key,
+		Seq:         newSeq,
+		Val:         val,
+		Op:          MUTATION_OP_UPDATE,
+		MatchSeq:    matchSeq,
 	}})
 }
 
 func (r *CollRoot) Del(partitionId PartitionId, key Key, matchSeq Seq,
 	newSeq Seq) error {
 	return r.mutate([]Mutation{Mutation{
-		Key:      key,
-		Seq:      newSeq,
-		Op:       MUTATION_OP_DELETE,
-		MatchSeq: matchSeq,
+		PartitionId: partitionId,
+		Key:         key,
+		Seq:         newSeq,
+		Op:          MUTATION_OP_DELETE,
+		MatchSeq:    matchSeq,
 	}})
 }
 

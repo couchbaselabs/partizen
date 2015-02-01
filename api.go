@@ -119,10 +119,11 @@ type Cursor interface {
 
 // A Mutation represents a mutation request on a key.
 type Mutation struct {
-	Key Key
-	Seq Seq
-	Val Val
-	Op  MutationOp
+	PartitionId PartitionId
+	Key         Key
+	Seq         Seq
+	Val         Val
+	Op          MutationOp
 
 	// A MatchSeq of NO_MATCH_SEQ is allowed.
 	MatchSeq Seq
