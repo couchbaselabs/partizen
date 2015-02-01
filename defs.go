@@ -143,18 +143,21 @@ const (
 	LocTypeWALItem  uint8 = 0x04
 )
 
-// An ItemLoc associates a Key with a (max) Seq and a Loc.  When Loc
-// is a node, then Seq will be the max Seq for the entire sub-tree.
+// An ItemLoc represents a PartitionId, Key, Seq and Loc association.
+// When Loc is for a node (LocTypeNode), then the Seq will be the max
+// Seq for the entire sub-tree.
 type ItemLoc struct {
-	Key Key
-	Seq Seq
-	Loc Loc
+	PartitionId PartitionId
+	Key         Key
+	Seq         Seq
+	Loc         Loc
 }
 
 var zeroItemLoc ItemLoc
 
 type ItemLocs interface {
 	Len() int
+	PartitionId(idx int) PartitionId
 	Key(idx int) Key
 	Seq(idx int) Seq
 	Loc(idx int) *Loc
@@ -168,6 +171,10 @@ type ItemLocsArray []ItemLoc
 
 func (a ItemLocsArray) Len() int {
 	return len(a)
+}
+
+func (a ItemLocsArray) PartitionId(idx int) PartitionId {
+	return a[idx].PartitionId
 }
 
 func (a ItemLocsArray) Key(idx int) Key {
@@ -196,6 +203,10 @@ type PtrItemLocsArray []*ItemLoc
 
 func (a PtrItemLocsArray) Len() int {
 	return len(a)
+}
+
+func (a PtrItemLocsArray) PartitionId(idx int) PartitionId {
+	return a[idx].PartitionId
 }
 
 func (a PtrItemLocsArray) Key(idx int) Key {

@@ -6,9 +6,9 @@ import (
 	"os"
 )
 
+type PartitionId uint16
 type Key []byte
 type Val []byte
-type PartitionId uint16
 type Seq uint64
 
 func StoreOpen(storeFile StoreFile, storeOptions *StoreOptions) (
