@@ -10,12 +10,12 @@ func (d *defaultBufManager) Len(buf []byte) int {
 	return len(buf)
 }
 
-func (d *defaultBufManager) AddRef(buf []byte) {
-	// NOOP.
+func (d *defaultBufManager) WantRef(buf []byte) []byte {
+	return buf // TODO.
 }
 
-func (d *defaultBufManager) DecRef(buf []byte) bool {
-	return true // TODO: Is this right?
+func (d *defaultBufManager) DropRef(buf []byte) {
+	// TODO.
 }
 
 func (d *defaultBufManager) Visit(buf []byte, from, to int,

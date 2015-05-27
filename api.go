@@ -165,8 +165,8 @@ type StoreStats struct {
 type BufManager interface {
 	Alloc(size int) []byte
 	Len(buf []byte) int
-	AddRef(buf []byte)
-	DecRef(buf []byte) bool
+	WantRef(buf []byte) []byte
+	DropRef(buf []byte)
 	Visit(buf []byte, from, to int,
 		partVisitor func(partBuf []byte, partFrom, partTo int))
 }
