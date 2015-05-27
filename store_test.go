@@ -10,8 +10,8 @@ func TestMemStoreOpen(t *testing.T) {
 	if err != nil || s == nil {
 		t.Errorf("expected mem StoreOpen() to work, got err: %v", err)
 	}
-	names, err := s.CollectionNames()
-	if err != nil || names == nil || len(names) != 0 {
+	names, err := s.CollectionNames(nil)
+	if err != nil || len(names) != 0 {
 		t.Errorf("expected empty CollectionNames()")
 	}
 	coll, err := s.GetCollection("not-there")
@@ -26,8 +26,8 @@ func TestMemStoreOpen(t *testing.T) {
 	if err != nil || coll == nil {
 		t.Errorf("expected AddCollection to work")
 	}
-	names, err = s.CollectionNames()
-	if err != nil || names == nil || len(names) != 1 {
+	names, err = s.CollectionNames(nil)
+	if err != nil || len(names) != 1 {
 		t.Errorf("expected non-empty CollectionNames()")
 	}
 	if !reflect.DeepEqual(names, []string{"x"}) {
@@ -41,11 +41,11 @@ func TestMemStoreOpen(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected RemoveCollection to work")
 	}
-	names, err = s.CollectionNames()
-	if err != nil || names == nil || len(names) != 0 {
+	names, err = s.CollectionNames(nil)
+	if err != nil || len(names) != 0 {
 		t.Errorf("expected empty CollectionNames()")
 	}
-	if !reflect.DeepEqual(names, []string{}) {
+	if !reflect.DeepEqual(names, []string(nil)) {
 		t.Errorf("expected no collection name")
 	}
 	coll, err = s.GetCollection("x")

@@ -119,10 +119,9 @@ func (s *store) Close() error {
 	return nil // TODO.
 }
 
-func (s *store) CollectionNames() ([]string, error) {
+func (s *store) CollectionNames(rv []string) ([]string, error) {
 	s.m.Lock()
 	storeDef := s.footer.StoreDefLoc.storeDef
-	rv := make([]string, 0, len(storeDef.CollDefs))
 	for _, coll := range storeDef.CollDefs {
 		rv = append(rv, coll.Name)
 	}

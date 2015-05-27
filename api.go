@@ -30,7 +30,7 @@ var ErrCollectionExists = errors.New("collection exists")
 type Store interface {
 	Close() error
 
-	CollectionNames() ([]string, error)
+	CollectionNames([]string) ([]string, error)
 
 	// Caller should Close() the returned Collection.
 	GetCollection(collName string) (Collection, error)
