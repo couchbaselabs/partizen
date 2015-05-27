@@ -151,8 +151,8 @@ func (r *CollRoot) Diff(partitionId PartitionId, seq Seq,
 }
 
 func (r *CollRoot) Rollback(partitionId PartitionId, seq Seq,
-	exactToSeq bool) error {
-	return fmt.Errorf("unimplemented")
+	exactToSeq bool) (Seq, error) {
+	return 0, fmt.Errorf("unimplemented")
 }
 
 // --------------------------------------------

@@ -107,7 +107,8 @@ type Collection interface {
 	// exactToSeq is true, the rollback will error; if exactToSeq is
 	// false then the rollback may be further into the past than the
 	// seq number.
-	Rollback(partitionId PartitionId, seq Seq, exactToSeq bool) error
+	Rollback(partitionId PartitionId, seq Seq, exactToSeq bool) (
+		rollbackedToSeq Seq, err error)
 }
 
 type Cursor interface {
