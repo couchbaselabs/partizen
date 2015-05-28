@@ -33,8 +33,8 @@ type Footer struct {
 	StoreDefLoc StoreDefLoc // Location of StoreDef.
 
 	// Locations of partizen btree root Nodes, 1 per Collection, where
-	// len(Footer.Collections) equals len(StoreDef.CollDefs) and are
-	// 1-to-1 position matched with the StoreDef.CollDefs.
+	// len(Footer.Collections) equals len(StoreDef.CollectionDefs) and are
+	// 1-to-1 position matched with the StoreDef.CollectionDefs.
 	Collections []*collection
 }
 
@@ -49,11 +49,11 @@ type StoreDefLoc struct {
 // from the footer for efficiency, but use JSON encoding of the
 // persisted StoreDef for diagnosability.
 type StoreDef struct {
-	CollDefs []*CollDef
+	CollectionDefs []*CollectionDef
 }
 
-// A CollDef is persisted as JSON for diagnosability.
-type CollDef struct {
+// A CollectionDef is persisted as JSON for diagnosability.
+type CollectionDef struct {
 	Name            string
 	CompareFuncName string
 	MinFanOut       uint16

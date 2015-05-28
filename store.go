@@ -101,7 +101,7 @@ func (s *store) Close() error {
 func (s *store) CollectionNames(rv []string) ([]string, error) {
 	s.m.Lock()
 	storeDef := s.footer.StoreDefLoc.storeDef
-	for _, coll := range storeDef.CollDefs {
+	for _, coll := range storeDef.CollectionDefs {
 		rv = append(rv, coll.Name)
 	}
 	s.m.Unlock()
@@ -112,7 +112,7 @@ func (s *store) GetCollection(collName string) (Collection, error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	for i, collDef := range s.footer.StoreDefLoc.storeDef.CollDefs {
+	for i, collDef := range s.footer.StoreDefLoc.storeDef.CollectionDefs {
 		if collDef.Name == collName {
 			return s.footer.Collections[i].addRefUnlocked(), nil
 		}
@@ -131,13 +131,13 @@ func (s *store) AddCollection(collName string, compareFuncName string) (
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	for _, collDef := range s.footer.StoreDefLoc.storeDef.CollDefs {
+	for _, collDef := range s.footer.StoreDefLoc.storeDef.CollectionDefs {
 		if collDef.Name == collName {
 			return nil, ErrCollectionExists
 		}
 	}
 
-	c := &CollDef{
+	c := &CollectionDef{
 		Name:            collName,
 		CompareFuncName: compareFuncName,
 		MinFanOut:       s.storeOptions.DefaultMinFanOut,
@@ -152,8 +152,8 @@ func (s *store) AddCollection(collName string, compareFuncName string) (
 		maxFanOut:   c.MaxFanOut,
 	}
 
-	s.footer.StoreDefLoc.storeDef.CollDefs =
-		append(s.footer.StoreDefLoc.storeDef.CollDefs, c)
+	s.footer.StoreDefLoc.storeDef.CollectionDefs =
+		append(s.footer.StoreDefLoc.storeDef.CollectionDefs, c)
 	s.footer.Collections =
 		append(s.footer.Collections, r)
 
@@ -167,15 +167,15 @@ func (s *store) RemoveCollection(collName string) error {
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	for i, collDef := range s.footer.StoreDefLoc.storeDef.CollDefs {
+	for i, collDef := range s.footer.StoreDefLoc.storeDef.CollectionDefs {
 		if collDef.Name == collName {
 			c := s.footer.Collections[i]
 
-			// TODO: Keep CollDefs sorted.
-			a := s.footer.StoreDefLoc.storeDef.CollDefs
+			// TODO: Keep CollectionDefs sorted.
+			a := s.footer.StoreDefLoc.storeDef.CollectionDefs
 			copy(a[i:], a[i+1:])
 			a[len(a)-1] = nil
-			s.footer.StoreDefLoc.storeDef.CollDefs = a[:len(a)-1]
+			s.footer.StoreDefLoc.storeDef.CollectionDefs = a[:len(a)-1]
 
 			// TODO: Keep Collections sorted.
 			b := s.footer.Collections
