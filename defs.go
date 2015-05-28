@@ -11,6 +11,7 @@ type store struct {
 	// These fields are immutable.
 	storeFile    StoreFile
 	storeOptions StoreOptions
+	readOnly     bool
 	header       *Header
 
 	// These fields are mutable, protected by the m lock.
@@ -18,8 +19,8 @@ type store struct {
 	footer *Footer
 }
 
-// A Header is stored at the head (0th position) of storage file, where
-// we follow the given field ordering.
+// A Header is stored at the head (0th position) of the storage file,
+// where we follow the given field ordering.
 type Header struct {
 	Magic0 uint64 // See HEADER_MAGIC0.
 	Magic1 uint64 // See HEADER_MAGIC1.
@@ -30,7 +31,7 @@ type Header struct {
 	// Version bytes are '\0' terminated semver; see HEADER_VERSION.
 	Version [64]byte
 
-	// Extra space in header, for future readiness.
+	// Extra space in header, for future proofing.
 	ExtrasLen uint16
 	ExtrasVal []byte
 }

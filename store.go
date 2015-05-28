@@ -20,6 +20,7 @@ func storeOpen(storeFile StoreFile, storeOptions *StoreOptions) (
 	return &store{
 		storeFile:    storeFile,
 		storeOptions: *storeOptions,
+		readOnly:     false,
 		header:       header,
 		footer:       footer,
 	}, nil
@@ -105,24 +106,29 @@ func (s *store) CollectionNames(rv []string) ([]string, error) {
 		rv = append(rv, coll.Name)
 	}
 	s.m.Unlock()
+
 	return rv, nil
 }
 
 func (s *store) GetCollection(collName string) (Collection, error) {
 	s.m.Lock()
-	defer s.m.Unlock()
-
 	for i, collDef := range s.footer.StoreDefLoc.storeDef.CollectionDefs {
 		if collDef.Name == collName {
+			s.m.Unlock()
 			return s.footer.Collections[i].addRefUnlocked(), nil
 		}
 	}
+	s.m.Unlock()
 
 	return nil, ErrUnknownCollection
 }
 
 func (s *store) AddCollection(collName string, compareFuncName string) (
 	Collection, error) {
+	if s.readOnly {
+		return nil, ErrReadOnly
+	}
+
 	compareFunc, exists := s.storeOptions.CompareFuncs[compareFuncName]
 	if !exists || compareFunc == nil {
 		return nil, ErrNoCompareFunc
@@ -164,6 +170,10 @@ func (s *store) AddCollection(collName string, compareFuncName string) (
 }
 
 func (s *store) RemoveCollection(collName string) error {
+	if s.readOnly {
+		return ErrReadOnly
+	}
+
 	s.m.Lock()
 	defer s.m.Unlock()
 

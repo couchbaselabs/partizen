@@ -151,6 +151,7 @@ type StoreOptions struct {
 // and +1 if a > b.  For example: bytes.Compare()
 type CompareFunc func(a, b []byte) int
 
+var ErrReadOnly = errors.New("read-only")
 var ErrNoCompareFunc = errors.New("no compare func")
 var ErrUnknownCollection = errors.New("unknown collection")
 var ErrCollectionExists = errors.New("collection exists")
@@ -165,7 +166,6 @@ const NO_MATCH_SEQ = Seq(0xffffffffffffffff)
 const CREATE_MATCH_SEQ = Seq(0xfffffffffffffffe)
 
 var ErrMatchSeq = errors.New("non-matching seq")
-var ErrReadOnly = errors.New("read-only")
 var ErrConcurrentMutation = errors.New("concurrent mutation")
 var ErrConcurrentMutationChain = errors.New("concurrent mutation chain")
 
