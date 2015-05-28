@@ -13,7 +13,7 @@ func storeOpen(storeFile StoreFile, storeOptions *StoreOptions) (
 	if err != nil {
 		return nil, err
 	}
-	footer, err := readFooter(storeFile, storeOptions, header, maxUint64)
+	footer, err := readFooter(storeFile, storeOptions, header, MAX_UINT64)
 	if err != nil {
 		return nil, err
 	}

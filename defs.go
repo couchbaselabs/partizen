@@ -4,6 +4,20 @@ import (
 	"sync"
 )
 
+const MAX_UINT64 = uint64(0xffffffffffffffff)
+
+// A store implements the Store interface.
+type store struct {
+	// These fields are immutable.
+	storeFile    StoreFile
+	storeOptions StoreOptions
+	header       *Header
+
+	// These fields are mutable, protected by the m lock.
+	m      sync.Mutex
+	footer *Footer
+}
+
 // A Header is stored at the head (0th position) of storage file, where
 // we follow the given field ordering.
 type Header struct {
@@ -24,8 +38,6 @@ type Header struct {
 const HEADER_MAGIC0 = 0xea45113d
 const HEADER_MAGIC1 = 0xc03c1b04
 const HEADER_VERSION = "0.0.0" // Follows semver conventions.
-
-const maxUint64 = uint64(0xffffffffffffffff)
 
 // A Footer is the last record appended to storage file whenever
 // there's a successful Store.Commit().
@@ -58,18 +70,6 @@ type CollectionDef struct {
 	CompareFuncName string
 	MinFanOut       uint16
 	MaxFanOut       uint16 // Usually (2*MinFanOut)+1.
-}
-
-// A store implements the Store interface.
-type store struct {
-	// These fields are immutable.
-	storeFile    StoreFile
-	storeOptions StoreOptions
-	header       *Header
-
-	// These fields are mutable, protected by the m lock.
-	m      sync.Mutex
-	footer *Footer
 }
 
 // A collection implements the Collection interface.
