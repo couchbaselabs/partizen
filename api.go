@@ -66,20 +66,7 @@ type Store interface {
 	// TODO: Store-level read-only snapshots.
 }
 
-// NO_MATCH_SEQ can be used for Collection.Set()'s matchSeq to specify
-// that the caller doesn't care about the existing item's Seq.
-const NO_MATCH_SEQ = Seq(0xffffffffffffffff)
-
-// CREATE_MATCH_SEQ can be used for Collection.Set()'s matchSeq to
-// specify that the caller explicitly wants a creation instead of an
-// update of an existing item.
-const CREATE_MATCH_SEQ = Seq(0xfffffffffffffffe)
-
-var ErrMatchSeq = errors.New("non-matching seq")
-var ErrReadOnly = errors.New("read-only")
-var ErrConcurrentMutation = errors.New("concurrent mutation")
-var ErrConcurrentMutationChain = errors.New("concurrent mutation chain")
-
+// A collection is an ordered set of key-value entries.
 type Collection interface {
 	Close() error
 
@@ -133,6 +120,8 @@ type Collection interface {
 		rollbackedToSeq Seq, err error)
 }
 
+// A cursor starts with a position "before" the first result, so the
+// caller should use Cursor.Next() for the first result.
 type Cursor interface {
 	Close() error
 
@@ -161,6 +150,20 @@ const (
 
 	// FUTURE MutationOp's might include merging, visiting, etc.
 )
+
+// NO_MATCH_SEQ can be used for Collection.Set()'s matchSeq to specify
+// that the caller doesn't care about the existing item's Seq.
+const NO_MATCH_SEQ = Seq(0xffffffffffffffff)
+
+// CREATE_MATCH_SEQ can be used for Collection.Set()'s matchSeq to
+// specify that the caller explicitly wants a creation instead of an
+// update of an existing item.
+const CREATE_MATCH_SEQ = Seq(0xfffffffffffffffe)
+
+var ErrMatchSeq = errors.New("non-matching seq")
+var ErrReadOnly = errors.New("read-only")
+var ErrConcurrentMutation = errors.New("concurrent mutation")
+var ErrConcurrentMutationChain = errors.New("concurrent mutation chain")
 
 type ChangeStats struct {
 	// TODO.
