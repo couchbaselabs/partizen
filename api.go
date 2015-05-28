@@ -66,7 +66,7 @@ type Store interface {
 	// TODO: Store-level read-only snapshots.
 }
 
-// A collection is an ordered set of key-value entries.
+// A Collection is an ordered set of key-value entries.
 type Collection interface {
 	Close() error
 
@@ -120,7 +120,7 @@ type Collection interface {
 		rollbackedToSeq Seq, err error)
 }
 
-// A cursor starts with a position "before" the first result, so the
+// A Cursor starts with a position "before" the first result, so the
 // caller should use Cursor.Next() for the first result.
 type Cursor interface {
 	Close() error
