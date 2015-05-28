@@ -11,11 +11,13 @@ type Key []byte
 type Val []byte
 type Seq uint64
 
+// StoreOpen is used to create and/or reopen a persisted store.
 func StoreOpen(storeFile StoreFile, storeOptions *StoreOptions) (
 	Store, error) {
 	return storeOpen(storeFile, storeOptions)
 }
 
+// StoreFile represents the persistence operations needed by a store.
 type StoreFile interface {
 	io.ReaderAt
 	io.WriterAt
@@ -23,21 +25,41 @@ type StoreFile interface {
 	Truncate(size int64) error
 }
 
+type StoreOptions struct {
+	// Optional, may be nil.  Default for CompareFunc is
+	// the bytes.Compare function.
+	CompareFuncs map[string]CompareFunc // Keyed by compareFuncName.
+
+	DefaultPageSize  uint16 // Ex: 4096.
+	DefaultMinFanOut uint16
+	DefaultMaxFanOut uint16 // Usually (2*DefaultMinFanOut)+1.
+
+	// Optional, may be nil.
+	BufManager BufManager
+}
+
+// A CompareFunc should return 0 if a == b, -1 if a < b,
+// and +1 if a > b.  For example: bytes.Compare()
+type CompareFunc func(a, b []byte) int
+
 var ErrNoCompareFunc = errors.New("no compare func")
 var ErrUnknownCollection = errors.New("unknown collection")
 var ErrCollectionExists = errors.New("collection exists")
 
+// A Store is a set of collections.
 type Store interface {
 	Close() error
 
 	CollectionNames([]string) ([]string, error)
 
-	// Caller should Close() the returned Collection.
+	// Caller must Close() the returned Collection.
 	GetCollection(collName string) (Collection, error)
 
-	// Caller should Close() the returned Collection.
+	// Caller must Close() the returned Collection.
 	AddCollection(collName string, compareFuncName string) (Collection, error)
 
+	// Behavior is undefined for any closed collections that the
+	// caller still has references for.
 	RemoveCollection(collName string) error
 
 	// TODO: Commit changes.
@@ -140,20 +162,6 @@ const (
 	// FUTURE MutationOp's might include merging, visiting, etc.
 )
 
-type StoreOptions struct {
-	CompareFuncs map[string]CompareFunc // Keyed by compareFuncName.
-
-	DefaultPageSize  uint16 // Ex: 4096.
-	DefaultMinFanOut uint16
-	DefaultMaxFanOut uint16 // Usually (2*DefaultMinFanOut)+1.
-
-	BufManager BufManager
-}
-
-// A CompareFunc should return 0 if a == b, -1 if a < b,
-// and +1 if a > b.  For example: bytes.Compare()
-type CompareFunc func(a, b []byte) int
-
 type ChangeStats struct {
 	// TODO.
 }
@@ -165,7 +173,12 @@ type StoreStats struct {
 type BufManager interface {
 	Alloc(size int) []byte
 	Len(buf []byte) int
+
+	// WantRef returns a buf that is safe for the caller to hold onto.
+	// Implementations, for example, might use ref-counting, or return
+	// a brand new copy.
 	WantRef(buf []byte) []byte
+
 	DropRef(buf []byte)
 	Visit(buf []byte, from, to int,
 		partVisitor func(partBuf []byte, partFrom, partTo int))
