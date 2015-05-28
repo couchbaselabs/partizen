@@ -134,10 +134,9 @@ type StoreFile interface {
 
 // StoreOptions represent options when (re-)opening a store.
 type StoreOptions struct {
-	// Optional, may be nil.  Default for CompareFunc is the
-	// bytes.Compare function.  The CompareFuncs should be immutable
-	// and should be the same (or greater set of functions) when
-	// re-opening a store.
+	// Optional, may be nil.  A compareFuncName of "" means use
+	// bytes.Compare.  CompareFuncs must be immutable and should be
+	// the same (or superset of functions) when re-opening a store.
 	CompareFuncs map[string]CompareFunc // Keyed by compareFuncName.
 
 	DefaultPageSize  uint16 // In bytes.  Ex: 4096.

@@ -1,5 +1,9 @@
 package partizen
 
+import (
+	"sync"
+)
+
 // A Header is stored at the head (0th position) of storage file, where
 // we follow the given field ordering.
 type Header struct {
@@ -29,25 +33,26 @@ type Footer struct {
 	StoreDefLoc StoreDefLoc // Location of StoreDef.
 
 	// Locations of partizen btree root Nodes, 1 per Collection, where
-	// len(Footer.CollRoots) equals len(StoreDef.CollDefs).
-	CollRoots []*CollRoot
+	// len(Footer.Collections) equals len(StoreDef.CollDefs) and are
+	// 1-to-1 position matched with the StoreDef.CollDefs.
+	Collections []*collection
 }
 
 // A StoreDefLoc represents a persisted location of a StoreDef.
 type StoreDefLoc struct {
 	Loc
-	storeDef *StoreDef // If nil, runtime representation no loaded yet.
+	storeDef *StoreDef // If nil, runtime representation not loaded yet.
 }
 
 // A StoreDef defines a partizen Store, holding "slow-changing"
-// configuration metadata about a Store.  We keep slow changing
-// metadata separate from the Store footer for efficiency, but use
-// JSON encoding of the persisted StoreDef for debuggability.
+// configuration metadata.  We keep slow changing metadata separate
+// from the footer for efficiency, but use JSON encoding of the
+// persisted StoreDef for diagnosability.
 type StoreDef struct {
 	CollDefs []*CollDef
 }
 
-// A CollDef is persisted as JSON for debuggability.
+// A CollDef is persisted as JSON for diagnosability.
 type CollDef struct {
 	Name            string
 	CompareFuncName string
@@ -55,8 +60,20 @@ type CollDef struct {
 	MaxFanOut       uint16 // Usually (2*MinFanOut)+1.
 }
 
-// A CollRoot implements the Collection interface.
-type CollRoot struct {
+// A store implements the Store interface.
+type store struct {
+	// These fields are immutable.
+	storeFile    StoreFile
+	storeOptions StoreOptions
+	header       *Header
+
+	// These fields are mutable, protected by the m lock.
+	m      sync.Mutex
+	footer *Footer
+}
+
+// A collection implements the Collection interface.
+type collection struct {
 	RootItemLocRef *ItemLocRef // Mutator must have store.m locked.
 	refs           int32       // Mutator must have store.m locked.
 
@@ -74,12 +91,11 @@ type ItemLocRef struct {
 
 	refs int32 // Mutator must have store.m locked.
 
-	// We might own a reference count on another ItemLocRef.  When
-	// our count hits 0, also release our refcount on the next.
+	// We might own a reference count a chained ItemLocRef.
 	next *ItemLocRef // Mutator must have store.m locked.
 }
 
-// AddRef must be invoked by caller with CollRoot.store.m locked.
+// AddRef must be invoked by caller with collection.store.m locked.
 func (r *ItemLocRef) addRef() (*ItemLocRef, *ItemLoc) {
 	if r == nil {
 		return nil, nil
@@ -91,7 +107,7 @@ func (r *ItemLocRef) addRef() (*ItemLocRef, *ItemLoc) {
 	return r, r.R
 }
 
-// DecRef must be invoked by caller with CollRoot.store.m locked.
+// DecRef must be invoked by caller with collection.store.m locked.
 func (r *ItemLocRef) decRef() *ItemLocRef {
 	if r == nil {
 		return nil

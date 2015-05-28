@@ -8,7 +8,7 @@ import (
 	"sort"
 )
 
-func (r *CollRoot) Close() error {
+func (r *collection) Close() error {
 	r.store.m.Lock()
 	r.decRefUnlocked()
 	r.store.m.Unlock()
@@ -16,13 +16,13 @@ func (r *CollRoot) Close() error {
 }
 
 // Must be invoked while caller has store.m locked.
-func (r *CollRoot) addRefUnlocked() *CollRoot {
+func (r *collection) addRefUnlocked() *collection {
 	r.refs++
 	return r
 }
 
 // Must be invoked while caller has store.m locked.
-func (r *CollRoot) decRefUnlocked() {
+func (r *collection) decRefUnlocked() {
 	r.refs--
 	if r.refs <= 0 {
 		r.RootItemLocRef.decRef()
@@ -31,20 +31,20 @@ func (r *CollRoot) decRefUnlocked() {
 	}
 }
 
-func (r *CollRoot) rootAddRef() (*ItemLocRef, *ItemLoc) {
+func (r *collection) rootAddRef() (*ItemLocRef, *ItemLoc) {
 	r.store.m.Lock()
 	kslr, ksl := r.RootItemLocRef.addRef()
 	r.store.m.Unlock()
 	return kslr, ksl
 }
 
-func (r *CollRoot) rootDecRef(kslr *ItemLocRef) {
+func (r *collection) rootDecRef(kslr *ItemLocRef) {
 	r.store.m.Lock()
 	kslr.decRef()
 	r.store.m.Unlock()
 }
 
-func (r *CollRoot) Get(partitionId PartitionId, key Key, matchSeq Seq,
+func (r *collection) Get(partitionId PartitionId, key Key, matchSeq Seq,
 	withValue bool) (seq Seq, val Val, err error) {
 	if partitionId != 0 {
 		return 0, nil, fmt.Errorf("partition unimplemented")
@@ -73,12 +73,12 @@ func (r *CollRoot) Get(partitionId PartitionId, key Key, matchSeq Seq,
 		}
 	}
 	if hit != nil && hitType != LocTypeVal {
-		return 0, nil, fmt.Errorf("CollRoot.Get: bad type: %#v", hitType)
+		return 0, nil, fmt.Errorf("collection.Get: bad type: %#v", hitType)
 	}
 	return hitSeq, hitBuf, nil // TODO: What if partitionId doesn't match?
 }
 
-func (r *CollRoot) Set(partitionId PartitionId, key Key, matchSeq Seq,
+func (r *collection) Set(partitionId PartitionId, key Key, matchSeq Seq,
 	newSeq Seq, val Val) (err error) {
 	return r.mutate([]Mutation{Mutation{
 		PartitionId: partitionId,
@@ -90,7 +90,7 @@ func (r *CollRoot) Set(partitionId PartitionId, key Key, matchSeq Seq,
 	}})
 }
 
-func (r *CollRoot) Del(partitionId PartitionId, key Key, matchSeq Seq,
+func (r *collection) Del(partitionId PartitionId, key Key, matchSeq Seq,
 	newSeq Seq) error {
 	return r.mutate([]Mutation{Mutation{
 		PartitionId: partitionId,
@@ -101,21 +101,21 @@ func (r *CollRoot) Del(partitionId PartitionId, key Key, matchSeq Seq,
 	}})
 }
 
-func (r *CollRoot) Batch(mutations []Mutation) error {
+func (r *collection) Batch(mutations []Mutation) error {
 	return r.mutate(mutations)
 }
 
-func (r *CollRoot) Min(withValue bool) (
+func (r *collection) Min(withValue bool) (
 	partitionId PartitionId, key Key, seq Seq, val Val, err error) {
 	return r.minMax(false, withValue)
 }
 
-func (r *CollRoot) Max(withValue bool) (
+func (r *collection) Max(withValue bool) (
 	partitionId PartitionId, key Key, seq Seq, val Val, err error) {
 	return r.minMax(true, withValue)
 }
 
-func (r *CollRoot) Scan(key Key,
+func (r *collection) Scan(key Key,
 	ascending bool,
 	partitionIds []PartitionId, // Use nil for all partitions.
 	withValue bool) (Cursor, error) {
@@ -134,7 +134,7 @@ func (r *CollRoot) Scan(key Key,
 	}, nil
 }
 
-func (r *CollRoot) Snapshot() (Collection, error) {
+func (r *collection) Snapshot() (Collection, error) {
 	r.store.m.Lock()
 	x := *r // Shallow copy.
 	x.RootItemLocRef.addRef()
@@ -144,20 +144,20 @@ func (r *CollRoot) Snapshot() (Collection, error) {
 	return &x, nil
 }
 
-func (r *CollRoot) Diff(partitionId PartitionId, seq Seq,
+func (r *collection) Diff(partitionId PartitionId, seq Seq,
 	exactToSeq bool) (
 	Cursor, error) {
 	return nil, fmt.Errorf("unimplemented")
 }
 
-func (r *CollRoot) Rollback(partitionId PartitionId, seq Seq,
+func (r *collection) Rollback(partitionId PartitionId, seq Seq,
 	exactToSeq bool) (Seq, error) {
 	return 0, fmt.Errorf("unimplemented")
 }
 
 // --------------------------------------------
 
-func (r *CollRoot) mutate(mutations []Mutation) (err error) {
+func (r *collection) mutate(mutations []Mutation) (err error) {
 	if r.readOnly {
 		return ErrReadOnly
 	}
@@ -204,7 +204,7 @@ func (r *CollRoot) mutate(mutations []Mutation) (err error) {
 	return err
 }
 
-func (r *CollRoot) minMax(locateMax bool, withValue bool) (
+func (r *collection) minMax(locateMax bool, withValue bool) (
 	partitionId PartitionId, key Key, seq Seq, val Val, err error) {
 	kslr, ksl := r.rootAddRef()
 	if kslr == nil || ksl == nil {
@@ -224,7 +224,7 @@ func (r *CollRoot) minMax(locateMax bool, withValue bool) (
 	if ksl.Loc.Type != LocTypeVal {
 		r.rootDecRef(kslr)
 		return 0, nil, 0, nil,
-			fmt.Errorf("CollRoot.minMax: unexpected type, ksl: %#v", ksl)
+			fmt.Errorf("collection.minMax: unexpected type, ksl: %#v", ksl)
 	}
 
 	r.rootDecRef(kslr)
@@ -260,7 +260,7 @@ type CursorResult struct {
 	ksl *ItemLoc
 }
 
-func (r *CollRoot) startCursor(key Key, ascending bool,
+func (r *collection) startCursor(key Key, ascending bool,
 	partitionIds []PartitionId, readerAt io.ReaderAt,
 	closeCh chan struct{}) (resultsCh chan CursorResult, err error) {
 	if partitionIds != nil {

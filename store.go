@@ -4,20 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math/rand"
-	"sync"
 )
-
-// A store implements the Store interface.
-type store struct {
-	// These fields are immutable.
-	storeFile    StoreFile
-	storeOptions StoreOptions
-	header       *Header
-
-	// These fields are mutable, protected by the m lock.
-	m      sync.Mutex
-	footer *Footer
-}
 
 func storeOpen(storeFile StoreFile, storeOptions *StoreOptions) (
 	Store, error) {
@@ -95,7 +82,7 @@ func readHeader(f StoreFile, o *StoreOptions) (*Header, error) {
 func readFooter(f StoreFile, o *StoreOptions, header *Header,
 	startOffset uint64) (*Footer, error) {
 	footer := &Footer{
-		CollRoots: make([]*CollRoot, 0),
+		Collections: make([]*collection, 0),
 	}
 	footer.StoreDefLoc.Type = LocTypeStoreDef
 	footer.StoreDefLoc.storeDef = &StoreDef{}
@@ -127,7 +114,7 @@ func (s *store) GetCollection(collName string) (Collection, error) {
 
 	for i, collDef := range s.footer.StoreDefLoc.storeDef.CollDefs {
 		if collDef.Name == collName {
-			return s.footer.CollRoots[i].addRefUnlocked(), nil
+			return s.footer.Collections[i].addRefUnlocked(), nil
 		}
 	}
 
@@ -156,7 +143,7 @@ func (s *store) AddCollection(collName string, compareFuncName string) (
 		MinFanOut:       s.storeOptions.DefaultMinFanOut,
 		MaxFanOut:       s.storeOptions.DefaultMaxFanOut,
 	}
-	r := &CollRoot{
+	r := &collection{
 		refs:        1,
 		store:       s,
 		name:        c.Name,
@@ -167,8 +154,8 @@ func (s *store) AddCollection(collName string, compareFuncName string) (
 
 	s.footer.StoreDefLoc.storeDef.CollDefs =
 		append(s.footer.StoreDefLoc.storeDef.CollDefs, c)
-	s.footer.CollRoots =
-		append(s.footer.CollRoots, r)
+	s.footer.Collections =
+		append(s.footer.Collections, r)
 
 	// TODO: Sort the above arrays, but need to carefully ensure that
 	// positions match, perhaps by inserting at the right index.
@@ -182,7 +169,7 @@ func (s *store) RemoveCollection(collName string) error {
 
 	for i, collDef := range s.footer.StoreDefLoc.storeDef.CollDefs {
 		if collDef.Name == collName {
-			c := s.footer.CollRoots[i]
+			c := s.footer.Collections[i]
 
 			// TODO: Keep CollDefs sorted.
 			a := s.footer.StoreDefLoc.storeDef.CollDefs
@@ -190,11 +177,11 @@ func (s *store) RemoveCollection(collName string) error {
 			a[len(a)-1] = nil
 			s.footer.StoreDefLoc.storeDef.CollDefs = a[:len(a)-1]
 
-			// TODO: Keep CollRoots sorted.
-			b := s.footer.CollRoots
+			// TODO: Keep Collections sorted.
+			b := s.footer.Collections
 			copy(b[i:], b[i+1:])
 			b[len(b)-1] = nil
-			s.footer.CollRoots = b[:len(b)-1]
+			s.footer.Collections = b[:len(b)-1]
 
 			c.decRefUnlocked()
 			return nil
