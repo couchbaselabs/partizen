@@ -165,14 +165,8 @@ var ErrReadOnly = errors.New("read-only")
 var ErrConcurrentMutation = errors.New("concurrent mutation")
 var ErrConcurrentMutationChain = errors.New("concurrent mutation chain")
 
-type ChangeStats struct {
-	// TODO.
-}
-
-type StoreStats struct {
-	// TODO.
-}
-
+// A BufManager represents the functionality needed by a store for
+// memory management.
 type BufManager interface {
 	Alloc(size int) []byte
 	Len(buf []byte) int
