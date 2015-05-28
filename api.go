@@ -11,41 +11,6 @@ type Key []byte
 type Val []byte
 type Seq uint64
 
-// StoreOpen is used to create and/or reopen a persisted store.
-func StoreOpen(storeFile StoreFile, storeOptions *StoreOptions) (
-	Store, error) {
-	return storeOpen(storeFile, storeOptions)
-}
-
-// StoreFile represents the persistence operations needed by a store.
-type StoreFile interface {
-	io.ReaderAt
-	io.WriterAt
-	Stat() (os.FileInfo, error)
-	Truncate(size int64) error
-}
-
-type StoreOptions struct {
-	// Optional, may be nil.  Default for CompareFunc is
-	// the bytes.Compare function.
-	CompareFuncs map[string]CompareFunc // Keyed by compareFuncName.
-
-	DefaultPageSize  uint16 // Ex: 4096.
-	DefaultMinFanOut uint16
-	DefaultMaxFanOut uint16 // Usually (2*DefaultMinFanOut)+1.
-
-	// Optional, may be nil.
-	BufManager BufManager
-}
-
-// A CompareFunc should return 0 if a == b, -1 if a < b,
-// and +1 if a > b.  For example: bytes.Compare()
-type CompareFunc func(a, b []byte) int
-
-var ErrNoCompareFunc = errors.New("no compare func")
-var ErrUnknownCollection = errors.New("unknown collection")
-var ErrCollectionExists = errors.New("collection exists")
-
 // A Store is a set of collections.
 type Store interface {
 	Close() error
@@ -150,6 +115,46 @@ const (
 
 	// FUTURE MutationOp's might include merging, visiting, etc.
 )
+
+// ------------------------------------------------------------
+
+// StoreOpen is used to create a store and reopen a previous store.
+func StoreOpen(storeFile StoreFile, storeOptions *StoreOptions) (
+	Store, error) {
+	return storeOpen(storeFile, storeOptions)
+}
+
+// StoreFile represents the persistence operations needed by a store.
+type StoreFile interface {
+	io.ReaderAt
+	io.WriterAt
+	Stat() (os.FileInfo, error)
+	Truncate(size int64) error
+}
+
+// StoreOptions represent options when (re-)opening a store.
+type StoreOptions struct {
+	// Optional, may be nil.  Default for CompareFunc is the
+	// bytes.Compare function.  The CompareFuncs should be immutable
+	// and should be the same (or greater set of functions) when
+	// re-opening a store.
+	CompareFuncs map[string]CompareFunc // Keyed by compareFuncName.
+
+	DefaultPageSize  uint16 // In bytes.  Ex: 4096.
+	DefaultMinFanOut uint16 // Tree node fan-out.
+	DefaultMaxFanOut uint16 // Tree node fan-in.  Ex: (2*DefaultMinFanOut)+1.
+
+	// Optional, may be nil.
+	BufManager BufManager
+}
+
+// A CompareFunc should return 0 if a == b, -1 if a < b,
+// and +1 if a > b.  For example: bytes.Compare()
+type CompareFunc func(a, b []byte) int
+
+var ErrNoCompareFunc = errors.New("no compare func")
+var ErrUnknownCollection = errors.New("unknown collection")
+var ErrCollectionExists = errors.New("collection exists")
 
 // NO_MATCH_SEQ can be used for Collection.Set()'s matchSeq to specify
 // that the caller doesn't care about the existing item's Seq.
