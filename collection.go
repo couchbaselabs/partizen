@@ -25,15 +25,15 @@ func (r *collection) addRefUnlocked() *collection {
 func (r *collection) decRefUnlocked() {
 	r.refs--
 	if r.refs <= 0 {
-		r.RootItemLocRef.decRef()
-		r.RootItemLocRef = nil
+		r.Root.decRef()
+		r.Root = nil
 		r.readOnly = true
 	}
 }
 
 func (r *collection) rootAddRef() (*ItemLocRef, *ItemLoc) {
 	r.store.m.Lock()
-	kslr, ksl := r.RootItemLocRef.addRef()
+	kslr, ksl := r.Root.addRef()
 	r.store.m.Unlock()
 	return kslr, ksl
 }
@@ -137,7 +137,7 @@ func (r *collection) Scan(key Key,
 func (r *collection) Snapshot() (Collection, error) {
 	r.store.m.Lock()
 	x := *r // Shallow copy.
-	x.RootItemLocRef.addRef()
+	x.Root.addRef()
 	x.refs = 1
 	x.readOnly = true
 	r.store.m.Unlock()
@@ -188,14 +188,14 @@ func (r *collection) mutate(mutations []Mutation) (err error) {
 	}
 
 	r.store.m.Lock()
-	if kslr != r.RootItemLocRef {
+	if kslr != r.Root {
 		err = ErrConcurrentMutation
 	} else if kslr != nil && kslr.next != nil {
 		err = ErrConcurrentMutationChain
 	} else {
-		r.RootItemLocRef = &ItemLocRef{R: ksl2, refs: 1}
+		r.Root = &ItemLocRef{R: ksl2, refs: 1}
 		if kslr != nil {
-			kslr.next, _ = r.RootItemLocRef.addRef()
+			kslr.next, _ = r.Root.addRef()
 		}
 	}
 	r.store.m.Unlock()
