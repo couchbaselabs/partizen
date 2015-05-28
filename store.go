@@ -111,7 +111,6 @@ func readFooter(f StoreFile, o *StoreOptions, header *Header,
 	}
 	// TODO: Actually scan and read the footer from f.
 	// TODO: Footer should have copies of magic & uuid bytes for double-check.
-	// TODO: Read WALEntry log and apply to footer.
 	return footer, nil
 }
 

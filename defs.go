@@ -1,6 +1,6 @@
 package partizen
 
-// A Header is stored at the head (or 0th byte) of the log file.
+// A Header is stored at the head (or 0th byte) of storage file.
 type Header struct {
 	Magic0    uint64
 	Magic1    uint64
@@ -11,20 +11,20 @@ type Header struct {
 	ExtrasVal []byte
 }
 
-// A Footer is the last record appended to the log file whenever
+// A Footer is the last record appended to storage file whenever
 // there's a successful Store.Commit().
 type Footer struct {
 	StoreDefLoc StoreDefLoc // Location of StoreDef.
-	WALTailLoc  WALItemLoc  // Last item of write-ahead-log.
 
-	// Locations of partizen btree root Nodes, 1 per Collection.
+	// Locations of partizen btree root Nodes, 1 per Collection, where
 	// len(Footer.CollRoots) equals len(StoreDef.CollDefs).
 	CollRoots []*CollRoot
 }
 
+// A StoreDefLoc represents a persisted location of a StoreDef.
 type StoreDefLoc struct {
 	Loc
-	storeDef *StoreDef // If nil, runtime representation isn't loaded yet.
+	storeDef *StoreDef // If nil, runtime representation no loaded yet.
 }
 
 // A StoreDef defines a partizen Store, holding "slow-changing"
@@ -140,7 +140,6 @@ const (
 	LocTypeNode     uint8 = 0x01
 	LocTypeVal      uint8 = 0x02
 	LocTypeStoreDef uint8 = 0x03
-	LocTypeWALItem  uint8 = 0x04
 )
 
 // An ItemLoc represents a PartitionId, Key, Seq and Loc association.
@@ -240,13 +239,3 @@ type MutationCallback func(existing *ItemLoc, isVal bool,
 	mutation *Mutation) bool
 
 var zeroMutation Mutation
-
-type WALItemLoc struct {
-	Loc
-	walItem *WALItem // If nil, runtime representation isn't loaded yet.
-}
-
-type WALItem struct {
-	Mutation
-	Prev WALItemLoc
-}
