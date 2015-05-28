@@ -151,10 +151,17 @@ type StoreOptions struct {
 // and +1 if a > b.  For example: bytes.Compare()
 type CompareFunc func(a, b []byte) int
 
+// ------------------------------------------------------------
+
 var ErrReadOnly = errors.New("read-only")
 var ErrNoCompareFunc = errors.New("no compare func")
 var ErrUnknownCollection = errors.New("unknown collection")
 var ErrCollectionExists = errors.New("collection exists")
+var ErrMatchSeq = errors.New("non-matching seq")
+var ErrConcurrentMutation = errors.New("concurrent mutation")
+var ErrConcurrentMutationChain = errors.New("concurrent mutation chain")
+
+// ------------------------------------------------------------
 
 // NO_MATCH_SEQ can be used for Collection.Set()'s matchSeq to specify
 // that the caller doesn't care about the existing item's Seq.
@@ -165,9 +172,7 @@ const NO_MATCH_SEQ = Seq(0xffffffffffffffff)
 // update of an existing item.
 const CREATE_MATCH_SEQ = Seq(0xfffffffffffffffe)
 
-var ErrMatchSeq = errors.New("non-matching seq")
-var ErrConcurrentMutation = errors.New("concurrent mutation")
-var ErrConcurrentMutationChain = errors.New("concurrent mutation chain")
+// ------------------------------------------------------------
 
 // A BufManager represents the functionality needed by a store for
 // memory management.

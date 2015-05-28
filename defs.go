@@ -45,9 +45,9 @@ const HEADER_VERSION = "0.0.0" // Follows semver conventions.
 type Footer struct {
 	StoreDefLoc StoreDefLoc // Location of StoreDef.
 
-	// Locations of partizen btree root Nodes, 1 per Collection, where
-	// len(Footer.Collections) equals len(StoreDef.CollectionDefs) and are
-	// 1-to-1 position matched with the StoreDef.CollectionDefs.
+	// The len(Footer.Collections) equals len(StoreDef.CollectionDefs)
+	// and are 1-to-1 position matched with the
+	// StoreDef.CollectionDefs.
 	Collections []*collection
 }
 
@@ -57,7 +57,7 @@ type StoreDefLoc struct {
 	storeDef *StoreDef // If nil, runtime representation not loaded yet.
 }
 
-// A StoreDef defines a partizen Store, holding "slow-changing"
+// A StoreDef represents a store definition, holding "slow-changing"
 // configuration metadata.  We keep slow changing metadata separate
 // from the footer for efficiency, but use JSON encoding of the
 // persisted StoreDef for diagnosability.
@@ -65,7 +65,8 @@ type StoreDef struct {
 	CollectionDefs []*CollectionDef
 }
 
-// A CollectionDef is persisted as JSON for diagnosability.
+// A CollectionDef represents a collection definition and is persisted
+// as JSON for diagnosability.
 type CollectionDef struct {
 	Name            string
 	CompareFuncName string
@@ -87,12 +88,13 @@ type collection struct {
 	readOnly    bool
 }
 
+// An ItemLocRef represents a ref-counted reference to an ItemLoc.
 type ItemLocRef struct {
 	R *ItemLoc // Immutable.
 
 	refs int32 // Mutator must have store.m locked.
 
-	// We might own a reference count a chained ItemLocRef.
+	// We might own a reference count on a chained ItemLocRef.
 	next *ItemLocRef // Mutator must have store.m locked.
 }
 
@@ -125,15 +127,21 @@ func (r *ItemLocRef) decRef() *ItemLocRef {
 	return r
 }
 
-// A Node of a partizen btree has its descendent locations first
-// ordered by PartitionID, then secondarily ordered by Key.
-type Node interface {
-	GetItemLocs() ItemLocs
+// An ItemLoc represents a PartitionId, Key, Seq and Loc association.
+// When Loc is for a node (LocTypeNode), then the Seq will be the max
+// Seq for the entire sub-tree.
+type ItemLoc struct {
+	PartitionId PartitionId
+	Key         Key
+	Seq         Seq
+	Loc         Loc
 }
 
+var zeroItemLoc ItemLoc
+
 // A Loc represents the location of a byte range persisted or
-// soon-to-be-persisted to the storage file.  Field sizes are
-// carefully chosed to add up to 128 bits.
+// soon-to-be-persisted to storage.  Field sizes are carefully chosed
+// to add up to 128 bits.
 type Loc struct {
 	// Offset is relative to start of file.  Offset of 0 means the
 	// pointed-to bytes buf are not persisted yet.
@@ -148,40 +156,34 @@ type Loc struct {
 	// should equal Loc.Size.
 	buf []byte
 
-	// Transient; only used when Type is LocTypeNode.  If nil, runtime
-	// representation hasn't been loaded yet.
+	// Transient; only used when Type is LocTypeNode.  If nil,
+	// in-memory representation of Node hasn't been loaded yet.
 	node Node
 }
+
+const (
+	// Allowed values for Loc.Type field...
+	LocTypeZero     uint8 = 0x00
+	LocTypeNode     uint8 = 0x01
+	LocTypeVal      uint8 = 0x02
+	LocTypeStoreDef uint8 = 0x03
+)
 
 func (l *Loc) Clear() {
 	l.Offset = 0
 	l.Size = 0
-	l.Type = LocTypeUnknown
+	l.Type = LocTypeZero
 	l.Flags = 0
 	l.CheckSum = 0
 	l.buf = nil
 	l.node = nil
 }
 
-const (
-	// Allowed values for Loc.Type field...
-	LocTypeUnknown  uint8 = 0x00
-	LocTypeNode     uint8 = 0x01
-	LocTypeVal      uint8 = 0x02
-	LocTypeStoreDef uint8 = 0x03
-)
-
-// An ItemLoc represents a PartitionId, Key, Seq and Loc association.
-// When Loc is for a node (LocTypeNode), then the Seq will be the max
-// Seq for the entire sub-tree.
-type ItemLoc struct {
-	PartitionId PartitionId
-	Key         Key
-	Seq         Seq
-	Loc         Loc
+// A Node of a partizen btree has its descendent locations first
+// ordered by PartitionID, then secondarily ordered by Key.
+type Node interface {
+	GetItemLocs() ItemLocs
 }
-
-var zeroItemLoc ItemLoc
 
 type ItemLocs interface {
 	Len() int
