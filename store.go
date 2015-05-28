@@ -7,12 +7,6 @@ import (
 	"sync"
 )
 
-const HEADER_MAGIC0 = 0xea45113d
-const HEADER_MAGIC1 = 0xc03c1b04
-const HEADER_VERSION = "0.0.0"
-
-const maxUint64 = uint64(0xffffffffffffffff)
-
 // A store implements the Store interface.
 type store struct {
 	// These fields are immutable.
@@ -89,7 +83,6 @@ func readHeader(f StoreFile, o *StoreOptions) (*Header, error) {
 		Magic0:   uint64(HEADER_MAGIC0),
 		Magic1:   uint64(HEADER_MAGIC1),
 		UUID:     uint64(rand.Int63()),
-		PageSize: o.DefaultPageSize,
 	}
 	copy(header.Version[:], []byte(HEADER_VERSION+"\x00"))
 	if f == nil { // Memory only case.

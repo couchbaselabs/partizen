@@ -1,15 +1,27 @@
 package partizen
 
-// A Header is stored at the head (or 0th byte) of storage file.
+// A Header is stored at the head (0th position) of storage file, where
+// we follow the given field ordering.
 type Header struct {
-	Magic0    uint64
-	Magic1    uint64
-	UUID      uint64
-	Version   [64]byte
-	PageSize  uint16
+	Magic0 uint64 // See HEADER_MAGIC0.
+	Magic1 uint64 // See HEADER_MAGIC1.
+
+	// UUID helps determine if storage copies are possibly related.
+	UUID uint64
+
+	// Version bytes are '\0' terminated semver; see HEADER_VERSION.
+	Version [64]byte
+
+	// Extra space in header, for future readiness.
 	ExtrasLen uint16
 	ExtrasVal []byte
 }
+
+const HEADER_MAGIC0 = 0xea45113d
+const HEADER_MAGIC1 = 0xc03c1b04
+const HEADER_VERSION = "0.0.0" // Follows semver conventions.
+
+const maxUint64 = uint64(0xffffffffffffffff)
 
 // A Footer is the last record appended to storage file whenever
 // there's a successful Store.Commit().
