@@ -23,6 +23,9 @@ func locateItemLoc(ksl *ItemLoc, key Key, r io.ReaderAt) (
 				return nil, nil
 			}
 			n := ksls.Len()
+			if n <= 0 {
+				return nil, nil
+			}
 			i := sort.Search(n, func(i int) bool {
 				return bytes.Compare(ksls.Key(i), key) >= 0
 			})
