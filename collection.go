@@ -168,6 +168,9 @@ func (r *collection) mutate(mutations []Mutation) (err error) {
 			(existing != nil && mutation.MatchSeq == existing.Seq) {
 			return true
 		}
+
+		// TODO: Should optionally keep going vs all-or-none semantics.
+		// TODO: Should track which mutations had error.
 		cbErr = ErrMatchSeq
 		return false
 	}
