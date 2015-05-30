@@ -82,7 +82,7 @@ func groupItemLocs(childItemLocs ItemLocs, cb MutationCallback,
 	// TODO: A more optimal grouping approach would instead partition
 	// the children more evenly, instead of the current approach where
 	// the last group of children might be unfairly too small as it
-	// has only the simple remainder of children.
+	// has only the simple leftover remainder of children.
 	n := itemLocsLen(children)
 	beg := 0
 	for i := maxFanOut; i < n; i = i + maxFanOut {
