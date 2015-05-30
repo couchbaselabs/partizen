@@ -68,7 +68,9 @@ func processMutations(itemLoc *ItemLoc,
 		builder = &NodesBuilder{NodeMutations: make([]NodeMutations, 0, m)}
 	}
 
-	mergeMutations(itemLocs, 0, n, mutations, mbeg, mend, cb, builder)
+	if !mergeMutations(itemLocs, 0, n, mutations, mbeg, mend, cb, builder) {
+		return nil, ErrMatchSeq
+	}
 
 	return builder.Done(mutations, cb, minFanOut, maxFanOut, r)
 }
@@ -161,15 +163,15 @@ func itemLocsAppend(g ItemLocs,
 		Key: key, Seq: seq, Loc: loc})
 }
 
-// mergeMutations applies or zippers together a key-ordered sequence
-// of existing ItemLoc's with a key-ordered sequence of mutations.
+// mergeMutations zippers together a key-ordered sequence of existing
+// ItemLoc's with a key-ordered sequence of mutations.
 func mergeMutations(
 	existings ItemLocs,
 	ebeg, eend int, // Sub-range of existings[ebeg:eend] to process.
 	mutations []Mutation,
 	mbeg, mend int, // Sub-range of mutations[mbeg:mend] to process.
 	cb MutationCallback,
-	builder ItemLocsBuilder) {
+	builder ItemLocsBuilder) bool {
 	existing, eok, ecur := nextItemLoc(ebeg, eend, existings)
 	mutation, mok, mcur := nextMutation(mbeg, mend, mutations)
 
@@ -181,10 +183,14 @@ func mergeMutations(
 			existing, eok, ecur = nextItemLoc(ecur+1, eend, existings)
 		} else {
 			if c == 0 {
-				builder.AddUpdate(existing, mutation, mcur, cb)
+				if !builder.AddUpdate(existing, mutation, mcur, cb) {
+					return false
+				}
 				existing, eok, ecur = nextItemLoc(ecur+1, eend, existings)
 			} else {
-				builder.AddNew(mutation, mcur, cb)
+				if !builder.AddNew(mutation, mcur, cb) {
+					return false
+				}
 			}
 			mutation, mok, mcur = nextMutation(mcur+1, mend, mutations)
 		}
@@ -194,9 +200,12 @@ func mergeMutations(
 		existing, eok, ecur = nextItemLoc(ecur+1, eend, existings)
 	}
 	for mok {
-		builder.AddNew(mutation, mcur, cb)
+		if !builder.AddNew(mutation, mcur, cb) {
+			return false
+		}
 		mutation, mok, mcur = nextMutation(mcur+1, mend, mutations)
 	}
+	return true
 }
 
 func nextItemLoc(idx, n int, itemLocs ItemLocs) (
@@ -220,8 +229,10 @@ func nextMutation(idx, n int, mutations []Mutation) (
 type ItemLocsBuilder interface {
 	AddExisting(existing *ItemLoc)
 	AddUpdate(existing *ItemLoc,
-		mutation *Mutation, mutationIdx int, cb MutationCallback)
-	AddNew(mutation *Mutation, mutationIdx int, cb MutationCallback)
+		mutation *Mutation, mutationIdx int,
+		cb MutationCallback) bool
+	AddNew(mutation *Mutation, mutationIdx int,
+		cb MutationCallback) bool
 	Done(mutations []Mutation, cb MutationCallback,
 		minFanOut, maxFanOut int, r io.ReaderAt) (ItemLocs, error)
 }
@@ -240,23 +251,25 @@ func (b *ValsBuilder) AddExisting(existing *ItemLoc) {
 }
 
 func (b *ValsBuilder) AddUpdate(existing *ItemLoc,
-	mutation *Mutation, mutationIdx int, cb MutationCallback) {
+	mutation *Mutation, mutationIdx int, cb MutationCallback) bool {
 	if cb != nil && !cb(existing, true, mutation) {
-		return
+		return false
 	}
 	if mutation.Op == MUTATION_OP_UPDATE {
 		b.s = append(b.s, mutationToValItemLoc(mutation))
 	}
+	return true
 }
 
 func (b *ValsBuilder) AddNew(
-	mutation *Mutation, mutationIdx int, cb MutationCallback) {
+	mutation *Mutation, mutationIdx int, cb MutationCallback) bool {
 	if cb != nil && !cb(nil, true, mutation) {
-		return
+		return false
 	}
 	if mutation.Op == MUTATION_OP_UPDATE {
 		b.s = append(b.s, mutationToValItemLoc(mutation))
 	}
+	return true
 }
 
 func (b *ValsBuilder) Done(mutations []Mutation, cb MutationCallback,
@@ -301,21 +314,22 @@ func (b *NodesBuilder) AddExisting(existing *ItemLoc) {
 }
 
 func (b *NodesBuilder) AddUpdate(existing *ItemLoc,
-	mutation *Mutation, mutationIdx int, cb MutationCallback) {
+	mutation *Mutation, mutationIdx int, cb MutationCallback) bool {
 	if cb != nil && !cb(existing, false, mutation) {
-		return
+		return false
 	}
 	b.NodeMutations = append(b.NodeMutations, NodeMutations{
 		BaseItemLoc:  existing,
 		MutationsBeg: mutationIdx,
 		MutationsEnd: mutationIdx + 1,
 	})
+	return true
 }
 
 func (b *NodesBuilder) AddNew(
-	mutation *Mutation, mutationIdx int, cb MutationCallback) {
+	mutation *Mutation, mutationIdx int, cb MutationCallback) bool {
 	if cb != nil && !cb(nil, false, mutation) {
-		return
+		return false
 	}
 	if len(b.NodeMutations) <= 0 {
 		b.NodeMutations = append(b.NodeMutations, NodeMutations{
@@ -329,6 +343,7 @@ func (b *NodesBuilder) AddNew(
 		}
 		nm.MutationsEnd = mutationIdx + 1
 	}
+	return true
 }
 
 func (b *NodesBuilder) Done(mutations []Mutation, cb MutationCallback,

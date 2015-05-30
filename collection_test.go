@@ -98,8 +98,9 @@ func TestSimpleMemOps(t *testing.T) {
 		t.Errorf("expected Set on empty coll to work")
 	}
 	err = c.Set(0, []byte("a"), CREATE_MATCH_SEQ, 1111, []byte("AAAA"))
-	if err != ErrMatchSeq {
-		t.Errorf("expected ErrMatchSeq during create on existing item")
+	if err == nil {
+		t.Errorf("expected ErrMatchSeq during create on existing item,"+
+			" err: %v", err)
 	}
 	seq, val, err = c.Get(0, []byte("a"), NO_MATCH_SEQ, true)
 	if err != nil || seq != 1 || string(val) != "A" {
@@ -225,27 +226,27 @@ func TestSimpleMemOps(t *testing.T) {
 	wrongMatchSeq := Seq(1234321)
 	err = c.Set(0, []byte("won't-be-created"), wrongMatchSeq, 400,
 		[]byte("wrongMatchSeq"))
-	if err != ErrMatchSeq {
+	if err == nil {
 		t.Errorf("expected ErrMatchSeq, err: %#v", err)
 	}
 	err = c.Set(0, []byte("a"), wrongMatchSeq, 4, []byte("wrongMatchSeq"))
-	if err != ErrMatchSeq {
+	if err == nil {
 		t.Errorf("expected ErrMatchSeq, err: %#v", err)
 	}
 	err = c.Del(0, []byte("a"), wrongMatchSeq, 4)
-	if err != ErrMatchSeq {
+	if err == nil {
 		t.Errorf("expected ErrMatchSeq, err: %#v", err)
 	}
 	err = c.Del(0, []byte("not-there"), wrongMatchSeq, 4)
-	if err != ErrMatchSeq {
+	if err == nil {
 		t.Errorf("expected ErrMatchSeq, err: %#v", err)
 	}
 	seq, val, err = c.Get(0, []byte("not-there"), wrongMatchSeq, true)
-	if err != ErrMatchSeq {
+	if err == nil {
 		t.Errorf("expected ErrMatchSeq, err: %#v", err)
 	}
 	seq, val, err = c.Get(0, []byte("a"), wrongMatchSeq, true)
-	if err != ErrMatchSeq {
+	if err == nil {
 		t.Errorf("expected ErrMatchSeq, err: %#v", err)
 	}
 	seq, val, err = c.Get(0, []byte("a"), NO_MATCH_SEQ, true)
