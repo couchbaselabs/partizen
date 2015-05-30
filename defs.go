@@ -169,16 +169,6 @@ const (
 	LocTypeStoreDef uint8 = 0x03
 )
 
-func (l *Loc) Clear() {
-	l.Offset = 0
-	l.Size = 0
-	l.Type = LocTypeZero
-	l.Flags = 0
-	l.CheckSum = 0
-	l.buf = nil
-	l.node = nil
-}
-
 // A Node of a partizen btree has its descendent locations first
 // ordered by PartitionID, then secondarily ordered by Key.
 type Node interface {

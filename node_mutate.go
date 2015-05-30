@@ -146,7 +146,7 @@ func itemLocsSlice(a ItemLocs, from, to int) (ItemLocs, Seq) {
 			PartitionId: a.PartitionId(i),
 			Key:         key,
 			Seq:         seq,
-			Loc:         *(a.Loc(i)),
+			Loc:         *(a.Loc(i)), // TODO: access of loc.node needs lock?
 		}
 	}
 
