@@ -347,8 +347,8 @@ func (b *NodesBuilder) Done(mutations []Mutation, cb MutationCallback,
 				return nil, fmt.Errorf("NodesBuilder.Done:"+
 					" BaseItemLoc: %#v, err: %v", nm.BaseItemLoc, err)
 			}
-			rv = groupItemLocs(children, cb, minFanOut, maxFanOut,
-				rv).(PtrItemLocsArray)
+			rv = groupItemLocs(children, cb,
+				minFanOut, maxFanOut, rv).(PtrItemLocsArray)
 		}
 	}
 
