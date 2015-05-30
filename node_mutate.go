@@ -62,7 +62,8 @@ func processMutations(itemLoc *ItemLoc,
 
 	var builder ItemLocsBuilder
 	if n <= 0 || itemLocs.Loc(0).Type == LocTypeVal {
-		builder = &ValsBuilder{s: make(PtrItemLocsArray, 0, m)} // Mem mgmt.
+		// TODO: Mem mgmt / sync.Pool?
+		builder = &ValsBuilder{s: make(PtrItemLocsArray, 0, m)}
 	} else {
 		builder = &NodesBuilder{NodeMutations: make([]NodeMutations, 0, m)}
 	}
