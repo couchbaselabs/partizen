@@ -96,7 +96,11 @@ func readFooter(f StoreFile, o *StoreOptions, header *Header,
 }
 
 func (s *store) Close() error {
-	return nil // TODO.
+	// TODO: change all collections read-only?
+	// TODO: change to read-only?
+	// TODO: close storeFile?
+	// TODO: zero the store?
+	return nil
 }
 
 func (s *store) CollectionNames(rv []string) ([]string, error) {
