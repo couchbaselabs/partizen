@@ -23,7 +23,7 @@ func rootProcessMutations(rootItemLoc *ItemLoc, mutations []Mutation,
 	}
 	if a != nil {
 		for a.Len() > 1 || (a.Len() > 0 && a.Loc(0).Type == LocTypeVal) {
-			a = groupItemLocs(a, cb, minFanOut, maxFanOut, nil)
+			a = groupItemLocs(a, minFanOut, maxFanOut, nil)
 		}
 		if a.Len() > 0 {
 			return a.ItemLoc(0), nil
@@ -77,7 +77,7 @@ func processMutations(itemLoc *ItemLoc,
 
 // groupItemLocs assigns a key-ordered sequence of children to new
 // parent nodes, where the parent nodes will meet the given maxFanOut.
-func groupItemLocs(childItemLocs ItemLocs, cb MutationCallback,
+func groupItemLocs(childItemLocs ItemLocs,
 	minFanOut, maxFanOut int, groupedItemLocsStart ItemLocs) ItemLocs {
 	parents := groupedItemLocsStart
 	children := rebalanceNodes(childItemLocs, minFanOut, maxFanOut)
@@ -363,7 +363,7 @@ func (b *NodesBuilder) Done(mutations []Mutation, cb MutationCallback,
 				return nil, fmt.Errorf("NodesBuilder.Done:"+
 					" BaseItemLoc: %#v, err: %v", nm.BaseItemLoc, err)
 			}
-			rv = groupItemLocs(children, cb,
+			rv = groupItemLocs(children,
 				minFanOut, maxFanOut, rv).(PtrItemLocsArray)
 		}
 	}
