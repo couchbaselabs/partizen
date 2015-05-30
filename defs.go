@@ -154,6 +154,8 @@ type Loc struct {
 	// Transient; non-nil when the Loc is read into memory or when the
 	// bytes of the Loc are prepared for writing.  The len(Loc.buf)
 	// should equal Loc.Size.
+	//
+	// TODO: Need lock to protect Loc.buf swizzling?
 	buf []byte
 
 	// Transient; only used when Type is LocTypeNode.  If nil,
