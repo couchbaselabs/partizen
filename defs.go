@@ -164,8 +164,8 @@ type Loc struct {
 const (
 	// Allowed values for Loc.Type field...
 	LocTypeZero     uint8 = 0x00
-	LocTypeNode     uint8 = 0x01
-	LocTypeVal      uint8 = 0x02
+	LocTypeNode     uint8 = 0x01 // For partizen tree interior node.
+	LocTypeVal      uint8 = 0x02 // For partizen tree leaf val.
 	LocTypeStoreDef uint8 = 0x03
 )
 
