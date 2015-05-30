@@ -158,6 +158,8 @@ type Loc struct {
 
 	// Transient; only used when Type is LocTypeNode.  If nil,
 	// in-memory representation of Node hasn't been loaded yet.
+	//
+	// TODO: Need lock to protect Loc.node swizzling?
 	node Node
 }
 
