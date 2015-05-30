@@ -115,8 +115,7 @@ func (r *collection) Max(withValue bool) (
 	return r.minMax(true, withValue)
 }
 
-func (r *collection) Scan(key Key,
-	ascending bool,
+func (r *collection) Scan(key Key, ascending bool,
 	partitionIds []PartitionId, // Use nil for all partitions.
 	withValue bool) (Cursor, error) {
 	closeCh := make(chan struct{})
@@ -145,8 +144,7 @@ func (r *collection) Snapshot() (Collection, error) {
 }
 
 func (r *collection) Diff(partitionId PartitionId, seq Seq,
-	exactToSeq bool) (
-	Cursor, error) {
+	exactToSeq bool) (Cursor, error) {
 	return nil, fmt.Errorf("unimplemented")
 }
 
@@ -248,7 +246,9 @@ func (c *CursorImpl) Next() (PartitionId, Key, Seq, Val, error) {
 	if !ok {
 		return 0, nil, 0, nil, nil // TODO: PartitionId.
 	}
-	return 0, r.ksl.Key, r.ksl.Seq, r.ksl.Loc.buf, r.err // TODO: Mem mgmt.
+
+	// TODO: Mem mgmt.
+	return r.ksl.PartitionId, r.ksl.Key, r.ksl.Seq, r.ksl.Loc.buf, r.err
 }
 
 // --------------------------------------------
@@ -335,6 +335,7 @@ func (r *collection) startCursor(key Key, ascending bool,
 		if err != nil && err != ErrCursorClosed {
 			resultsCh <- CursorResult{err: err}
 		}
+
 		close(resultsCh)
 	}()
 
