@@ -155,6 +155,12 @@ type Loc struct {
 	// TODO: Need lock to protect Loc.buf swizzling?
 	buf []byte
 
+	// Transient; partitionId is valid only when buf is non-nil and
+	// Type is LocTypeVal.
+	//
+	// TODO: Need lock to protect Loc.partitionId swizzling?
+	partitionId PartitionId
+
 	// Transient; only used when Type is LocTypeNode.  If nil,
 	// in-memory representation of Node hasn't been loaded yet.
 	//

@@ -274,14 +274,16 @@ func (b *ValsBuilder) Done(mutations []Mutation, cb MutationCallback,
 }
 
 func mutationToValItemLoc(m *Mutation) *ItemLoc {
-	// TODO: PartitionId.
 	return &ItemLoc{
 		Key: m.Key, // NOTE: We copy key in groupItemLocs/itemLocsSlice.
 		Seq: m.Seq,
 		Loc: Loc{
 			Type: LocTypeVal,
 			Size: uint32(len(m.Val)),
-			buf:  append([]byte(nil), m.Val...), // TODO: Memory mgmt.
+
+			// TODO: Memory mgmt.
+			buf:         append([]byte(nil), m.Val...),
+			partitionId: m.PartitionId,
 		},
 	}
 }
