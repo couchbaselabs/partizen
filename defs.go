@@ -176,7 +176,7 @@ const (
 	LocTypeStoreDef uint8 = 0x03
 )
 
-// A Node of a partizen btree.
+// An immutable Node of a partizen btree.
 type Node interface {
 	// Returns the immutable ItemLocs of the node.
 	GetItemLocs() ItemLocs
@@ -188,7 +188,12 @@ type ItemLocs interface {
 	Seq(idx int) Seq
 	Loc(idx int) *Loc
 	ItemLoc(idx int) *ItemLoc
-	Append(ItemLoc) ItemLocs
+}
+
+type ItemLocsAppendable interface {
+	ItemLocs
+
+	Append(ItemLoc) ItemLocsAppendable
 }
 
 // ----------------------------------------
@@ -215,7 +220,7 @@ func (a ItemLocsArray) ItemLoc(idx int) *ItemLoc {
 	return &a[idx]
 }
 
-func (a ItemLocsArray) Append(x ItemLoc) ItemLocs {
+func (a ItemLocsArray) Append(x ItemLoc) ItemLocsAppendable {
 	return append(a, x)
 }
 
@@ -243,7 +248,7 @@ func (a PtrItemLocsArray) ItemLoc(idx int) *ItemLoc {
 	return a[idx]
 }
 
-func (a PtrItemLocsArray) Append(x ItemLoc) ItemLocs {
+func (a PtrItemLocsArray) Append(x ItemLoc) ItemLocsAppendable {
 	return append(a, &x)
 }
 

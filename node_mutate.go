@@ -79,7 +79,8 @@ func processMutations(itemLoc *ItemLoc,
 // groupItemLocs assigns a key-ordered sequence of children to new
 // parent nodes, where the parent nodes will meet the given maxFanOut.
 func groupItemLocs(childItemLocs ItemLocs,
-	minFanOut, maxFanOut int, groupedItemLocsStart ItemLocs) ItemLocs {
+	minFanOut, maxFanOut int,
+	groupedItemLocsStart ItemLocsAppendable) ItemLocs {
 	parents := groupedItemLocsStart
 	children := rebalanceNodes(childItemLocs, minFanOut, maxFanOut)
 
@@ -153,7 +154,8 @@ func itemLocsSlice(a ItemLocs, from, to int) (ItemLocs, Seq) {
 	return kslArr, maxSeq
 }
 
-func itemLocsAppend(g ItemLocs, key Key, seq Seq, loc Loc) ItemLocs {
+func itemLocsAppend(g ItemLocsAppendable,
+	key Key, seq Seq, loc Loc) ItemLocsAppendable {
 	if g == nil {
 		return ItemLocsArray{ItemLoc{Key: key, Seq: seq, Loc: loc}}
 	}
@@ -376,7 +378,7 @@ func rebalanceNodes(itemLocs ItemLocs,
 	minFanOut, maxFanOut int) ItemLocs {
 	// If the itemLocs are all nodes, then some of those nodes might
 	// be much smaller than others and might benefit from rebalancing.
-	var rebalanced ItemLocs
+	var rebalanced ItemLocsAppendable
 	var rebalancing PtrItemLocsArray
 
 	// TODO: Knowing whether those child nodes are either in-memory
