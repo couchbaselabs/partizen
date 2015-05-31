@@ -22,11 +22,12 @@ func rootProcessMutations(rootItemLoc *ItemLoc, mutations []Mutation,
 			" rootItemLoc: %#v, err: %v", rootItemLoc, err)
 	}
 	if a != nil {
+		// TODO: needs swizzle lock?
 		for a.Len() > 1 || (a.Len() > 0 && a.Loc(0).Type == LocTypeVal) {
 			a = groupItemLocs(a, minFanOut, maxFanOut, nil)
 		}
 		if a.Len() > 0 {
-			return a.ItemLoc(0), nil
+			return a.ItemLoc(0), nil // TODO: swizzle lock?
 		}
 	}
 	return nil, nil
@@ -61,7 +62,7 @@ func processMutations(itemLoc *ItemLoc,
 	m := mend - mbeg
 
 	var builder ItemLocsBuilder
-	if n <= 0 || itemLocs.Loc(0).Type == LocTypeVal {
+	if n <= 0 || itemLocs.Loc(0).Type == LocTypeVal { // TODO: swizzle lock?
 		// TODO: Mem mgmt / sync.Pool?
 		builder = &ValsBuilder{s: make(PtrItemLocsArray, 0, m)}
 	} else {
@@ -106,7 +107,7 @@ func groupItemLocs(childItemLocs ItemLocs,
 					node: &NodeMem{ItemLocs: a},
 				})
 		} else { // Pass the leftovers upwards.
-			for i := beg; i < n; i++ {
+			for i := beg; i < n; i++ { // TODO: swizzle lock?
 				parents = parents.Append(*children.ItemLoc(i))
 			}
 		}
@@ -145,7 +146,7 @@ func itemLocsSlice(a ItemLocs, from, to int) (ItemLocs, Seq) {
 		kslArr[i-from] = ItemLoc{
 			Key: key,
 			Seq: seq,
-			Loc: *(a.Loc(i)), // TODO: access of loc.node needs lock?
+			Loc: *(a.Loc(i)), // TODO: swizzle lock?
 		}
 	}
 
@@ -207,7 +208,7 @@ func mergeMutations(
 func nextItemLoc(idx, n int, itemLocs ItemLocs) (
 	*ItemLoc, bool, int) {
 	if idx < n {
-		return itemLocs.ItemLoc(idx), true, idx
+		return itemLocs.ItemLoc(idx), true, idx // TODO: swizzle lock?
 	}
 	return &zeroItemLoc, false, idx
 }
@@ -383,12 +384,13 @@ func rebalanceNodes(itemLocs ItemLocs,
 	// attempt some rebalancing.
 	n := itemLocsLen(itemLocs)
 	for i := 0; i < n; i++ {
-		loc := itemLocs.Loc(i)
+		loc := itemLocs.Loc(i) // TODO: swizzle lock?
 		if loc.Type != LocTypeNode || loc.node == nil {
 			return itemLocs // TODO: Mem mgmt.
 		}
 		kids := loc.node.GetItemLocs()
 		for j := 0; j < kids.Len(); j++ {
+			// TODO: swizzle lock?
 			rebalancing = itemLocsAppend(rebalancing,
 				kids.Key(j), kids.Seq(j), *kids.Loc(j)).(PtrItemLocsArray)
 			if itemLocsLen(rebalancing) >= maxFanOut {
