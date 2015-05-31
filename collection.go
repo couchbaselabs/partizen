@@ -251,7 +251,10 @@ func (c *CursorImpl) Next() (PartitionId, Key, Seq, Val, error) {
 	}
 
 	// TODO: Mem mgmt.
-	return r.ksl.PartitionId, r.ksl.Key, r.ksl.Seq, r.ksl.Loc.buf, r.err
+	// TODO: PartitionId.
+	partitionId := PartitionId(0);
+
+	return partitionId, r.ksl.Key, r.ksl.Seq, r.ksl.Loc.buf, r.err
 }
 
 // --------------------------------------------

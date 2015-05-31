@@ -127,14 +127,11 @@ func (r *ItemLocRef) decRef() *ItemLocRef {
 	return r
 }
 
-// An ItemLoc represents a PartitionId, Key, Seq and Loc association.
-// When Loc is for a node (LocTypeNode), then the Seq will be the max
-// Seq for the entire sub-tree.
+// An ItemLoc represents a Key, Seq and Loc association.
 type ItemLoc struct {
-	PartitionId PartitionId
-	Key         Key
-	Seq         Seq
-	Loc         Loc
+	Key Key // The minimum Key.
+	Seq Seq // The maximum Seq.
+	Loc Loc
 }
 
 var zeroItemLoc ItemLoc
@@ -173,8 +170,7 @@ const (
 	LocTypeStoreDef uint8 = 0x03
 )
 
-// A Node of a partizen btree has its descendent locations first
-// ordered by PartitionID, then secondarily ordered by Key.
+// A Node of a partizen btree.
 type Node interface {
 	// Returns the immutable ItemLocs of the node.
 	GetItemLocs() ItemLocs
@@ -182,7 +178,6 @@ type Node interface {
 
 type ItemLocs interface {
 	Len() int
-	PartitionId(idx int) PartitionId
 	Key(idx int) Key
 	Seq(idx int) Seq
 	Loc(idx int) *Loc
@@ -196,10 +191,6 @@ type ItemLocsArray []ItemLoc
 
 func (a ItemLocsArray) Len() int {
 	return len(a)
-}
-
-func (a ItemLocsArray) PartitionId(idx int) PartitionId {
-	return a[idx].PartitionId
 }
 
 func (a ItemLocsArray) Key(idx int) Key {
@@ -228,10 +219,6 @@ type PtrItemLocsArray []*ItemLoc
 
 func (a PtrItemLocsArray) Len() int {
 	return len(a)
-}
-
-func (a PtrItemLocsArray) PartitionId(idx int) PartitionId {
-	return a[idx].PartitionId
 }
 
 func (a PtrItemLocsArray) Key(idx int) Key {

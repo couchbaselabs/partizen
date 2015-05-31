@@ -91,7 +91,7 @@ func groupItemLocs(childItemLocs ItemLocs,
 	for i := maxFanOut; i < n; i = i + maxFanOut {
 		a, maxSeq := itemLocsSlice(children, beg, i)
 		parents = itemLocsAppend(parents,
-			a.PartitionId(0), a.Key(0), maxSeq, Loc{
+			a.Key(0), maxSeq, Loc{
 				Type: LocTypeNode,
 				node: &NodeMem{ItemLocs: a},
 			})
@@ -101,7 +101,7 @@ func groupItemLocs(childItemLocs ItemLocs,
 		if beg <= 0 { // If there were only leftovers, group them...
 			a, maxSeq := itemLocsSlice(children, beg, n)
 			parents = itemLocsAppend(parents,
-				a.PartitionId(0), a.Key(0), maxSeq, Loc{
+				a.Key(0), maxSeq, Loc{
 					Type: LocTypeNode,
 					node: &NodeMem{ItemLocs: a},
 				})
@@ -143,24 +143,20 @@ func itemLocsSlice(a ItemLocs, from, to int) (ItemLocs, Seq) {
 		}
 
 		kslArr[i-from] = ItemLoc{
-			PartitionId: a.PartitionId(i),
-			Key:         key,
-			Seq:         seq,
-			Loc:         *(a.Loc(i)), // TODO: access of loc.node needs lock?
+			Key: key,
+			Seq: seq,
+			Loc: *(a.Loc(i)), // TODO: access of loc.node needs lock?
 		}
 	}
 
 	return kslArr, maxSeq
 }
 
-func itemLocsAppend(g ItemLocs,
-	partitionId PartitionId, key Key, seq Seq, loc Loc) ItemLocs {
+func itemLocsAppend(g ItemLocs, key Key, seq Seq, loc Loc) ItemLocs {
 	if g == nil {
-		return ItemLocsArray{ItemLoc{PartitionId: partitionId,
-			Key: key, Seq: seq, Loc: loc}}
+		return ItemLocsArray{ItemLoc{Key: key, Seq: seq, Loc: loc}}
 	}
-	return g.Append(ItemLoc{PartitionId: partitionId,
-		Key: key, Seq: seq, Loc: loc})
+	return g.Append(ItemLoc{Key: key, Seq: seq, Loc: loc})
 }
 
 // mergeMutations zippers together a key-ordered sequence of existing
@@ -278,10 +274,10 @@ func (b *ValsBuilder) Done(mutations []Mutation, cb MutationCallback,
 }
 
 func mutationToValItemLoc(m *Mutation) *ItemLoc {
+	// TODO: PartitionId.
 	return &ItemLoc{
-		PartitionId: m.PartitionId,
-		Key:         m.Key, // NOTE: We copy key in groupItemLocs/itemLocsSlice.
-		Seq:         m.Seq,
+		Key: m.Key, // NOTE: We copy key in groupItemLocs/itemLocsSlice.
+		Seq: m.Seq,
 		Loc: Loc{
 			Type: LocTypeVal,
 			Size: uint32(len(m.Val)),
@@ -392,12 +388,11 @@ func rebalanceNodes(itemLocs ItemLocs,
 		kids := loc.node.GetItemLocs()
 		for j := 0; j < kids.Len(); j++ {
 			rebalancing = itemLocsAppend(rebalancing,
-				kids.PartitionId(j), kids.Key(j), kids.Seq(j),
-				*kids.Loc(j)).(PtrItemLocsArray)
+				kids.Key(j), kids.Seq(j), *kids.Loc(j)).(PtrItemLocsArray)
 			if itemLocsLen(rebalancing) >= maxFanOut {
 				a, maxSeq := itemLocsSlice(rebalancing, 0, rebalancing.Len())
 				rebalanced = itemLocsAppend(rebalanced,
-					kids.PartitionId(0), a.Key(0), maxSeq, Loc{
+					a.Key(0), maxSeq, Loc{
 						Type: LocTypeNode,
 						node: &NodeMem{ItemLocs: a},
 					})
@@ -408,7 +403,7 @@ func rebalanceNodes(itemLocs ItemLocs,
 	if rebalancing != nil {
 		a, maxSeq := itemLocsSlice(rebalancing, 0, rebalancing.Len())
 		rebalanced = itemLocsAppend(rebalanced,
-			a.PartitionId(0), a.Key(0), maxSeq, Loc{
+			a.Key(0), maxSeq, Loc{
 				Type: LocTypeNode,
 				node: &NodeMem{ItemLocs: a},
 			})
