@@ -65,6 +65,8 @@ type StoreDef struct {
 	CollectionDefs []*CollectionDef
 }
 
+// ----------------------------------------
+
 // A CollectionDef represents a collection definition and is persisted
 // as JSON for diagnosability.
 type CollectionDef struct {
@@ -87,6 +89,8 @@ type collection struct {
 	maxFanOut   uint16
 	readOnly    bool
 }
+
+// ----------------------------------------
 
 // An ItemLocRef represents a ref-counted reference to an ItemLoc.
 type ItemLocRef struct {
@@ -136,6 +140,8 @@ type ItemLoc struct {
 
 var zeroItemLoc ItemLoc
 
+// ----------------------------------------
+
 // A Loc represents the location of a byte range persisted or
 // soon-to-be-persisted to storage.  Field sizes are carefully chosed
 // to add up to 128 bits.
@@ -176,11 +182,15 @@ const (
 	LocTypeStoreDef uint8 = 0x03
 )
 
+// ----------------------------------------
+
 // An immutable Node of a partizen btree.
 type Node interface {
 	// Returns the immutable ItemLocs of the node.
 	GetItemLocs() ItemLocs
 }
+
+// ----------------------------------------
 
 type ItemLocs interface {
 	Len() int
