@@ -64,6 +64,7 @@ func (r *collection) Get(partitionId PartitionId, key Key, matchSeq Seq,
 	if err != nil {
 		return 0, nil, err
 	}
+
 	if matchSeq != NO_MATCH_SEQ {
 		if hit != nil && matchSeq != hitSeq {
 			return 0, nil, ErrMatchSeq
@@ -72,9 +73,11 @@ func (r *collection) Get(partitionId PartitionId, key Key, matchSeq Seq,
 			return 0, nil, ErrMatchSeq
 		}
 	}
+
 	if hit != nil && hitType != LocTypeVal {
 		return 0, nil, fmt.Errorf("collection.Get: bad type: %#v", hitType)
 	}
+
 	return hitSeq, hitBuf, nil // TODO: What if partitionId doesn't match?
 }
 

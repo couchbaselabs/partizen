@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"sort"
 )
 
 // rootProcessMutations is the entry function for applying a batch of
@@ -24,7 +25,10 @@ func rootProcessMutations(rootItemLoc *ItemLoc, mutations []Mutation,
 	if a != nil {
 		// TODO: needs swizzle lock?
 		for a.Len() > 1 || (a.Len() > 0 && a.Loc(0).Type == LocTypeVal) {
-			a = groupItemLocs(a, minFanOut, maxFanOut, nil)
+			a, err = groupItemLocs(a, minFanOut, maxFanOut, nil, r)
+			if err != nil {
+				return nil, err
+			}
 		}
 		if a.Len() > 0 {
 			return a.ItemLoc(0), nil // TODO: swizzle lock?
@@ -80,9 +84,14 @@ func processMutations(itemLoc *ItemLoc,
 // parent nodes, where the parent nodes will meet the given maxFanOut.
 func groupItemLocs(childItemLocs ItemLocs,
 	minFanOut, maxFanOut int,
-	groupedItemLocsStart ItemLocsAppendable) ItemLocs {
+	groupedItemLocsStart ItemLocsAppendable,
+	r io.ReaderAt) (ItemLocs, error) {
+	children, err := rebalanceNodes(childItemLocs, minFanOut, maxFanOut, r)
+	if err != nil {
+		return nil, err
+	}
+
 	parents := groupedItemLocsStart
-	children := rebalanceNodes(childItemLocs, minFanOut, maxFanOut)
 
 	// TODO: A more optimal grouping approach would instead partition
 	// the children more evenly, instead of the current approach where
@@ -92,20 +101,32 @@ func groupItemLocs(childItemLocs ItemLocs,
 	beg := 0
 	for i := maxFanOut; i < n; i = i + maxFanOut {
 		a, maxSeq := itemLocsSlice(children, beg, i)
+
+		partitions, err := itemLocsGroupByPartitionIds(a, r)
+		if err != nil {
+			return nil, err
+		}
+
 		parents = itemLocsAppend(parents,
 			a.Key(0), maxSeq, Loc{
 				Type: LocTypeNode,
-				node: &NodeMem{ItemLocs: a},
+				node: &NodeMem{ItemLocs: a, Partitions: partitions},
 			})
 		beg = i
 	}
 	if beg < n { // If there were leftovers...
 		if beg <= 0 { // If there were only leftovers, group them...
 			a, maxSeq := itemLocsSlice(children, beg, n)
+
+			partitions, err := itemLocsGroupByPartitionIds(a, r)
+			if err != nil {
+				return nil, err
+			}
+
 			parents = itemLocsAppend(parents,
 				a.Key(0), maxSeq, Loc{
 					Type: LocTypeNode,
-					node: &NodeMem{ItemLocs: a},
+					node: &NodeMem{ItemLocs: a, Partitions: partitions},
 				})
 		} else { // Pass the leftovers upwards.
 			for i := beg; i < n; i++ { // TODO: swizzle lock?
@@ -114,7 +135,7 @@ func groupItemLocs(childItemLocs ItemLocs,
 		}
 	}
 
-	return parents
+	return parents, nil
 }
 
 func itemLocsLen(a ItemLocs) int {
@@ -364,8 +385,14 @@ func (b *NodesBuilder) Done(mutations []Mutation, cb MutationCallback,
 				return nil, fmt.Errorf("NodesBuilder.Done:"+
 					" BaseItemLoc: %#v, err: %v", nm.BaseItemLoc, err)
 			}
-			rv = groupItemLocs(children,
-				minFanOut, maxFanOut, rv).(PtrItemLocsArray)
+
+			rvx, err := groupItemLocs(children,
+				minFanOut, maxFanOut, rv, r)
+			if err != nil {
+				return nil, err
+			}
+
+			rv = rvx.(PtrItemLocsArray)
 		}
 	}
 
@@ -375,7 +402,7 @@ func (b *NodesBuilder) Done(mutations []Mutation, cb MutationCallback,
 // --------------------------------------------------
 
 func rebalanceNodes(itemLocs ItemLocs,
-	minFanOut, maxFanOut int) ItemLocs {
+	minFanOut, maxFanOut int, r io.ReaderAt) (ItemLocs, error) {
 	// If the itemLocs are all nodes, then some of those nodes might
 	// be much smaller than others and might benefit from rebalancing.
 	var rebalanced ItemLocsAppendable
@@ -388,7 +415,7 @@ func rebalanceNodes(itemLocs ItemLocs,
 	for i := 0; i < n; i++ {
 		loc := itemLocs.Loc(i) // TODO: swizzle lock?
 		if loc.Type != LocTypeNode || loc.node == nil {
-			return itemLocs // TODO: Mem mgmt.
+			return itemLocs, nil // TODO: Mem mgmt.
 		}
 		kids := loc.node.GetItemLocs()
 		for j := 0; j < kids.Len(); j++ {
@@ -397,10 +424,16 @@ func rebalanceNodes(itemLocs ItemLocs,
 				kids.Key(j), kids.Seq(j), *kids.Loc(j)).(PtrItemLocsArray)
 			if itemLocsLen(rebalancing) >= maxFanOut {
 				a, maxSeq := itemLocsSlice(rebalancing, 0, rebalancing.Len())
+
+				partitions, err := itemLocsGroupByPartitionIds(a, r)
+				if err != nil {
+					return nil, err
+				}
+
 				rebalanced = itemLocsAppend(rebalanced,
 					a.Key(0), maxSeq, Loc{
 						Type: LocTypeNode,
-						node: &NodeMem{ItemLocs: a},
+						node: &NodeMem{ItemLocs: a, Partitions: partitions},
 					})
 				rebalancing = nil
 			}
@@ -408,14 +441,64 @@ func rebalanceNodes(itemLocs ItemLocs,
 	}
 	if rebalancing != nil {
 		a, maxSeq := itemLocsSlice(rebalancing, 0, rebalancing.Len())
+
+		partitions, err := itemLocsGroupByPartitionIds(a, r)
+		if err != nil {
+			return nil, err
+		}
+
 		rebalanced = itemLocsAppend(rebalanced,
 			a.Key(0), maxSeq, Loc{
 				Type: LocTypeNode,
-				node: &NodeMem{ItemLocs: a},
+				node: &NodeMem{ItemLocs: a, Partitions: partitions},
 			})
 	}
 	if rebalanced != nil {
-		return rebalanced
+		return rebalanced, nil
 	}
-	return itemLocs
+	return itemLocs, nil
 }
+
+// --------------------------------------------------
+
+func itemLocsGroupByPartitionIds(a ItemLocs, r io.ReaderAt) (
+	*Partitions, error) {
+	partitionIds := make(PartitionIds, 0, a.Len())
+
+	m := map[PartitionId][]KeyItemLoc{}
+	n := a.Len()
+	for i := 0; i < n; i++ {
+		partitions, err := a.ItemLoc(i).GetPartitions(r)
+		if err != nil {
+			return nil, err
+		}
+
+		for j, partitionId := range partitions.PartitionIds {
+			prev := m[partitionId]
+			if prev == nil {
+				partitionIds = append(partitionIds, partitionId)
+			}
+
+			keyItemLoc := partitions.KeyItemLocs[j][0]
+
+			m[partitionId] = append(prev, KeyItemLoc{
+				Key:     keyItemLoc.Key,
+				ItemLoc: keyItemLoc.ItemLoc,
+			})
+		}
+	}
+
+	sort.Sort(partitionIds)
+
+	p := &Partitions{
+		PartitionIds: partitionIds,
+		KeyItemLocs:  make([][]KeyItemLoc, len(partitionIds)),
+	}
+
+	for i := 0; i < len(partitionIds); i++ {
+		p.KeyItemLocs[i] = m[partitionIds[i]]
+	}
+
+	return p, nil
+}
+

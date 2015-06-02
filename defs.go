@@ -1,6 +1,8 @@
 package partizen
 
 import (
+	"fmt"
+	"io"
 	"sync"
 )
 
@@ -140,6 +142,29 @@ type ItemLoc struct {
 
 var zeroItemLoc ItemLoc
 
+func (iloc *ItemLoc) GetPartitions(r io.ReaderAt) (*Partitions, error) {
+	loc, err := iloc.Loc.Read(r)
+	if err != nil {
+		return nil, err
+	}
+
+	if loc.Type == LocTypeNode {
+		return loc.node.GetPartitions(), nil
+	}
+
+	if loc.Type == LocTypeVal {
+		return &Partitions{
+			PartitionIds: []PartitionId{iloc.Loc.partitionId},
+			KeyItemLocs:  [][]KeyItemLoc{[]KeyItemLoc{KeyItemLoc{
+				Key:     iloc.Key,
+				ItemLoc: iloc,
+			}}},
+		}, nil
+	}
+
+	return nil, fmt.Errorf("defs: GetPartitions bad type, iloc: %v", iloc)
+}
+
 // ----------------------------------------
 
 // A Loc represents the location of a byte range persisted or
@@ -188,6 +213,8 @@ const (
 type Node interface {
 	// Returns the immutable ItemLocs of the node.
 	GetItemLocs() ItemLocs
+
+	GetPartitions() *Partitions
 }
 
 // ----------------------------------------
@@ -260,6 +287,21 @@ func (a PtrItemLocsArray) ItemLoc(idx int) *ItemLoc {
 
 func (a PtrItemLocsArray) Append(x ItemLoc) ItemLocsAppendable {
 	return append(a, &x)
+}
+
+// ----------------------------------------
+
+type Partitions struct {
+	PartitionIds PartitionIds
+
+	// 1-to-1 paired with entries from PartitionIds, so
+	// len(KeyItemLocs) == len(PartitionIds).
+	KeyItemLocs [][]KeyItemLoc
+}
+
+type KeyItemLoc struct {
+	Key     Key // Key might be >= ItemLoc.Key due to partition scope.
+	ItemLoc *ItemLoc
 }
 
 // ----------------------------------------

@@ -6,10 +6,25 @@ import (
 	"os"
 )
 
-type PartitionId uint16
-type Key []byte
-type Val []byte
-type Seq uint64
+type Key          []byte
+type Val          []byte
+type Seq          uint64
+type PartitionId  uint16
+type PartitionIds []PartitionId
+
+func (a PartitionIds) Len() int {
+	return len(a)
+}
+
+func (a PartitionIds) Less(i, j int) bool {
+	return a[i] < a[j]
+}
+
+func (a PartitionIds) Swap(i, j int) {
+	a[i], a[j] = a[j], a[i]
+}
+
+// ----------------------------------------
 
 // A Store is a set of collections.
 type Store interface {
