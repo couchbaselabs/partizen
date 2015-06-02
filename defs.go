@@ -154,7 +154,7 @@ func (iloc *ItemLoc) GetPartitions(r io.ReaderAt) (*Partitions, error) {
 
 	if loc.Type == LocTypeVal {
 		return &Partitions{
-			PartitionIds: []PartitionId{iloc.Loc.partitionId},
+			PartitionIds: []PartitionId{loc.partitionId},
 			KeyItemLocs:  [][]KeyItemLoc{[]KeyItemLoc{KeyItemLoc{
 				Key:     iloc.Key,
 				ItemLoc: iloc,
