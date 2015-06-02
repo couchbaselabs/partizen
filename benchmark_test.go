@@ -68,29 +68,41 @@ func BenchmarkInsertBatchSize1000(b *testing.B) {
 // ------------------------------------
 
 func BenchmarkInsertBatchSize1Items200Reverse(b *testing.B) {
-	benchmarkInsertBatchSizeN(func() { b.ResetTimer() },
+	err := benchmarkInsertBatchSizeN(func() { b.ResetTimer() },
 		b.N, 1, reverseBatchChoice,
 		// TODO: Theory is that unbalanced tree leads this
 		// to be too slow for full datasize.
 		fixture.SortedTestData[:200])
+	if err != nil {
+		b.Errorf("err: %v", err)
+	}
 }
 
 func BenchmarkInsertBatchSize10Reverse(b *testing.B) {
-	benchmarkInsertBatchSizeN(func() { b.ResetTimer() },
+	err := benchmarkInsertBatchSizeN(func() { b.ResetTimer() },
 		b.N, 10, reverseBatchChoice,
 		fixture.SortedTestData[:])
+	if err != nil {
+		b.Errorf("err: %v", err)
+	}
 }
 
 func BenchmarkInsertBatcheSize100Reverse(b *testing.B) {
-	benchmarkInsertBatchSizeN(func() { b.ResetTimer() },
+	err := benchmarkInsertBatchSizeN(func() { b.ResetTimer() },
 		b.N, 100, reverseBatchChoice,
 		fixture.SortedTestData[:])
+	if err != nil {
+		b.Errorf("err: %v", err)
+	}
 }
 
 func BenchmarkInsertBatchSize1000Reverse(b *testing.B) {
-	benchmarkInsertBatchSizeN(func() { b.ResetTimer() },
+	err := benchmarkInsertBatchSizeN(func() { b.ResetTimer() },
 		b.N, 1000, reverseBatchChoice,
 		fixture.SortedTestData[:])
+	if err != nil {
+		b.Errorf("err: %v", err)
+	}
 }
 
 // ------------------------------------
@@ -99,6 +111,7 @@ func benchmarkInsertBatchSizeN(markStart func(), numRuns,
 	batchSize int,
 	batchChoice func(mm [][]Mutation, j int) []Mutation,
 	data []fixture.Item) error {
+	val := []byte("hello")
 	var mm [][]Mutation
 	t := 0
 	for t < len(data) {
@@ -107,6 +120,7 @@ func benchmarkInsertBatchSizeN(markStart func(), numRuns,
 		for i < batchSize && t < len(data) {
 			m = append(m, Mutation{
 				Key: []byte(strconv.Itoa(int(fixture.SortedTestData[t].Key))),
+				Val: val,
 				Op:  MUTATION_OP_UPDATE,
 			})
 			i++
@@ -160,6 +174,7 @@ func BenchmarkIterate(b *testing.B) {
 
 	batchSize := 10000
 	data := fixture.SortedTestData
+	val := []byte("hello")
 	m := make([]Mutation, 0, batchSize)
 	t := 0
 	for t < len(data) {
@@ -168,6 +183,7 @@ func BenchmarkIterate(b *testing.B) {
 		for i < cap(m) && t < len(data) {
 			m = append(m, Mutation{
 				Key:      []byte(strconv.Itoa(int(data[t].Key))),
+				Val:      val,
 				Op:       MUTATION_OP_UPDATE,
 				MatchSeq: NO_MATCH_SEQ,
 			})
