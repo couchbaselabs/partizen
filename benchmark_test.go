@@ -137,7 +137,7 @@ func benchmarkInsertBatchSizeN(markStart func(), numRuns,
 		for j := 0; j < len(mm); j++ {
 			rootItemLoc, err =
 				rootProcessMutations(rootItemLoc,
-					batchChoice(mm, j), nil, 15, 32, nil)
+					batchChoice(mm, j), nil, 15, 32, testBufManager, nil)
 			if err != nil {
 				return err
 			}

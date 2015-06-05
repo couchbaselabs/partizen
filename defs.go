@@ -13,6 +13,7 @@ type store struct {
 	// These fields are immutable.
 	storeFile    StoreFile
 	storeOptions StoreOptions
+	bufManager   BufManager
 	readOnly     bool
 	header       *Header
 
@@ -142,8 +143,10 @@ type ItemLoc struct {
 
 var zeroItemLoc ItemLoc
 
-func (iloc *ItemLoc) GetPartitions(r io.ReaderAt) (*Partitions, error) {
-	loc, err := iloc.Loc.Read(r)
+func (iloc *ItemLoc) GetPartitions(
+	bufManager BufManager, r io.ReaderAt) (
+	*Partitions, error) {
+	loc, err := iloc.Loc.Read(bufManager, r)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +158,7 @@ func (iloc *ItemLoc) GetPartitions(r io.ReaderAt) (*Partitions, error) {
 	if loc.Type == LocTypeVal {
 		return &Partitions{
 			PartitionIds: []PartitionId{loc.partitionId},
-			KeyItemLocs:  [][]KeyItemLoc{[]KeyItemLoc{KeyItemLoc{
+			KeyItemLocs: [][]KeyItemLoc{[]KeyItemLoc{KeyItemLoc{
 				Key:     iloc.Key,
 				ItemLoc: iloc,
 			}}},
@@ -180,11 +183,11 @@ type Loc struct {
 	CheckSum uint16 // An optional checksum of the bytes buf.
 
 	// Transient; non-nil when the Loc is read into memory or when the
-	// bytes of the Loc are prepared for writing.  The len(Loc.buf)
-	// should equal Loc.Size.
+	// bytes of the Loc are prepared for writing.  The len of the
+	// slabLoc's buf should equal Loc.Size.
 	//
-	// TODO: Need lock to protect Loc.buf swizzling?
-	buf []byte
+	// TODO: Need lock to protect Loc.slabLoc swizzling?
+	bufRef BufRef
 
 	// Transient; partitionId is valid only when buf is non-nil and
 	// Type is LocTypeVal.
@@ -206,6 +209,13 @@ const (
 	LocTypeVal      uint8 = 0x02 // For partizen tree leaf val.
 	LocTypeStoreDef uint8 = 0x03
 )
+
+func (loc *Loc) Buf(bufManager BufManager) []byte {
+	if loc.bufRef == nil || loc.bufRef.IsNil() {
+		return nil
+	}
+	return loc.bufRef.Buf(bufManager)
+}
 
 // ----------------------------------------
 

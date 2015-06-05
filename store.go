@@ -17,9 +17,14 @@ func storeOpen(storeFile StoreFile, storeOptions *StoreOptions) (
 	if err != nil {
 		return nil, err
 	}
+	bufManager := storeOptions.BufManager
+	if bufManager == nil {
+		bufManager = NewDefaultBufManager(32, 1024*1024, 1.25, nil)
+	}
 	return &store{
 		storeFile:    storeFile,
 		storeOptions: *storeOptions,
+		bufManager:   bufManager,
 		readOnly:     false,
 		header:       header,
 		footer:       footer,
@@ -63,7 +68,7 @@ var DefaultOptions = StoreOptions{
 	DefaultPageSize:  4096,
 	DefaultMinFanOut: 15, // TODO: Better DefaultMinFanOut.
 	DefaultMaxFanOut: 32, // TODO: Better DefaultMaxFanOut.
-	BufManager:       &defaultBufManager{},
+	BufManager:       nil,
 }
 
 func readHeader(f StoreFile, o *StoreOptions) (*Header, error) {

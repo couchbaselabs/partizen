@@ -6,10 +6,10 @@ import (
 	"os"
 )
 
-type Key          []byte
-type Val          []byte
-type Seq          uint64
-type PartitionId  uint16
+type Key []byte
+type Val []byte
+type Seq uint64
+type PartitionId uint16
 type PartitionIds []PartitionId
 
 func (a PartitionIds) Len() int {
@@ -193,7 +193,6 @@ const CREATE_MATCH_SEQ = Seq(0xfffffffffffffffe)
 // memory management.
 type BufManager interface {
 	Alloc(size int) []byte
-	Len(buf []byte) int
 
 	// WantRef returns a buf that is safe for the caller to hold onto.
 	// Implementations, for example, might use ref-counting, or return
@@ -201,6 +200,19 @@ type BufManager interface {
 	WantRef(buf []byte) []byte
 
 	DropRef(buf []byte)
+
 	Visit(buf []byte, from, to int,
 		partVisitor func(partBuf []byte, partFrom, partTo int))
+
+	// Does not increase the ref-count, if any, on the given buf.
+	BufRef(buf []byte) BufRef
+}
+
+// A BufRef represents a reference to a byte slice that's managed by a
+// BufManager.  This extra level of indirection allows a BufManager to
+// optionally avoid GC scan traversals and other optimizations.
+type BufRef interface {
+	IsNil() bool
+
+	Buf(bufManager BufManager) []byte
 }

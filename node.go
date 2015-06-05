@@ -7,11 +7,11 @@ import (
 	"sort"
 )
 
-func locateItemLoc(ksl *ItemLoc, key Key, r io.ReaderAt) (
-	*ItemLoc, error) {
+func locateItemLoc(ksl *ItemLoc, key Key,
+	bufManager BufManager, r io.ReaderAt) (*ItemLoc, error) {
 	for ksl != nil {
 		if ksl.Loc.Type == LocTypeNode {
-			node, err := ReadLocNode(&ksl.Loc, r)
+			node, err := ReadLocNode(&ksl.Loc, bufManager, r)
 			if err != nil {
 				return nil, err
 			}
@@ -45,11 +45,11 @@ func locateItemLoc(ksl *ItemLoc, key Key, r io.ReaderAt) (
 	return nil, nil
 }
 
-func locateMinMax(ksl *ItemLoc, locateMax bool, r io.ReaderAt) (
-	*ItemLoc, error) {
+func locateMinMax(ksl *ItemLoc, locateMax bool,
+	bufManager BufManager, r io.ReaderAt) (*ItemLoc, error) {
 	for ksl != nil {
 		if ksl.Loc.Type == LocTypeNode {
-			node, err := ReadLocNode(&ksl.Loc, r)
+			node, err := ReadLocNode(&ksl.Loc, bufManager, r)
 			if err != nil {
 				return nil, err
 			}

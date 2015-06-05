@@ -55,9 +55,11 @@ func (r *collection) Get(partitionId PartitionId, key Key, matchSeq Seq,
 	var hitBuf []byte // TODO: Mem mgmt of hitBuf.
 
 	kslr, ksl := r.rootAddRef()
-	hit, err := locateItemLoc(ksl, key, io.ReaderAt(nil))
+	hit, err := locateItemLoc(ksl, key,
+		r.store.bufManager, io.ReaderAt(nil))
 	if err == nil && hit != nil {
-		hitSeq, hitType, hitBuf = hit.Seq, hit.Loc.Type, hit.Loc.buf
+		hitSeq, hitType, hitBuf =
+			hit.Seq, hit.Loc.Type, hit.Loc.Buf(r.store.bufManager)
 	}
 	r.rootDecRef(kslr)
 
@@ -90,7 +92,7 @@ func (r *collection) Set(partitionId PartitionId, key Key, matchSeq Seq,
 		Val:         val,
 		Op:          MUTATION_OP_UPDATE,
 		MatchSeq:    matchSeq,
-	}})
+	}}, r.store.bufManager)
 }
 
 func (r *collection) Del(partitionId PartitionId, key Key, matchSeq Seq,
@@ -101,11 +103,11 @@ func (r *collection) Del(partitionId PartitionId, key Key, matchSeq Seq,
 		Seq:         newSeq,
 		Op:          MUTATION_OP_DELETE,
 		MatchSeq:    matchSeq,
-	}})
+	}}, r.store.bufManager)
 }
 
 func (r *collection) Batch(mutations []Mutation) error {
-	return r.mutate(mutations)
+	return r.mutate(mutations, r.store.bufManager)
 }
 
 func (r *collection) Min(withValue bool) (
@@ -131,8 +133,9 @@ func (r *collection) Scan(key Key, ascending bool,
 	}
 
 	return &CursorImpl{
-		closeCh:   closeCh,
-		resultsCh: resultsCh,
+		bufManager: r.store.bufManager,
+		closeCh:    closeCh,
+		resultsCh:  resultsCh,
 	}, nil
 }
 
@@ -158,7 +161,8 @@ func (r *collection) Rollback(partitionId PartitionId, seq Seq,
 
 // --------------------------------------------
 
-func (r *collection) mutate(mutations []Mutation) (err error) {
+func (r *collection) mutate(
+	mutations []Mutation, bufManager BufManager) error {
 	if r.readOnly {
 		return ErrReadOnly
 	}
@@ -181,7 +185,7 @@ func (r *collection) mutate(mutations []Mutation) (err error) {
 	kslr, ksl := r.rootAddRef()
 
 	ksl2, err := rootProcessMutations(ksl, mutations, cb,
-		int(r.minFanOut), int(r.maxFanOut), io.ReaderAt(nil))
+		int(r.minFanOut), int(r.maxFanOut), bufManager, io.ReaderAt(nil))
 	if err != nil {
 		r.rootDecRef(kslr)
 		return err
@@ -216,7 +220,8 @@ func (r *collection) minMax(locateMax bool, withValue bool) (
 		return 0, nil, 0, nil, nil
 	}
 
-	ksl, err = locateMinMax(ksl, locateMax, io.ReaderAt(nil))
+	ksl, err = locateMinMax(ksl, locateMax,
+		r.store.bufManager, io.ReaderAt(nil))
 	if err != nil {
 		r.rootDecRef(kslr)
 		return 0, nil, 0, nil, err
@@ -232,14 +237,16 @@ func (r *collection) minMax(locateMax bool, withValue bool) (
 	}
 
 	r.rootDecRef(kslr)
-	return 0, ksl.Key, ksl.Seq, ksl.Loc.buf, nil // TOOD: Mem mgmt.
+	return 0, ksl.Key, ksl.Seq,
+		ksl.Loc.Buf(r.store.bufManager), nil // TOOD: Mem mgmt.
 }
 
 // ----------------------------------------
 
 type CursorImpl struct {
-	closeCh   chan struct{}
-	resultsCh chan CursorResult
+	bufManager BufManager
+	closeCh    chan struct{}
+	resultsCh  chan CursorResult
 }
 
 func (c *CursorImpl) Close() error {
@@ -253,11 +260,10 @@ func (c *CursorImpl) Next() (PartitionId, Key, Seq, Val, error) {
 		return 0, nil, 0, nil, nil // TODO: PartitionId.
 	}
 
-	// TODO: Mem mgmt.
-	// TODO: PartitionId.
-	partitionId := PartitionId(0)
+	partitionId := PartitionId(0) // TODO: PartitionId.
 
-	return partitionId, r.ksl.Key, r.ksl.Seq, r.ksl.Loc.buf, r.err
+	return partitionId, r.ksl.Key, r.ksl.Seq,
+		r.ksl.Loc.Buf(c.bufManager), r.err // TOOD: Mem mgmt.
 }
 
 // --------------------------------------------
@@ -286,7 +292,8 @@ func (r *collection) startCursor(key Key, ascending bool,
 			return nil
 		}
 		if ksl.Loc.Type == LocTypeNode {
-			node, err := ReadLocNode(&ksl.Loc, readerAt)
+			node, err := ReadLocNode(&ksl.Loc,
+				r.store.bufManager, readerAt)
 			if err != nil {
 				return err
 			}

@@ -14,10 +14,11 @@ import (
 // caller must provide only the last mutation for any key.  Use nil
 // for rootItemLoc to start a brand new tree.
 func rootProcessMutations(rootItemLoc *ItemLoc, mutations []Mutation,
-	cb MutationCallback, minFanOut, maxFanOut int, r io.ReaderAt) (
+	cb MutationCallback, minFanOut, maxFanOut int,
+	bufManager BufManager, r io.ReaderAt) (
 	*ItemLoc, error) {
 	a, err := processMutations(rootItemLoc, mutations, 0, len(mutations),
-		cb, minFanOut, maxFanOut, r)
+		cb, minFanOut, maxFanOut, bufManager, r)
 	if err != nil {
 		return nil, fmt.Errorf("rootProcessMutations:"+
 			" rootItemLoc: %#v, err: %v", rootItemLoc, err)
@@ -25,7 +26,8 @@ func rootProcessMutations(rootItemLoc *ItemLoc, mutations []Mutation,
 	if a != nil {
 		// TODO: needs swizzle lock?
 		for a.Len() > 1 || (a.Len() > 0 && a.Loc(0).Type == LocTypeVal) {
-			a, err = groupItemLocs(a, minFanOut, maxFanOut, nil, r)
+			a, err = groupItemLocs(a, minFanOut, maxFanOut, nil,
+				bufManager, r)
 			if err != nil {
 				return nil, err
 			}
@@ -41,12 +43,14 @@ func rootProcessMutations(rootItemLoc *ItemLoc, mutations []Mutation,
 // mutations down the tree, building up copy-on-write new nodes.
 func processMutations(itemLoc *ItemLoc,
 	mutations []Mutation, mbeg, mend int, cb MutationCallback,
-	minFanOut, maxFanOut int, r io.ReaderAt) (ItemLocs, error) {
+	minFanOut, maxFanOut int,
+	bufManager BufManager, r io.ReaderAt) (
+	ItemLocs, error) {
 	var itemLocs ItemLocs
 
 	if itemLoc != nil {
 		if itemLoc.Loc.Type == LocTypeNode {
-			node, err := ReadLocNode(&itemLoc.Loc, r)
+			node, err := ReadLocNode(&itemLoc.Loc, bufManager, r)
 			if err != nil {
 				return nil, fmt.Errorf("processMutations:"+
 					" itemLoc: %#v, err: %v", itemLoc, err)
@@ -68,16 +72,19 @@ func processMutations(itemLoc *ItemLoc,
 	var builder ItemLocsBuilder
 	if n <= 0 || itemLocs.Loc(0).Type == LocTypeVal { // TODO: swizzle lock?
 		// TODO: Mem mgmt / sync.Pool?
-		builder = &ValsBuilder{s: make(PtrItemLocsArray, 0, m)}
+		builder = &ValsBuilder{bufManager: bufManager,
+			s: make(PtrItemLocsArray, 0, m)}
 	} else {
-		builder = &NodesBuilder{NodeMutations: make([]NodeMutations, 0, m)}
+		builder = &NodesBuilder{bufManager: bufManager,
+			NodeMutations: make([]NodeMutations, 0, m)}
 	}
 
-	if !mergeMutations(itemLocs, 0, n, mutations, mbeg, mend, cb, builder) {
+	if !mergeMutations(itemLocs, 0, n, mutations, mbeg, mend,
+		cb, bufManager, builder) {
 		return nil, ErrMatchSeq
 	}
 
-	return builder.Done(mutations, cb, minFanOut, maxFanOut, r)
+	return builder.Done(mutations, cb, minFanOut, maxFanOut, bufManager, r)
 }
 
 // groupItemLocs assigns a key-ordered sequence of children to new
@@ -85,8 +92,9 @@ func processMutations(itemLoc *ItemLoc,
 func groupItemLocs(childItemLocs ItemLocs,
 	minFanOut, maxFanOut int,
 	groupedItemLocsStart ItemLocsAppendable,
-	r io.ReaderAt) (ItemLocs, error) {
-	children, err := rebalanceNodes(childItemLocs, minFanOut, maxFanOut, r)
+	bufManager BufManager, r io.ReaderAt) (ItemLocs, error) {
+	children, err := rebalanceNodes(childItemLocs, minFanOut, maxFanOut,
+		bufManager, r)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +110,7 @@ func groupItemLocs(childItemLocs ItemLocs,
 	for i := maxFanOut; i < n; i = i + maxFanOut {
 		a, maxSeq := itemLocsSlice(children, beg, i)
 
-		partitions, err := itemLocsGroupByPartitionIds(a, r)
+		partitions, err := itemLocsGroupByPartitionIds(a, bufManager, r)
 		if err != nil {
 			return nil, err
 		}
@@ -118,7 +126,7 @@ func groupItemLocs(childItemLocs ItemLocs,
 		if beg <= 0 { // If there were only leftovers, group them...
 			a, maxSeq := itemLocsSlice(children, beg, n)
 
-			partitions, err := itemLocsGroupByPartitionIds(a, r)
+			partitions, err := itemLocsGroupByPartitionIds(a, bufManager, r)
 			if err != nil {
 				return nil, err
 			}
@@ -191,6 +199,7 @@ func mergeMutations(
 	mutations []Mutation,
 	mbeg, mend int, // Sub-range of mutations[mbeg:mend] to process.
 	cb MutationCallback,
+	bufManager BufManager,
 	builder ItemLocsBuilder) bool {
 	existing, eok, ecur := nextItemLoc(ebeg, eend, existings)
 	mutation, mok, mcur := nextMutation(mbeg, mend, mutations)
@@ -203,12 +212,12 @@ func mergeMutations(
 			existing, eok, ecur = nextItemLoc(ecur+1, eend, existings)
 		} else {
 			if c == 0 {
-				if !builder.AddUpdate(existing, mutation, mcur, cb) {
+				if !builder.AddUpdate(existing, mutation, mcur, cb, bufManager) {
 					return false
 				}
 				existing, eok, ecur = nextItemLoc(ecur+1, eend, existings)
 			} else {
-				if !builder.AddNew(mutation, mcur, cb) {
+				if !builder.AddNew(mutation, mcur, cb, bufManager) {
 					return false
 				}
 			}
@@ -220,7 +229,7 @@ func mergeMutations(
 		existing, eok, ecur = nextItemLoc(ecur+1, eend, existings)
 	}
 	for mok {
-		if !builder.AddNew(mutation, mcur, cb) {
+		if !builder.AddNew(mutation, mcur, cb, bufManager) {
 			return false
 		}
 		mutation, mok, mcur = nextMutation(mcur+1, mend, mutations)
@@ -250,11 +259,12 @@ type ItemLocsBuilder interface {
 	AddExisting(existing *ItemLoc)
 	AddUpdate(existing *ItemLoc,
 		mutation *Mutation, mutationIdx int,
-		cb MutationCallback) bool
+		cb MutationCallback, bufManager BufManager) bool
 	AddNew(mutation *Mutation, mutationIdx int,
-		cb MutationCallback) bool
+		cb MutationCallback, bufManager BufManager) bool
 	Done(mutations []Mutation, cb MutationCallback,
-		minFanOut, maxFanOut int, r io.ReaderAt) (ItemLocs, error)
+		minFanOut, maxFanOut int, bufManager BufManager, r io.ReaderAt) (
+		ItemLocs, error)
 }
 
 // --------------------------------------------------
@@ -263,7 +273,8 @@ type ItemLocsBuilder interface {
 // array of LocTypeVal ItemLoc's, which can be then used as input as
 // the children to create new leaf Nodes.
 type ValsBuilder struct {
-	s PtrItemLocsArray
+	bufManager BufManager
+	s          PtrItemLocsArray
 }
 
 func (b *ValsBuilder) AddExisting(existing *ItemLoc) {
@@ -271,42 +282,51 @@ func (b *ValsBuilder) AddExisting(existing *ItemLoc) {
 }
 
 func (b *ValsBuilder) AddUpdate(existing *ItemLoc,
-	mutation *Mutation, mutationIdx int, cb MutationCallback) bool {
+	mutation *Mutation, mutationIdx int,
+	cb MutationCallback, bufManager BufManager) bool {
 	if cb != nil && !cb(existing, true, mutation) {
 		return false
 	}
 	if mutation.Op == MUTATION_OP_UPDATE {
-		b.s = append(b.s, mutationToValItemLoc(mutation))
+		b.s = append(b.s, mutationToValItemLoc(mutation, bufManager))
 	}
 	return true
 }
 
 func (b *ValsBuilder) AddNew(
-	mutation *Mutation, mutationIdx int, cb MutationCallback) bool {
+	mutation *Mutation, mutationIdx int,
+	cb MutationCallback, bufManager BufManager) bool {
 	if cb != nil && !cb(nil, true, mutation) {
 		return false
 	}
 	if mutation.Op == MUTATION_OP_UPDATE {
-		b.s = append(b.s, mutationToValItemLoc(mutation))
+		b.s = append(b.s, mutationToValItemLoc(mutation, bufManager))
 	}
 	return true
 }
 
 func (b *ValsBuilder) Done(mutations []Mutation, cb MutationCallback,
-	minFanOut, maxFanOut int, r io.ReaderAt) (ItemLocs, error) {
+	minFanOut, maxFanOut int, bufManager BufManager, r io.ReaderAt) (
+	ItemLocs, error) {
 	return b.s, nil
 }
 
-func mutationToValItemLoc(m *Mutation) *ItemLoc {
+func mutationToValItemLoc(m *Mutation, bufManager BufManager) *ItemLoc {
+	buf := bufManager.Alloc(len(m.Val))
+	bufRef := bufManager.BufRef(buf)
+	if bufRef.IsNil() {
+		return nil
+	}
+
+	copy(buf, m.Val)
+
 	return &ItemLoc{
 		Key: m.Key, // NOTE: We copy key in groupItemLocs/itemLocsSlice.
 		Seq: m.Seq,
 		Loc: Loc{
-			Type: LocTypeVal,
-			Size: uint32(len(m.Val)),
-
-			// TODO: Memory mgmt.
-			buf:         append([]byte(nil), m.Val...),
+			Type:        LocTypeVal,
+			Size:        uint32(len(m.Val)),
+			bufRef:      bufRef,
 			partitionId: m.PartitionId,
 		},
 	}
@@ -318,6 +338,7 @@ func mutationToValItemLoc(m *Mutation) *ItemLoc {
 // array of LocTypeNode ItemLoc's, which can be then used as input as
 // the children to create new interior Nodes.
 type NodesBuilder struct {
+	bufManager    BufManager
 	NodeMutations []NodeMutations
 }
 
@@ -336,7 +357,8 @@ func (b *NodesBuilder) AddExisting(existing *ItemLoc) {
 }
 
 func (b *NodesBuilder) AddUpdate(existing *ItemLoc,
-	mutation *Mutation, mutationIdx int, cb MutationCallback) bool {
+	mutation *Mutation, mutationIdx int,
+	cb MutationCallback, bufManager BufManager) bool {
 	if cb != nil && !cb(existing, false, mutation) {
 		return false
 	}
@@ -349,7 +371,8 @@ func (b *NodesBuilder) AddUpdate(existing *ItemLoc,
 }
 
 func (b *NodesBuilder) AddNew(
-	mutation *Mutation, mutationIdx int, cb MutationCallback) bool {
+	mutation *Mutation, mutationIdx int,
+	cb MutationCallback, bufManager BufManager) bool {
 	if cb != nil && !cb(nil, false, mutation) {
 		return false
 	}
@@ -369,7 +392,8 @@ func (b *NodesBuilder) AddNew(
 }
 
 func (b *NodesBuilder) Done(mutations []Mutation, cb MutationCallback,
-	minFanOut, maxFanOut int, r io.ReaderAt) (ItemLocs, error) {
+	minFanOut, maxFanOut int, bufManager BufManager, r io.ReaderAt) (
+	ItemLocs, error) {
 	rv := PtrItemLocsArray{}
 
 	for _, nm := range b.NodeMutations {
@@ -380,14 +404,14 @@ func (b *NodesBuilder) Done(mutations []Mutation, cb MutationCallback,
 		} else {
 			children, err := processMutations(nm.BaseItemLoc,
 				mutations, nm.MutationsBeg, nm.MutationsEnd,
-				cb, minFanOut, maxFanOut, r)
+				cb, minFanOut, maxFanOut, bufManager, r)
 			if err != nil {
 				return nil, fmt.Errorf("NodesBuilder.Done:"+
 					" BaseItemLoc: %#v, err: %v", nm.BaseItemLoc, err)
 			}
 
 			rvx, err := groupItemLocs(children,
-				minFanOut, maxFanOut, rv, r)
+				minFanOut, maxFanOut, rv, bufManager, r)
 			if err != nil {
 				return nil, err
 			}
@@ -402,7 +426,8 @@ func (b *NodesBuilder) Done(mutations []Mutation, cb MutationCallback,
 // --------------------------------------------------
 
 func rebalanceNodes(itemLocs ItemLocs,
-	minFanOut, maxFanOut int, r io.ReaderAt) (ItemLocs, error) {
+	minFanOut, maxFanOut int,
+	bufManager BufManager, r io.ReaderAt) (ItemLocs, error) {
 	// If the itemLocs are all nodes, then some of those nodes might
 	// be much smaller than others and might benefit from rebalancing.
 	var rebalanced ItemLocsAppendable
@@ -425,7 +450,8 @@ func rebalanceNodes(itemLocs ItemLocs,
 			if itemLocsLen(rebalancing) >= maxFanOut {
 				a, maxSeq := itemLocsSlice(rebalancing, 0, rebalancing.Len())
 
-				partitions, err := itemLocsGroupByPartitionIds(a, r)
+				partitions, err :=
+					itemLocsGroupByPartitionIds(a, bufManager, r)
 				if err != nil {
 					return nil, err
 				}
@@ -442,7 +468,8 @@ func rebalanceNodes(itemLocs ItemLocs,
 	if rebalancing != nil {
 		a, maxSeq := itemLocsSlice(rebalancing, 0, rebalancing.Len())
 
-		partitions, err := itemLocsGroupByPartitionIds(a, r)
+		partitions, err :=
+			itemLocsGroupByPartitionIds(a, bufManager, r)
 		if err != nil {
 			return nil, err
 		}
@@ -461,14 +488,15 @@ func rebalanceNodes(itemLocs ItemLocs,
 
 // --------------------------------------------------
 
-func itemLocsGroupByPartitionIds(a ItemLocs, r io.ReaderAt) (
+func itemLocsGroupByPartitionIds(a ItemLocs,
+	bufManager BufManager, r io.ReaderAt) (
 	*Partitions, error) {
 	partitionIds := make(PartitionIds, 0, a.Len())
 
 	m := map[PartitionId][]KeyItemLoc{}
 	n := a.Len()
 	for i := 0; i < n; i++ {
-		partitions, err := a.ItemLoc(i).GetPartitions(r)
+		partitions, err := a.ItemLoc(i).GetPartitions(bufManager, r)
 		if err != nil {
 			return nil, err
 		}
@@ -501,4 +529,3 @@ func itemLocsGroupByPartitionIds(a ItemLocs, r io.ReaderAt) (
 
 	return p, nil
 }
-
