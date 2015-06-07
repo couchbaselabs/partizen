@@ -199,6 +199,7 @@ type BufManager interface {
 	// a brand new copy.
 	WantRef(buf []byte) []byte
 
+	// Each Alloc() and WantRef() must be matched by a DropRef().
 	DropRef(buf []byte)
 
 	Visit(buf []byte, from, to int,
