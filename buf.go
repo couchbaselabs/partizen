@@ -6,78 +6,142 @@ import (
 	"github.com/couchbaselabs/go-slab"
 )
 
-type DefaultBufManager struct {
+type defaultBufManager struct {
 	m     sync.Mutex
 	arena *slab.Arena
-}
-
-func NewDefaultBufManager(startChunkSize int,
-	slabSize int, growthFactor float64,
-	malloc func(size int) []byte) *DefaultBufManager {
-	arena := slab.NewArena(startChunkSize, slabSize, growthFactor, malloc)
-	if arena == nil {
-		return nil
-	}
-
-	return &DefaultBufManager{arena: arena}
-}
-
-func (d *DefaultBufManager) Alloc(size int) []byte {
-	d.m.Lock()
-	buf := d.arena.Alloc(size)
-	d.m.Unlock()
-
-	return buf
-}
-
-func (d *DefaultBufManager) WantRef(buf []byte) []byte {
-	d.m.Lock()
-	d.arena.AddRef(buf)
-	d.m.Unlock()
-
-	return buf
-}
-
-func (d *DefaultBufManager) DropRef(buf []byte) {
-	d.m.Lock()
-	d.arena.DecRef(buf)
-	d.m.Unlock()
-}
-
-func (d *DefaultBufManager) Visit(buf []byte, from, to int,
-	partVisitor func(partBuf []byte, partFrom, partTo int)) {
-	partVisitor(buf[from:to], from, to)
-}
-
-func (d *DefaultBufManager) BufRef(buf []byte) BufRef {
-	d.m.Lock()
-	slabLoc := d.arena.BufToLoc(buf)
-	d.m.Unlock()
-
-	return &defaultBufRef{slabLoc}
 }
 
 type defaultBufRef struct {
 	slabLoc slab.Loc
 }
 
-func (bref *defaultBufRef) IsNil() bool {
-	if bref == nil {
-		return true
-	}
+// -------------------------------------------------
 
-	return bref.slabLoc.IsNil()
-}
-
-func (bref *defaultBufRef) Buf(bm BufManager) []byte {
-	if bref == nil {
+func NewDefaultBufManager(startChunkSize int,
+	slabSize int, growthFactor float64,
+	malloc func(size int) []byte) *defaultBufManager {
+	arena := slab.NewArena(startChunkSize, slabSize, growthFactor, malloc)
+	if arena == nil {
 		return nil
 	}
 
-	dbm, ok := bm.(*DefaultBufManager)
+	return &defaultBufManager{arena: arena}
+}
+
+func (dbm *defaultBufManager) Alloc(size int,
+	partUpdater func(partBuf []byte, partFrom, partTo int) bool) BufRef {
+	dbm.m.Lock()
+	slabLoc := dbm.arena.BufToLoc(dbm.arena.Alloc(size))
+	dbm.m.Unlock()
+
+	if slabLoc.IsNil() {
+		return nil
+	}
+
+	return (&defaultBufRef{slabLoc}).Update(dbm, 0, size, partUpdater)
+}
+
+func (dbr *defaultBufRef) Len(bm BufManager) int {
+	dbm, ok := bm.(*defaultBufManager)
+	if !ok || dbm == nil {
+		return 0
+	}
+
+	dbm.m.Lock()
+	n := len(dbm.arena.LocToBuf(dbr.slabLoc))
+	dbm.m.Unlock()
+
+	return n
+}
+
+func (dbr *defaultBufRef) AddRef(bm BufManager) {
+	dbm, ok := bm.(*defaultBufManager)
+	if !ok || dbm == nil {
+		return
+	}
+
+	dbm.m.Lock()
+	buf := dbm.arena.LocToBuf(dbr.slabLoc)
+	dbm.arena.AddRef(buf)
+	dbm.m.Unlock()
+}
+
+func (dbr *defaultBufRef) DecRef(bm BufManager) {
+	dbm, ok := bm.(*defaultBufManager)
+	if !ok || dbm == nil {
+		return
+	}
+
+	dbm.m.Lock()
+	buf := dbm.arena.LocToBuf(dbr.slabLoc)
+	dbm.arena.DecRef(buf)
+	dbm.m.Unlock()
+}
+
+func (dbr *defaultBufRef) Update(bm BufManager, from, to int,
+	partUpdater func(partBuf []byte, partFrom, partTo int) bool) BufRef {
+	if partUpdater == nil {
+		return dbr
+	}
+
+	dbm, ok := bm.(*defaultBufManager)
 	if !ok || dbm == nil {
 		return nil
 	}
 
-	return dbm.arena.LocToBuf(bref.slabLoc)
+	dbm.m.Lock()
+	buf := dbm.arena.LocToBuf(dbr.slabLoc)
+	partUpdater(buf[from:to], from, to)
+	dbm.m.Unlock()
+
+	return dbr
+}
+
+func (dbr *defaultBufRef) Visit(bm BufManager, from, to int,
+	partVisitor func(partBuf []byte, partFrom, partTo int) bool) BufRef {
+	if partVisitor == nil {
+		return dbr
+	}
+
+	dbm, ok := bm.(*defaultBufManager)
+	if !ok || dbm == nil {
+		return nil
+	}
+
+	dbm.m.Lock()
+	buf := dbm.arena.LocToBuf(dbr.slabLoc)
+	partVisitor(buf[from:to], from, to)
+	dbm.m.Unlock()
+
+	return dbr
+}
+
+func (dbr *defaultBufRef) IsNil() bool {
+	if dbr == nil {
+		return true
+	}
+
+	return dbr.slabLoc.IsNil()
+}
+
+// -------------------------------------------------
+
+func AppendBufRef(dst []byte, bufRef BufRef, bufManager BufManager) []byte {
+	if bufRef == nil || bufRef.IsNil() {
+		return dst
+	}
+
+	bufLen := bufRef.Len(bufManager)
+
+	if dst == nil {
+		dst = make([]byte, 0, bufLen)
+	}
+
+	bufRef.Visit(bufManager, 0, bufLen,
+		func(partBuf []byte, partFrom, partTo int) bool {
+			dst = append(dst, partBuf...)
+			return true
+		})
+
+	return dst
 }

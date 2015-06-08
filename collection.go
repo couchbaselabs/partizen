@@ -46,41 +46,71 @@ func (r *collection) rootDecRef(kslr *ItemLocRef) {
 
 func (r *collection) Get(partitionId PartitionId, key Key, matchSeq Seq,
 	withValue bool) (seq Seq, val Val, err error) {
+	seq, bufRef, err := r.GetBufRef(partitionId, key, matchSeq, withValue)
+	if err != nil || bufRef == nil {
+		return seq, nil, err
+	}
+
+	if withValue {
+		val = AppendBufRef(nil, bufRef, r.store.bufManager)
+	}
+
+	bufRef.DecRef(r.store.bufManager)
+
+	return seq, val, nil
+}
+
+func (r *collection) GetBufRef(partitionId PartitionId, key Key, matchSeq Seq,
+	withValue bool) (seq Seq, val BufRef, err error) {
 	if partitionId != 0 {
 		return 0, nil, fmt.Errorf("partition unimplemented")
 	}
 
 	var hitSeq Seq
 	var hitType uint8
-	var hitBuf []byte // TODO: Mem mgmt of hitBuf.
+	var hitBufRef BufRef
 
 	kslr, ksl := r.rootAddRef()
 	hit, err := locateItemLoc(ksl, key,
 		r.store.bufManager, io.ReaderAt(nil))
 	if err == nil && hit != nil {
-		hitSeq, hitType, hitBuf =
-			hit.Seq, hit.Loc.Type, hit.Loc.Buf(r.store.bufManager)
+		hitSeq, hitType = hit.Seq, hit.Loc.Type
+		if withValue {
+			hitBufRef = hit.Loc.BufRef(r.store.bufManager)
+		}
 	}
 	r.rootDecRef(kslr)
 
 	if err != nil {
+		if hitBufRef != nil {
+			hitBufRef.DecRef(r.store.bufManager)
+		}
 		return 0, nil, err
 	}
 
 	if matchSeq != NO_MATCH_SEQ {
 		if hit != nil && matchSeq != hitSeq {
+			if hitBufRef != nil {
+				hitBufRef.DecRef(r.store.bufManager)
+			}
 			return 0, nil, ErrMatchSeq
 		}
 		if hit == nil && matchSeq != CREATE_MATCH_SEQ {
+			if hitBufRef != nil {
+				hitBufRef.DecRef(r.store.bufManager)
+			}
 			return 0, nil, ErrMatchSeq
 		}
 	}
 
 	if hit != nil && hitType != LocTypeVal {
+		if hitBufRef != nil {
+			hitBufRef.DecRef(r.store.bufManager)
+		}
 		return 0, nil, fmt.Errorf("collection.Get: bad type: %#v", hitType)
 	}
 
-	return hitSeq, hitBuf, nil // TODO: What if partitionId doesn't match?
+	return hitSeq, hitBufRef, nil // TODO: What if partitionId doesn't match?
 }
 
 func (r *collection) Set(partitionId PartitionId, key Key, matchSeq Seq,
@@ -214,6 +244,25 @@ func (r *collection) mutate(
 
 func (r *collection) minMax(locateMax bool, withValue bool) (
 	partitionId PartitionId, key Key, seq Seq, val Val, err error) {
+	var bufRef BufRef
+
+	partitionId, key, seq, bufRef, err =
+		r.minMaxBufRef(locateMax, withValue)
+	if err != nil || bufRef == nil {
+		return 0, nil, 0, nil, err
+	}
+
+	if withValue {
+		val = AppendBufRef(nil, bufRef, r.store.bufManager)
+	}
+
+	bufRef.DecRef(r.store.bufManager)
+
+	return partitionId, key, seq, val, nil
+}
+
+func (r *collection) minMaxBufRef(locateMax bool, withValue bool) (
+	partitionId PartitionId, key Key, seq Seq, bufRef BufRef, err error) {
 	kslr, ksl := r.rootAddRef()
 	if kslr == nil || ksl == nil {
 		r.rootDecRef(kslr)
@@ -236,9 +285,12 @@ func (r *collection) minMax(locateMax bool, withValue bool) (
 			fmt.Errorf("collection.minMax: unexpected type, ksl: %#v", ksl)
 	}
 
+	if withValue {
+		bufRef = ksl.Loc.BufRef(r.store.bufManager)
+	}
+
 	r.rootDecRef(kslr)
-	return 0, ksl.Key, ksl.Seq,
-		ksl.Loc.Buf(r.store.bufManager), nil // TOOD: Mem mgmt.
+	return 0, ksl.Key, ksl.Seq, bufRef, nil
 }
 
 // ----------------------------------------
@@ -255,6 +307,19 @@ func (c *CursorImpl) Close() error {
 }
 
 func (c *CursorImpl) Next() (PartitionId, Key, Seq, Val, error) {
+	partitionId, key, seq, bufRef, err := c.NextBufRef()
+	if err != nil || bufRef == nil {
+		return 0, nil, 0, nil, err
+	}
+
+	val := AppendBufRef(nil, bufRef, c.bufManager)
+
+	bufRef.DecRef(c.bufManager)
+
+	return partitionId, key, seq, val, nil
+}
+
+func (c *CursorImpl) NextBufRef() (PartitionId, Key, Seq, BufRef, error) {
 	r, ok := <-c.resultsCh
 	if !ok {
 		return 0, nil, 0, nil, nil // TODO: PartitionId.
@@ -263,7 +328,7 @@ func (c *CursorImpl) Next() (PartitionId, Key, Seq, Val, error) {
 	partitionId := PartitionId(0) // TODO: PartitionId.
 
 	return partitionId, r.ksl.Key, r.ksl.Seq,
-		r.ksl.Loc.Buf(c.bufManager), r.err // TOOD: Mem mgmt.
+		r.ksl.Loc.BufRef(c.bufManager), r.err // TOOD: Mem mgmt.
 }
 
 // --------------------------------------------

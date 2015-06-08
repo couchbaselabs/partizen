@@ -186,7 +186,7 @@ type Loc struct {
 	// bytes of the Loc are prepared for writing.  The len of the
 	// slabLoc's buf should equal Loc.Size.
 	//
-	// TODO: Need lock to protect Loc.slabLoc swizzling?
+	// TODO: Need lock to protect Loc.bufRef swizzling?
 	bufRef BufRef
 
 	// Transient; partitionId is valid only when buf is non-nil and
@@ -210,11 +210,16 @@ const (
 	LocTypeStoreDef uint8 = 0x03
 )
 
-func (loc *Loc) Buf(bufManager BufManager) []byte {
+// Returns the Loc's BufRef, and if non-nil will have an additional
+// ref-count that must be DecRef()'ed.
+func (loc *Loc) BufRef(bm BufManager) BufRef {
 	if loc.bufRef == nil || loc.bufRef.IsNil() {
 		return nil
 	}
-	return loc.bufRef.Buf(bufManager)
+
+	loc.bufRef.AddRef(bm)
+
+	return loc.bufRef
 }
 
 // ----------------------------------------

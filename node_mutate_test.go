@@ -18,6 +18,10 @@ func makeTestBufManager() BufManager {
 	return NewDefaultBufManager(32, 1024*1024, 1.5, nil)
 }
 
+func locBuf(loc *Loc) []byte {
+	return AppendBufRef(nil, loc.bufRef, testBufManager)
+}
+
 func printPrefix(n int) {
 	for i := 0; i < n; i++ {
 		fmt.Print(".")
@@ -33,7 +37,7 @@ func printTree(ksl *ItemLoc, depth int) {
 		cksl := a.ItemLoc(i)
 		if cksl.Loc.Type == LocTypeVal {
 			fmt.Printf("%s = %s\n",
-				cksl.Key, cksl.Loc.bufRef.Buf(testBufManager))
+				cksl.Key, locBuf(&cksl.Loc))
 		} else if cksl.Loc.Type == LocTypeNode {
 			fmt.Printf("%s:\n", cksl.Key)
 			printTree(cksl, depth1)
@@ -51,10 +55,10 @@ func isSomeMemLoc(loc *Loc, expectedLocType uint8) bool {
 		return false
 	}
 	if loc.Type == LocTypeVal &&
-		loc.Size != uint32(len(loc.bufRef.Buf(testBufManager))) {
+		loc.Size != uint32(len(locBuf(loc))) {
 		return false
 	}
-	if loc.bufRef != nil && loc.bufRef.Buf(testBufManager) != nil {
+	if locBuf(loc) != nil {
 		return true
 	}
 	return loc.node != nil
@@ -139,8 +143,7 @@ func TestMutationsOn1Val(t *testing.T) {
 	if !isSomeMemLoc(&ksl.Loc, LocTypeNode) {
 		t.Errorf("expected some keyLoc")
 	}
-	if ksl.Loc.node == nil ||
-		(ksl.Loc.bufRef != nil && ksl.Loc.bufRef.Buf(testBufManager) != nil) {
+	if ksl.Loc.node == nil || locBuf(&ksl.Loc) != nil {
 		t.Errorf("expected a keyLoc with node, no buf")
 	}
 	if ksl.Loc.node.(*NodeMem).ItemLocs.Len() != 1 {
@@ -153,7 +156,7 @@ func TestMutationsOn1Val(t *testing.T) {
 		t.Errorf("expected val child")
 	}
 
-	astr := ksl.Loc.node.(*NodeMem).ItemLocs.Loc(0).bufRef.Buf(testBufManager)
+	astr := locBuf(ksl.Loc.node.(*NodeMem).ItemLocs.Loc(0))
 	if string(astr) != "A" {
 		t.Errorf("expected val child is A")
 	}
@@ -180,8 +183,7 @@ func TestMutationsOn1Val(t *testing.T) {
 		if !isSomeMemLoc(&ksl2.Loc, LocTypeNode) {
 			t.Errorf("expected some ksl")
 		}
-		if ksl2.Loc.node == nil ||
-			(ksl2.Loc.bufRef != nil && ksl2.Loc.bufRef.Buf(testBufManager) != nil) {
+		if ksl2.Loc.node == nil || locBuf(&ksl2.Loc) != nil {
 			t.Errorf("expected a ksl with node, no buf")
 		}
 		if ksl2.Loc.node.(*NodeMem).ItemLocs.Len() != 1 {
@@ -194,7 +196,7 @@ func TestMutationsOn1Val(t *testing.T) {
 			t.Errorf("expected val child")
 		}
 
-		astr := ksl2.Loc.node.(*NodeMem).ItemLocs.Loc(0).bufRef.Buf(testBufManager)
+		astr := locBuf(ksl2.Loc.node.(*NodeMem).ItemLocs.Loc(0))
 		if string(astr) != "A" {
 			t.Errorf("expected val child is A")
 		}
@@ -243,8 +245,7 @@ func TestMutationsOn2Vals(t *testing.T) {
 		if !isSomeMemLoc(&ksl.Loc, LocTypeNode) {
 			t.Errorf("expected some ksl")
 		}
-		if ksl.Loc.node == nil ||
-			(ksl.Loc.bufRef != nil && ksl.Loc.bufRef.Buf(testBufManager) != nil) {
+		if ksl.Loc.node == nil || locBuf(&ksl.Loc) != nil {
 			t.Errorf("expected a ksl with node, no buf")
 		}
 		if ksl.Loc.node.(*NodeMem).ItemLocs.Len() != numVals {
@@ -260,7 +261,7 @@ func TestMutationsOn2Vals(t *testing.T) {
 			t.Errorf("expected val child")
 		}
 
-		astr := ksl.Loc.node.(*NodeMem).ItemLocs.Loc(0).bufRef.Buf(testBufManager)
+		astr := locBuf(ksl.Loc.node.(*NodeMem).ItemLocs.Loc(0))
 		if string(astr) != "A" {
 			t.Errorf("expected val child is A")
 		}
@@ -274,7 +275,7 @@ func TestMutationsOn2Vals(t *testing.T) {
 			t.Errorf("expected val child")
 		}
 
-		bstr := ksl.Loc.node.(*NodeMem).ItemLocs.Loc(1).bufRef.Buf(testBufManager)
+		bstr := locBuf(ksl.Loc.node.(*NodeMem).ItemLocs.Loc(1))
 		if string(bstr) != "B" {
 			t.Errorf("expected val child is B")
 		}

@@ -53,6 +53,9 @@ type Collection interface {
 	Get(partitionId PartitionId, key Key, matchSeq Seq,
 		withValue bool) (seq Seq, val Val, err error)
 
+	GetBufRef(partitionId PartitionId, key Key, matchSeq Seq,
+		withValue bool) (seq Seq, val BufRef, err error)
+
 	// Set takes a newSeq that should be monotonically increasing.
 	// The newSeq represents the new mutation's seq.  Use matchSeq of
 	// NO_MATCH_SEQ if you don't care about the existing item, if any.
@@ -189,31 +192,37 @@ const CREATE_MATCH_SEQ = Seq(0xfffffffffffffffe)
 
 // ------------------------------------------------------------
 
-// A BufManager represents the functionality needed by a store for
-// memory management.
+// A BufManager represents the functionality needed for memory
+// management.
 type BufManager interface {
-	Alloc(size int) []byte
-
-	// WantRef returns a buf that is safe for the caller to hold onto.
-	// Implementations, for example, might use ref-counting, or return
-	// a brand new copy.
-	WantRef(buf []byte) []byte
-
-	// Each Alloc() and WantRef() must be matched by a DropRef().
-	DropRef(buf []byte)
-
-	Visit(buf []byte, from, to int,
-		partVisitor func(partBuf []byte, partFrom, partTo int))
-
-	// Does not increase the ref-count, if any, on the given buf.
-	BufRef(buf []byte) BufRef
+	// Alloc might return nil if no memory is available.  The optional
+	// partUpdater callback, if non-nil, is invoked via
+	// BufRef.Update().
+	Alloc(size int,
+		partUpdater func(partBuf []byte, partFrom, partTo int) bool) BufRef
 }
 
-// A BufRef represents a reference to a byte slice that's managed by a
-// BufManager.  This extra level of indirection allows a BufManager to
-// optionally avoid GC scan traversals and other optimizations.
+// A BufRef represents a reference to memory that's managed by a
+// BufManager.  This extra level of indirection via a flyweight
+// pattern allows a BufManager to optionally avoid GC scan traversals
+// and other optimizations like chunking.
 type BufRef interface {
 	IsNil() bool
 
-	Buf(bufManager BufManager) []byte
+	Len(bm BufManager) int
+
+	AddRef(bm BufManager)
+	DecRef(bm BufManager)
+
+	// A buffer might be implemented as one or more chunks, which can
+	// be mutated by Update().  The callback can return false to stop
+	// the callbacks.
+	Update(bm BufManager, from, to int,
+		partUpdater func(partBuf []byte, partFrom, partTo int) bool) BufRef
+
+	// A buffer might be implemented as one or more chunks, which can
+	// be visited in read-only fashion by Visit().  The callback can
+	// return false to stop the callbacks.
+	Visit(bm BufManager, from, to int,
+		partVisitor func(partBuf []byte, partFrom, partTo int) bool) BufRef
 }
