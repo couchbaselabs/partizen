@@ -52,9 +52,13 @@ type Store interface {
 type Collection interface {
 	Close() error
 
+	// Get returns the item information, if it exists.
 	Get(partitionId PartitionId, key Key, matchSeq Seq,
 		withValue bool) (seq Seq, val Val, err error)
 
+	// GetBufRef is a lower-level Get() API, where the caller
+	// participates in memory management and must DecRef() the
+	// returned BufRef.
 	GetBufRef(partitionId PartitionId, key Key, matchSeq Seq,
 		withValue bool) (seq Seq, val BufRef, err error)
 
@@ -112,6 +116,11 @@ type Cursor interface {
 
 	// Next returns a nil Key if the Cursor is done.
 	Next() (PartitionId, Key, Seq, Val, error)
+
+	// NextBufRef is a lower-level Next() API, where the caller
+	// participates in memory management and must DecRef() the
+	// returned BufRef.
+	NextBufRef() (PartitionId, Key, Seq, BufRef, error)
 }
 
 // A Mutation represents a mutation request on a key.
