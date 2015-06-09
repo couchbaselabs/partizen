@@ -58,9 +58,9 @@ type Collection interface {
 
 	// GetBufRef is a lower-level Get() API, where the caller
 	// participates in memory management and must DecRef() the
-	// returned BufRef.
+	// returned valBufRef.
 	GetBufRef(partitionId PartitionId, key Key, matchSeq Seq,
-		withValue bool) (seq Seq, val BufRef, err error)
+		withValue bool) (seq Seq, valBufRef BufRef, err error)
 
 	// Set takes a newSeq that should be monotonically increasing.
 	// The newSeq represents the new mutation's seq.  Use matchSeq of
@@ -68,6 +68,12 @@ type Collection interface {
 	// Use CREATE_MATCH_SEQ for matchSeq to ensure a creation.
 	Set(partitionId PartitionId, key Key, matchSeq Seq,
 		newSeq Seq, val Val) error
+
+	// SetBufRef is a lower-level Set() API, where the valBufRef
+	// should be immutable and will be ref-count incremented for a
+	// potentially long-lived period of time.
+	SetBufRef(partitionId PartitionId, key Key, matchSeq Seq,
+		newSeq Seq, valBufRef BufRef) error
 
 	// Del takes a newSeq that should be monotonically increasing.
 	// The newSeq represents the new mutation, not the seq of the
@@ -128,7 +134,7 @@ type Mutation struct {
 	PartitionId PartitionId
 	Key         Key
 	Seq         Seq
-	Val         Val
+	ValBufRef   BufRef
 	Op          MutationOp
 
 	// A MatchSeq of NO_MATCH_SEQ is allowed.
@@ -182,13 +188,14 @@ type CompareFunc func(a, b []byte) int
 
 // ------------------------------------------------------------
 
-var ErrReadOnly = errors.New("read-only")
-var ErrNoCompareFunc = errors.New("no compare func")
-var ErrUnknownCollection = errors.New("unknown collection")
+var ErrAlloc = errors.New("alloc failed")
 var ErrCollectionExists = errors.New("collection exists")
-var ErrMatchSeq = errors.New("non-matching seq")
+var ErrCollectionUnknown = errors.New("unknown collection")
 var ErrConcurrentMutation = errors.New("concurrent mutation")
 var ErrConcurrentMutationChain = errors.New("concurrent mutation chain")
+var ErrMatchSeq = errors.New("non-matching seq")
+var ErrNoCompareFunc = errors.New("no compare func")
+var ErrReadOnly = errors.New("read-only")
 
 // ------------------------------------------------------------
 

@@ -130,7 +130,7 @@ func (s *store) GetCollection(collName string) (Collection, error) {
 	}
 	s.m.Unlock()
 
-	return nil, ErrUnknownCollection
+	return nil, ErrCollectionUnknown
 }
 
 func (s *store) AddCollection(collName string, compareFuncName string) (
@@ -208,7 +208,7 @@ func (s *store) RemoveCollection(collName string) error {
 		}
 	}
 
-	return ErrUnknownCollection
+	return ErrCollectionUnknown
 }
 
 func (s *store) BufManager() BufManager {

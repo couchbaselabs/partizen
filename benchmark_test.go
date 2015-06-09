@@ -118,10 +118,11 @@ func benchmarkInsertBatchSizeN(markStart func(), numRuns,
 		m := make([]Mutation, 0, batchSize)
 		i := 0
 		for i < batchSize && t < len(data) {
+			key := []byte(strconv.Itoa(int(fixture.SortedTestData[t].Key)))
 			m = append(m, Mutation{
-				Key: []byte(strconv.Itoa(int(fixture.SortedTestData[t].Key))),
-				Val: val,
-				Op:  MUTATION_OP_UPDATE,
+				Key:       key,
+				ValBufRef: testBufManager.Alloc(len(val), CopyToBufRef, val),
+				Op:        MUTATION_OP_UPDATE,
 			})
 			i++
 			t++
@@ -182,10 +183,10 @@ func BenchmarkIterate(b *testing.B) {
 		i := 0
 		for i < cap(m) && t < len(data) {
 			m = append(m, Mutation{
-				Key:      []byte(strconv.Itoa(int(data[t].Key))),
-				Val:      val,
-				Op:       MUTATION_OP_UPDATE,
-				MatchSeq: NO_MATCH_SEQ,
+				Key:       []byte(strconv.Itoa(int(data[t].Key))),
+				ValBufRef: testBufManager.Alloc(len(val), CopyToBufRef, val),
+				Op:        MUTATION_OP_UPDATE,
+				MatchSeq:  NO_MATCH_SEQ,
 			})
 			i++
 			t++

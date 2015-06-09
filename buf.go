@@ -153,24 +153,24 @@ func BufRefBytes(dst []byte,
 		dst = make([]byte, bufLen)
 	}
 
-	bufRef.Visit(bufManager, 0, len(dst), CopyFromPartBuf, dst)
+	bufRef.Visit(bufManager, 0, len(dst), CopyFromBufRef, dst)
 
 	return dst
 }
 
 // -------------------------------------------------
 
-// CopyFromPartBuf copies bytes from partBuf to buf, and is a helper
+// CopyFromBufRef copies bytes from partBuf to buf, and is a helper
 // function meant to be used with BufRef.Visit() and BufRefBytes().
-func CopyFromPartBuf(buf, partBuf []byte, partFrom, partTo int) bool {
+func CopyFromBufRef(buf, partBuf []byte, partFrom, partTo int) bool {
 	copy(buf[partFrom:partTo], partBuf)
 	return true
 }
 
-// CopyFromPartBuf copies bytes from buf to partBuf, and is a helper
+// CopyFromBufRef copies bytes from buf to partBuf, and is a helper
 // function meant to be used with BufRef.Update() and
 // BufManager.Alloc().
-func CopyToPartBuf(buf, partBuf []byte, partFrom, partTo int) bool {
+func CopyToBufRef(buf, partBuf []byte, partFrom, partTo int) bool {
 	copy(partBuf, buf[partFrom:partTo])
 	return true
 }

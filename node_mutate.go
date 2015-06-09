@@ -312,11 +312,9 @@ func (b *ValsBuilder) Done(mutations []Mutation, cb MutationCallback,
 }
 
 func mutationToValItemLoc(m *Mutation, bufManager BufManager) *ItemLoc {
-	bufLen := len(m.Val)
-	bufRef := bufManager.Alloc(bufLen, CopyToPartBuf, m.Val)
-	if bufRef.IsNil() {
-		return nil
-	}
+	m.ValBufRef.AddRef(bufManager)
+
+	bufLen := m.ValBufRef.Len(bufManager)
 
 	return &ItemLoc{
 		Key: m.Key, // NOTE: We copy key in groupItemLocs/itemLocsSlice.
@@ -324,7 +322,7 @@ func mutationToValItemLoc(m *Mutation, bufManager BufManager) *ItemLoc {
 		Loc: Loc{
 			Type:        LocTypeVal,
 			Size:        uint32(bufLen),
-			bufRef:      bufRef,
+			bufRef:      m.ValBufRef,
 			partitionId: m.PartitionId,
 		},
 	}

@@ -65,7 +65,8 @@ func isSomeMemLoc(loc *Loc, expectedLocType uint8) bool {
 }
 
 func TestEmptyMutate(t *testing.T) {
-	ksl, err := rootProcessMutations(nil, nil, nil, 15, 32, testBufManager, nil)
+	ksl, err := rootProcessMutations(nil, nil, nil, 15, 32,
+		testBufManager, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
 	}
@@ -79,7 +80,8 @@ func TestEmptyMutate(t *testing.T) {
 			node: &NodeMem{},
 		},
 	}
-	ksl, err = rootProcessMutations(rootItemLoc, nil, nil, 15, 32, testBufManager, nil)
+	ksl, err = rootProcessMutations(rootItemLoc, nil, nil, 15, 32,
+		testBufManager, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
 	}
@@ -125,9 +127,9 @@ func TestEmptyMutate(t *testing.T) {
 func TestMutationsOn1Val(t *testing.T) {
 	m := []Mutation{
 		Mutation{
-			Key: []byte("a"),
-			Val: []byte("A"),
-			Op:  MUTATION_OP_UPDATE,
+			Key:       []byte("a"),
+			ValBufRef: testBufManager.Alloc(1, CopyToBufRef, []byte("A")),
+			Op:        MUTATION_OP_UPDATE,
 		},
 	}
 	ksl, err := rootProcessMutations(nil, m, nil, 15, 32, testBufManager, nil)
@@ -170,7 +172,8 @@ func TestMutationsOn1Val(t *testing.T) {
 				Op:  MUTATION_OP_DELETE,
 			},
 		}
-		ksl2, err := rootProcessMutations(ksl2, m, nil, 15, 32, testBufManager, nil)
+		ksl2, err := rootProcessMutations(ksl2, m, nil, 15, 32,
+			testBufManager, nil)
 		if err != nil {
 			t.Errorf("expected ok, err: %#v", err)
 		}
@@ -192,7 +195,8 @@ func TestMutationsOn1Val(t *testing.T) {
 		if string(ksl2.Loc.node.(*NodeMem).ItemLocs.Key(0)) != "a" {
 			t.Errorf("expected 1 child")
 		}
-		if !isSomeMemLoc(ksl2.Loc.node.(*NodeMem).ItemLocs.Loc(0), LocTypeVal) {
+		if !isSomeMemLoc(ksl2.Loc.node.(*NodeMem).ItemLocs.Loc(0),
+			LocTypeVal) {
 			t.Errorf("expected val child")
 		}
 
@@ -208,7 +212,8 @@ func TestMutationsOn1Val(t *testing.T) {
 			Op:  MUTATION_OP_DELETE,
 		},
 	}
-	ksl3, err := rootProcessMutations(ksl2, m, nil, 15, 32, testBufManager, nil)
+	ksl3, err := rootProcessMutations(ksl2, m, nil, 15, 32,
+		testBufManager, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
 	}
@@ -220,17 +225,18 @@ func TestMutationsOn1Val(t *testing.T) {
 func TestMutationsOn2Vals(t *testing.T) {
 	m := []Mutation{
 		Mutation{
-			Key: []byte("a"),
-			Val: []byte("A"),
-			Op:  MUTATION_OP_UPDATE,
+			Key:       []byte("a"),
+			ValBufRef: testBufManager.Alloc(1, CopyToBufRef, []byte("A")),
+			Op:        MUTATION_OP_UPDATE,
 		},
 		Mutation{
-			Key: []byte("b"),
-			Val: []byte("B"),
-			Op:  MUTATION_OP_UPDATE,
+			Key:       []byte("b"),
+			ValBufRef: testBufManager.Alloc(1, CopyToBufRef, []byte("B")),
+			Op:        MUTATION_OP_UPDATE,
 		},
 	}
-	ksl, err := rootProcessMutations(nil, m, nil, 15, 32, testBufManager, nil)
+	ksl, err := rootProcessMutations(nil, m, nil, 15, 32,
+		testBufManager, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
 	}
@@ -292,7 +298,8 @@ func TestMutationsOn2Vals(t *testing.T) {
 				Op:  MUTATION_OP_DELETE,
 			},
 		}
-		ksl2, err := rootProcessMutations(ksl2, m, nil, 15, 32, testBufManager, nil)
+		ksl2, err := rootProcessMutations(ksl2, m, nil, 15, 32,
+			testBufManager, nil)
 		if err != nil {
 			t.Errorf("expected ok, err: %#v", err)
 		}
@@ -305,7 +312,8 @@ func TestMutationsOn2Vals(t *testing.T) {
 			Op:  MUTATION_OP_DELETE,
 		},
 	}
-	ksl3, err := rootProcessMutations(ksl2, m, nil, 15, 32, testBufManager, nil)
+	ksl3, err := rootProcessMutations(ksl2, m, nil, 15, 32,
+		testBufManager, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
 	}
@@ -318,7 +326,8 @@ func TestMutationsOn2Vals(t *testing.T) {
 			Op:  MUTATION_OP_DELETE,
 		},
 	}
-	ksl4, err := rootProcessMutations(ksl3, m, nil, 15, 32, testBufManager, nil)
+	ksl4, err := rootProcessMutations(ksl3, m, nil, 15, 32,
+		testBufManager, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
 	}
@@ -351,9 +360,11 @@ func TestMutationsDepth(t *testing.T) {
 	m[0].Op = MUTATION_OP_UPDATE
 	for c, i := 0, iStart; c < n; c, i = c+1, delta(c, i) {
 		m[0].Key = []byte(fmt.Sprintf("%4d", i))
-		m[0].Val = Val(m[0].Key)
+		m[0].ValBufRef = testBufManager.Alloc(len(m[0].Key),
+			CopyToBufRef, m[0].Key)
 		rootItemLoc, err =
-			rootProcessMutations(rootItemLoc, m, nil, 2, 4, testBufManager, nil)
+			rootProcessMutations(rootItemLoc, m, nil, 2, 4,
+				testBufManager, nil)
 		if err != nil {
 			t.Errorf("unexpected err: %#v", err)
 		}
