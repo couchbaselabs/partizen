@@ -29,7 +29,8 @@ func NewDefaultBufManager(startChunkSize int,
 }
 
 func (dbm *defaultBufManager) Alloc(size int,
-	partUpdater func(partBuf []byte, partFrom, partTo int) bool) BufRef {
+	partUpdater func(cbData, partBuf []byte,
+		partFrom, partTo int) bool, cbData []byte) BufRef {
 	dbm.m.Lock()
 	slabLoc := dbm.arena.BufToLoc(dbm.arena.Alloc(size))
 	dbm.m.Unlock()
@@ -38,7 +39,8 @@ func (dbm *defaultBufManager) Alloc(size int,
 		return nil
 	}
 
-	return (&defaultBufRef{slabLoc}).update(dbm, 0, size, partUpdater)
+	return (&defaultBufRef{slabLoc}).update(dbm, 0, size,
+		partUpdater, cbData)
 }
 
 func (dbr *defaultBufRef) Len(bm BufManager) int {
@@ -79,31 +81,37 @@ func (dbr *defaultBufRef) DecRef(bm BufManager) {
 }
 
 func (dbr *defaultBufRef) Update(bm BufManager, from, to int,
-	partUpdater func(partBuf []byte, partFrom, partTo int) bool) BufRef {
+	partUpdater func(cbData, partBuf []byte,
+		partFrom, partTo int) bool,
+	cbData []byte) BufRef {
 	dbm, ok := bm.(*defaultBufManager)
 	if !ok || dbm == nil {
 		return nil
 	}
 
-	return dbr.update(dbm, from, to, partUpdater)
+	return dbr.update(dbm, from, to, partUpdater, cbData)
 }
 
 func (dbr *defaultBufRef) update(dbm *defaultBufManager, from, to int,
-	partUpdater func(partBuf []byte, partFrom, partTo int) bool) BufRef {
+	partUpdater func(cbData, partBuf []byte,
+		partFrom, partTo int) bool,
+	cbData []byte) BufRef {
 	if partUpdater == nil {
 		return dbr
 	}
 
 	dbm.m.Lock()
 	buf := dbm.arena.LocToBuf(dbr.slabLoc)
-	partUpdater(buf[from:to], from, to)
+	partUpdater(cbData, buf[from:to], from, to)
 	dbm.m.Unlock()
 
 	return dbr
 }
 
 func (dbr *defaultBufRef) Visit(bm BufManager, from, to int,
-	partVisitor func(partBuf []byte, partFrom, partTo int) bool) BufRef {
+	partVisitor func(cbData, partBuf []byte,
+		partFrom, partTo int) bool,
+	cbData []byte) BufRef {
 	if partVisitor == nil {
 		return dbr
 	}
@@ -115,7 +123,7 @@ func (dbr *defaultBufRef) Visit(bm BufManager, from, to int,
 
 	dbm.m.Lock()
 	buf := dbm.arena.LocToBuf(dbr.slabLoc)
-	partVisitor(buf[from:to], from, to)
+	partVisitor(cbData, buf[from:to], from, to)
 	dbm.m.Unlock()
 
 	return dbr
@@ -139,14 +147,27 @@ func AppendBufRef(dst []byte, bufRef BufRef, bufManager BufManager) []byte {
 	bufLen := bufRef.Len(bufManager)
 
 	if dst == nil {
-		dst = make([]byte, 0, bufLen)
+		dst = make([]byte, bufLen)
 	}
 
-	bufRef.Visit(bufManager, 0, bufLen,
-		func(partBuf []byte, partFrom, partTo int) bool {
-			dst = append(dst, partBuf...)
-			return true
-		})
+	bufRef.Visit(bufManager, 0, len(dst), CopyFromPartBuf, dst)
 
 	return dst
+}
+
+// -------------------------------------------------
+
+// CopyFromPartBuf copies bytes from partBuf to buf, and is a helper
+// function meant to be used with BufRef.Visit() and AppendBufRef().
+func CopyFromPartBuf(buf, partBuf []byte, partFrom, partTo int) bool {
+	copy(buf[partFrom:partTo], partBuf)
+	return true
+}
+
+// CopyFromPartBuf copies bytes from buf to partBuf, and is a helper
+// function meant to be used with BufRef.Update() and
+// BufManager.Alloc().
+func CopyToPartBuf(buf, partBuf []byte, partFrom, partTo int) bool {
+	copy(partBuf, buf[partFrom:partTo])
+	return true
 }

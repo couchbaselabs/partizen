@@ -313,11 +313,7 @@ func (b *ValsBuilder) Done(mutations []Mutation, cb MutationCallback,
 
 func mutationToValItemLoc(m *Mutation, bufManager BufManager) *ItemLoc {
 	bufLen := len(m.Val)
-	bufRef := bufManager.Alloc(bufLen,
-		func(partBuf []byte, partFrom, partTo int) bool {
-			copy(partBuf, m.Val[partFrom:partTo])
-			return true
-		})
+	bufRef := bufManager.Alloc(bufLen, CopyToPartBuf, m.Val)
 	if bufRef.IsNil() {
 		return nil
 	}
