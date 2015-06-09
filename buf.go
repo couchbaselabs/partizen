@@ -139,7 +139,10 @@ func (dbr *defaultBufRef) IsNil() bool {
 
 // -------------------------------------------------
 
-func AppendBufRef(dst []byte, bufRef BufRef, bufManager BufManager) []byte {
+// BufRefBytes copies the bytes from a BufRef to a caller-supplied
+// byte slice, and allocates a new byte slice if dst is nil.
+func BufRefBytes(dst []byte,
+	bufRef BufRef, bufManager BufManager) []byte {
 	if bufRef == nil || bufRef.IsNil() {
 		return dst
 	}
@@ -158,7 +161,7 @@ func AppendBufRef(dst []byte, bufRef BufRef, bufManager BufManager) []byte {
 // -------------------------------------------------
 
 // CopyFromPartBuf copies bytes from partBuf to buf, and is a helper
-// function meant to be used with BufRef.Visit() and AppendBufRef().
+// function meant to be used with BufRef.Visit() and BufRefBytes().
 func CopyFromPartBuf(buf, partBuf []byte, partFrom, partTo int) bool {
 	copy(buf[partFrom:partTo], partBuf)
 	return true

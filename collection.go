@@ -52,7 +52,7 @@ func (r *collection) Get(partitionId PartitionId, key Key, matchSeq Seq,
 	}
 
 	if withValue {
-		val = AppendBufRef(nil, bufRef, r.store.bufManager)
+		val = BufRefBytes(nil, bufRef, r.store.bufManager)
 	}
 
 	bufRef.DecRef(r.store.bufManager)
@@ -253,7 +253,7 @@ func (r *collection) minMax(locateMax bool, withValue bool) (
 	}
 
 	if withValue {
-		val = AppendBufRef(nil, bufRef, r.store.bufManager)
+		val = BufRefBytes(nil, bufRef, r.store.bufManager)
 	}
 
 	bufRef.DecRef(r.store.bufManager)
@@ -306,20 +306,22 @@ func (c *CursorImpl) Close() error {
 	return nil
 }
 
-func (c *CursorImpl) Next() (PartitionId, Key, Seq, Val, error) {
+func (c *CursorImpl) Next() (
+	PartitionId, Key, Seq, Val, error) {
 	partitionId, key, seq, bufRef, err := c.NextBufRef()
 	if err != nil || bufRef == nil {
 		return 0, nil, 0, nil, err
 	}
 
-	val := AppendBufRef(nil, bufRef, c.bufManager)
+	val := BufRefBytes(nil, bufRef, c.bufManager)
 
 	bufRef.DecRef(c.bufManager)
 
 	return partitionId, key, seq, val, nil
 }
 
-func (c *CursorImpl) NextBufRef() (PartitionId, Key, Seq, BufRef, error) {
+func (c *CursorImpl) NextBufRef() (
+	PartitionId, Key, Seq, BufRef, error) {
 	r, ok := <-c.resultsCh
 	if !ok {
 		return 0, nil, 0, nil, nil // TODO: PartitionId.

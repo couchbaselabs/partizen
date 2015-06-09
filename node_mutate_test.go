@@ -19,7 +19,7 @@ func makeTestBufManager() BufManager {
 }
 
 func locBuf(loc *Loc) []byte {
-	return AppendBufRef(nil, loc.bufRef, testBufManager)
+	return BufRefBytes(nil, loc.bufRef, testBufManager)
 }
 
 func printPrefix(n int) {
