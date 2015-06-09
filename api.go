@@ -79,8 +79,7 @@ type Collection interface {
 	// The newSeq represents the new mutation, not the seq of the
 	// existing item, if it exists, that's to-be-overwritten.  Use
 	// matchSeq of NO_MATCH_SEQ if you don't want a seq match.
-	Del(partitionId PartitionId, key Key, matchSeq Seq,
-		newSeq Seq) error
+	Del(key Key, matchSeq Seq, newSeq Seq) error
 
 	Batch([]Mutation) error
 

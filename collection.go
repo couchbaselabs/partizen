@@ -139,14 +139,13 @@ func (r *collection) SetBufRef(partitionId PartitionId, key Key, matchSeq Seq,
 	}}, r.store.bufManager)
 }
 
-func (r *collection) Del(partitionId PartitionId, key Key, matchSeq Seq,
+func (r *collection) Del(key Key, matchSeq Seq,
 	newSeq Seq) error {
 	return r.mutate([]Mutation{Mutation{
-		PartitionId: partitionId,
-		Key:         key,
-		Seq:         newSeq,
-		Op:          MUTATION_OP_DELETE,
-		MatchSeq:    matchSeq,
+		Key:      key,
+		Seq:      newSeq,
+		Op:       MUTATION_OP_DELETE,
+		MatchSeq: matchSeq,
 	}}, r.store.bufManager)
 }
 

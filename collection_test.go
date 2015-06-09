@@ -233,11 +233,11 @@ func TestSimpleMemOps(t *testing.T) {
 	if err == nil {
 		t.Errorf("expected ErrMatchSeq, err: %#v", err)
 	}
-	err = c.Del(0, []byte("a"), wrongMatchSeq, 4)
+	err = c.Del([]byte("a"), wrongMatchSeq, 4)
 	if err == nil {
 		t.Errorf("expected ErrMatchSeq, err: %#v", err)
 	}
-	err = c.Del(0, []byte("not-there"), wrongMatchSeq, 4)
+	err = c.Del([]byte("not-there"), wrongMatchSeq, 4)
 	if err == nil {
 		t.Errorf("expected ErrMatchSeq, err: %#v", err)
 	}
@@ -325,7 +325,7 @@ func TestSimpleMemOps(t *testing.T) {
 	if err != ErrReadOnly {
 		t.Errorf("expected update on snapshot to fail")
 	}
-	err = c2.Del(0, []byte("snapshot-delete"), NO_MATCH_SEQ, 30)
+	err = c2.Del([]byte("snapshot-delete"), NO_MATCH_SEQ, 30)
 	if err != ErrReadOnly {
 		t.Errorf("expected delete on snapshot to fail")
 	}
@@ -387,7 +387,7 @@ func TestSimpleMemOps(t *testing.T) {
 	testSnapshotIsUnchanged()
 
 	// ------------------------------------------------
-	err = c.Del(0, []byte("0"), 3, 20)
+	err = c.Del([]byte("0"), 3, 20)
 	if err != nil {
 		t.Errorf("expected ok delete")
 	}
