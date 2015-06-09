@@ -210,7 +210,7 @@ const (
 	LocTypeStoreDef uint8 = 0x03
 )
 
-// Returns the Loc's BufRef, and if non-nil will have an additional
+// Returns the Loc's BufRef, and if non-nil will add an additional
 // ref-count that must be DecRef()'ed.
 func (loc *Loc) BufRef(bm BufManager) BufRef {
 	if loc.bufRef == nil || loc.bufRef.IsNil() {
