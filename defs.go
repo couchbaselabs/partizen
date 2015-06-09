@@ -134,6 +134,8 @@ func (r *ItemLocRef) decRef() *ItemLocRef {
 	return r
 }
 
+// ----------------------------------------
+
 // An ItemLoc represents a Key, Seq and Loc association.
 type ItemLoc struct {
 	Key Key // The minimum Key.

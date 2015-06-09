@@ -214,4 +214,3 @@ func (s *store) RemoveCollection(collName string) error {
 func (s *store) BufManager() BufManager {
 	return s.bufManager
 }
-
