@@ -44,9 +44,9 @@ func (r *collection) rootDecRef(kslr *ItemLocRef) {
 	r.store.m.Unlock()
 }
 
-func (r *collection) Get(partitionId PartitionId, key Key, matchSeq Seq,
-	withValue bool) (seq Seq, val Val, err error) {
-	seq, bufRef, err := r.GetBufRef(partitionId, key, matchSeq, withValue)
+func (r *collection) Get(key Key, matchSeq Seq, withValue bool) (
+	seq Seq, val Val, err error) {
+	seq, bufRef, err := r.GetBufRef(key, matchSeq, withValue)
 	if err != nil || bufRef == nil {
 		return seq, nil, err
 	}
@@ -60,12 +60,8 @@ func (r *collection) Get(partitionId PartitionId, key Key, matchSeq Seq,
 	return seq, val, nil
 }
 
-func (r *collection) GetBufRef(partitionId PartitionId, key Key, matchSeq Seq,
-	withValue bool) (seq Seq, val BufRef, err error) {
-	if partitionId != 0 {
-		return 0, nil, fmt.Errorf("partition unimplemented")
-	}
-
+func (r *collection) GetBufRef(key Key, matchSeq Seq, withValue bool) (
+	seq Seq, val BufRef, err error) {
 	var hitSeq Seq
 	var hitType uint8
 	var hitBufRef BufRef
@@ -110,7 +106,7 @@ func (r *collection) GetBufRef(partitionId PartitionId, key Key, matchSeq Seq,
 		return 0, nil, fmt.Errorf("collection.Get: bad type: %#v", hitType)
 	}
 
-	return hitSeq, hitBufRef, nil // TODO: What if partitionId doesn't match?
+	return hitSeq, hitBufRef, nil
 }
 
 func (r *collection) Set(partitionId PartitionId, key Key, matchSeq Seq,

@@ -63,7 +63,7 @@ func TestSimpleMemOps(t *testing.T) {
 	if err != nil || c == nil {
 		t.Errorf("expected AddCollection to work")
 	}
-	seq, val, err := c.Get(0, []byte("a"), NO_MATCH_SEQ, true)
+	seq, val, err := c.Get([]byte("a"), NO_MATCH_SEQ, true)
 	if err != nil || seq != 0 || val != nil {
 		t.Errorf("expected Get on empty coll to be empty")
 	}
@@ -81,7 +81,7 @@ func TestSimpleMemOps(t *testing.T) {
 	if partitionId != 0 || key != nil || seq != 0 || val != nil {
 		t.Errorf("expected no max")
 	}
-	seq, val, err = c.Get(0, []byte("a"), CREATE_MATCH_SEQ, true)
+	seq, val, err = c.Get([]byte("a"), CREATE_MATCH_SEQ, true)
 	if err != nil || seq != 0 || val != nil {
 		t.Errorf("expected no error for CREATE_MATCH_SEQ get on empty")
 	}
@@ -102,12 +102,12 @@ func TestSimpleMemOps(t *testing.T) {
 		t.Errorf("expected ErrMatchSeq during create on existing item,"+
 			" err: %v", err)
 	}
-	seq, val, err = c.Get(0, []byte("a"), NO_MATCH_SEQ, true)
+	seq, val, err = c.Get([]byte("a"), NO_MATCH_SEQ, true)
 	if err != nil || seq != 1 || string(val) != "A" {
 		t.Errorf("expected Get(a) to work, got seq: %d, val: %s, err: %v",
 			seq, val, err)
 	}
-	seq, val, err = c.Get(0, []byte("not-there"), NO_MATCH_SEQ, true)
+	seq, val, err = c.Get([]byte("not-there"), NO_MATCH_SEQ, true)
 	if err != nil || seq != 0 || val != nil {
 		t.Errorf("expected Get on missing key to be empty")
 	}
@@ -127,15 +127,15 @@ func TestSimpleMemOps(t *testing.T) {
 		string(val) != "A" {
 		t.Errorf("expected no max")
 	}
-	seq, val, err = c.Get(0, []byte("a"), CREATE_MATCH_SEQ, true)
+	seq, val, err = c.Get([]byte("a"), CREATE_MATCH_SEQ, true)
 	if err != ErrMatchSeq {
 		t.Errorf("expected ErrMatchSeq for CREATE_MATCH_SEQ get on real key")
 	}
-	seq, val, err = c.Get(0, []byte("a"), 100, true)
+	seq, val, err = c.Get([]byte("a"), 100, true)
 	if err != ErrMatchSeq {
 		t.Errorf("expected ErrMatchSeq for wrong seq get on real key")
 	}
-	seq, val, err = c.Get(0, []byte("x"), CREATE_MATCH_SEQ, true)
+	seq, val, err = c.Get([]byte("x"), CREATE_MATCH_SEQ, true)
 	if err != nil || seq != 0 || val != nil {
 		t.Errorf("expected no error for CREATE_MATCH_SEQ get on mising key")
 	}
@@ -155,17 +155,17 @@ func TestSimpleMemOps(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected Set on 1 item coll to work")
 	}
-	seq, val, err = c.Get(0, []byte("a"), NO_MATCH_SEQ, true)
+	seq, val, err = c.Get([]byte("a"), NO_MATCH_SEQ, true)
 	if err != nil || seq != 1 || string(val) != "A" {
 		t.Errorf("expected Get(a) to work, got seq: %d, val: %s, err: %v",
 			seq, val, err)
 	}
-	seq, val, err = c.Get(0, []byte("b"), NO_MATCH_SEQ, true)
+	seq, val, err = c.Get([]byte("b"), NO_MATCH_SEQ, true)
 	if err != nil || seq != 2 || string(val) != "B" {
 		t.Errorf("expected Get(b) to work, got seq: %d, val: %s, err: %v",
 			seq, val, err)
 	}
-	seq, val, err = c.Get(0, []byte("not-there"), NO_MATCH_SEQ, true)
+	seq, val, err = c.Get([]byte("not-there"), NO_MATCH_SEQ, true)
 	if err != nil || seq != 0 || val != nil {
 		t.Errorf("expected Get on missing key to be empty")
 	}
@@ -204,22 +204,22 @@ func TestSimpleMemOps(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected Set on 2 item coll to work")
 	}
-	seq, val, err = c.Get(0, []byte("a"), NO_MATCH_SEQ, true)
+	seq, val, err = c.Get([]byte("a"), NO_MATCH_SEQ, true)
 	if err != nil || seq != 1 || string(val) != "A" {
 		t.Errorf("expected Get(a) to work, got seq: %d, val: %s, err: %v",
 			seq, val, err)
 	}
-	seq, val, err = c.Get(0, []byte("b"), NO_MATCH_SEQ, true)
+	seq, val, err = c.Get([]byte("b"), NO_MATCH_SEQ, true)
 	if err != nil || seq != 2 || string(val) != "B" {
 		t.Errorf("expected Get(b) to work, got seq: %d, val: %s, err: %v",
 			seq, val, err)
 	}
-	seq, val, err = c.Get(0, []byte("0"), NO_MATCH_SEQ, true)
+	seq, val, err = c.Get([]byte("0"), NO_MATCH_SEQ, true)
 	if err != nil || seq != 3 || string(val) != "00" {
 		t.Errorf("expected Get(0) to work, got seq: %d, val: %s, err: %v",
 			seq, val, err)
 	}
-	seq, val, err = c.Get(0, []byte("not-there"), NO_MATCH_SEQ, true)
+	seq, val, err = c.Get([]byte("not-there"), NO_MATCH_SEQ, true)
 	if err != nil || seq != 0 || val != nil {
 		t.Errorf("expected Get on missing key to be empty")
 	}
@@ -241,15 +241,15 @@ func TestSimpleMemOps(t *testing.T) {
 	if err == nil {
 		t.Errorf("expected ErrMatchSeq, err: %#v", err)
 	}
-	seq, val, err = c.Get(0, []byte("not-there"), wrongMatchSeq, true)
+	seq, val, err = c.Get([]byte("not-there"), wrongMatchSeq, true)
 	if err == nil {
 		t.Errorf("expected ErrMatchSeq, err: %#v", err)
 	}
-	seq, val, err = c.Get(0, []byte("a"), wrongMatchSeq, true)
+	seq, val, err = c.Get([]byte("a"), wrongMatchSeq, true)
 	if err == nil {
 		t.Errorf("expected ErrMatchSeq, err: %#v", err)
 	}
-	seq, val, err = c.Get(0, []byte("a"), NO_MATCH_SEQ, true)
+	seq, val, err = c.Get([]byte("a"), NO_MATCH_SEQ, true)
 	if err != nil {
 		t.Errorf("expected no err")
 	}
@@ -287,18 +287,18 @@ func TestSimpleMemOps(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected no err on Set with correct seq")
 	}
-	_, _, err = c.Get(0, []byte("a"), seq, true)
+	_, _, err = c.Get([]byte("a"), seq, true)
 	if err != ErrMatchSeq {
 		t.Errorf("expected ErrMatchSeq")
 	}
-	seq, val, err = c.Get(0, []byte("a"), 10, true)
+	seq, val, err = c.Get([]byte("a"), 10, true)
 	if err != nil || string(val) != "AA" {
 		t.Errorf("expected no err and AA")
 	}
 	if seq != 10 {
 		t.Errorf("expected seq of 10")
 	}
-	seq, val, err = c.Get(0, []byte("a"), NO_MATCH_SEQ, true)
+	seq, val, err = c.Get([]byte("a"), NO_MATCH_SEQ, true)
 	if err != nil || string(val) != "AA" {
 		t.Errorf("expected no err and AA")
 	}
@@ -391,7 +391,7 @@ func TestSimpleMemOps(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected ok delete")
 	}
-	seq, val, err = c.Get(0, []byte("0"), NO_MATCH_SEQ, true)
+	seq, val, err = c.Get([]byte("0"), NO_MATCH_SEQ, true)
 	if err != nil || seq != 0 || val != nil {
 		t.Errorf("expected no 0")
 	}

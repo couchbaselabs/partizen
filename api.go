@@ -53,14 +53,14 @@ type Collection interface {
 	Close() error
 
 	// Get returns the item information, if it exists.
-	Get(partitionId PartitionId, key Key, matchSeq Seq,
-		withValue bool) (seq Seq, val Val, err error)
+	Get(key Key, matchSeq Seq, withValue bool) (
+		seq Seq, val Val, err error)
 
 	// GetBufRef is a lower-level Get() API, where the caller
 	// participates in memory management and must DecRef() the
 	// returned valBufRef.
-	GetBufRef(partitionId PartitionId, key Key, matchSeq Seq,
-		withValue bool) (seq Seq, valBufRef BufRef, err error)
+	GetBufRef(key Key, matchSeq Seq, withValue bool) (
+		seq Seq, valBufRef BufRef, err error)
 
 	// Set takes a newSeq that should be monotonically increasing.
 	// The newSeq represents the new mutation's seq.  Use matchSeq of
