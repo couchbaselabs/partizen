@@ -49,7 +49,7 @@ func (c *CursorImpl) NextBufRef() (
 	partitionId := PartitionId(0) // TODO: PartitionId.
 
 	return partitionId, r.ksl.Key, r.ksl.Seq,
-		r.ksl.Loc.BufRef(c.bufManager), r.err // TOOD: Mem mgmt.
+		r.ksl.Loc.BufRef(c.bufManager), r.err
 }
 
 // --------------------------------------------
