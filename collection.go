@@ -109,8 +109,8 @@ func (r *collection) GetBufRef(key Key, matchSeq Seq, withValue bool) (
 	return hitSeq, hitBufRef, nil
 }
 
-func (r *collection) Set(partitionId PartitionId, key Key, matchSeq Seq,
-	newSeq Seq, val Val) error {
+func (r *collection) Set(partitionId PartitionId, key Key,
+	matchSeq Seq, newSeq Seq, val Val) error {
 	valBufRef := r.store.bufManager.Alloc(len(val), CopyToBufRef, val)
 	if valBufRef == nil || valBufRef.IsNil() {
 		return ErrAlloc
@@ -123,8 +123,8 @@ func (r *collection) Set(partitionId PartitionId, key Key, matchSeq Seq,
 	return err
 }
 
-func (r *collection) SetBufRef(partitionId PartitionId, key Key, matchSeq Seq,
-	newSeq Seq, valBufRef BufRef) error {
+func (r *collection) SetBufRef(partitionId PartitionId, key Key,
+	matchSeq Seq, newSeq Seq, valBufRef BufRef) error {
 	if valBufRef == nil || valBufRef.IsNil() {
 		return ErrAlloc
 	}
@@ -139,8 +139,7 @@ func (r *collection) SetBufRef(partitionId PartitionId, key Key, matchSeq Seq,
 	}}, r.store.bufManager)
 }
 
-func (r *collection) Del(key Key, matchSeq Seq,
-	newSeq Seq) error {
+func (r *collection) Del(key Key, matchSeq Seq, newSeq Seq) error {
 	return r.mutate([]Mutation{Mutation{
 		Key:      key,
 		Seq:      newSeq,
