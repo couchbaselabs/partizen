@@ -52,7 +52,7 @@ func (r *collection) Get(partitionId PartitionId, key Key, matchSeq Seq,
 	}
 
 	if withValue {
-		val = BufRefBytes(nil, bufRef, r.store.bufManager)
+		val = FromBufRef(nil, bufRef, r.store.bufManager)
 	}
 
 	bufRef.DecRef(r.store.bufManager)
@@ -271,7 +271,7 @@ func (r *collection) minMax(locateMax bool, withValue bool) (
 	}
 
 	if withValue {
-		val = BufRefBytes(nil, bufRef, r.store.bufManager)
+		val = FromBufRef(nil, bufRef, r.store.bufManager)
 	}
 
 	bufRef.DecRef(r.store.bufManager)
@@ -331,7 +331,7 @@ func (c *CursorImpl) Next() (
 		return 0, nil, 0, nil, err
 	}
 
-	val := BufRefBytes(nil, bufRef, c.bufManager)
+	val := FromBufRef(nil, bufRef, c.bufManager)
 
 	bufRef.DecRef(c.bufManager)
 

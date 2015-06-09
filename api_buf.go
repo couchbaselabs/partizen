@@ -1,5 +1,49 @@
 package partizen
 
+// ToBufRef allocates a BufRef and copies bytes from the src bytes
+// slice to the returned BufRef.
+func ToBufRef(bufManager BufManager, src []byte) BufRef {
+	return bufManager.Alloc(len(src), CopyToBufRef, src)
+}
+
+// FromBufRef copies the bytes from a BufRef to a caller-supplied
+// byte slice, and allocates a new byte slice if dst is nil.
+func FromBufRef(dst []byte,
+	bufRef BufRef, bufManager BufManager) []byte {
+	if bufRef == nil || bufRef.IsNil() {
+		return dst
+	}
+
+	bufLen := bufRef.Len(bufManager)
+
+	if dst == nil {
+		dst = make([]byte, bufLen)
+	}
+
+	bufRef.Visit(bufManager, 0, len(dst), CopyFromBufRef, dst)
+
+	return dst
+}
+
+// -------------------------------------------------
+
+// CopyFromBufRef copies bytes from partBuf to buf, and is a helper
+// function meant to be used with BufRef.Visit() and FromBufRef().
+func CopyFromBufRef(buf, partBuf []byte, partFrom, partTo int) bool {
+	copy(buf[partFrom:partTo], partBuf)
+	return true
+}
+
+// CopyFromBufRef copies bytes from buf to partBuf, and is a helper
+// function meant to be used with ToBufRef(), BufRef.Update() and
+// BufManager.Alloc().
+func CopyToBufRef(buf, partBuf []byte, partFrom, partTo int) bool {
+	copy(partBuf, buf[partFrom:partTo])
+	return true
+}
+
+// -------------------------------------------------
+
 // A BufManager represents the functionality needed for memory
 // management.
 type BufManager interface {
