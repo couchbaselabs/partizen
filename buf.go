@@ -38,7 +38,7 @@ func (dbm *defaultBufManager) Alloc(size int,
 		return nil
 	}
 
-	return (&defaultBufRef{slabLoc}).Update(dbm, 0, size, partUpdater)
+	return (&defaultBufRef{slabLoc}).update(dbm, 0, size, partUpdater)
 }
 
 func (dbr *defaultBufRef) Len(bm BufManager) int {
@@ -80,13 +80,18 @@ func (dbr *defaultBufRef) DecRef(bm BufManager) {
 
 func (dbr *defaultBufRef) Update(bm BufManager, from, to int,
 	partUpdater func(partBuf []byte, partFrom, partTo int) bool) BufRef {
-	if partUpdater == nil {
-		return dbr
-	}
-
 	dbm, ok := bm.(*defaultBufManager)
 	if !ok || dbm == nil {
 		return nil
+	}
+
+	return dbr.update(dbm, from, to, partUpdater)
+}
+
+func (dbr *defaultBufRef) update(dbm *defaultBufManager, from, to int,
+	partUpdater func(partBuf []byte, partFrom, partTo int) bool) BufRef {
+	if partUpdater == nil {
+		return dbr
 	}
 
 	dbm.m.Lock()
