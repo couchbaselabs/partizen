@@ -41,6 +41,8 @@ func (r *collection) rootDecRef(kslr *ItemLocRef) {
 	r.store.m.Unlock()
 }
 
+// --------------------------------------------
+
 func (r *collection) Get(key Key, matchSeq Seq, withValue bool) (
 	seq Seq, val Val, err error) {
 	seq, bufRef, err := r.GetBufRef(key, matchSeq, withValue)
@@ -250,6 +252,8 @@ func (r *collection) mutate(
 	r.rootDecRef(kslr)
 	return err
 }
+
+// --------------------------------------------
 
 func (r *collection) minMax(locateMax bool, withValue bool) (
 	partitionId PartitionId, key Key, seq Seq, val Val, err error) {
