@@ -44,6 +44,8 @@ type Store interface {
 
 	// TODO: Commit changes.
 	// TODO: Store-level read-only snapshots.
+
+	BufManager() BufManager
 }
 
 // A Collection is an ordered set of key-value entries.

@@ -210,3 +210,8 @@ func (s *store) RemoveCollection(collName string) error {
 
 	return ErrUnknownCollection
 }
+
+func (s *store) BufManager() BufManager {
+	return s.bufManager
+}
+

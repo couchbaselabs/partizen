@@ -10,6 +10,10 @@ func TestMemStoreOpen(t *testing.T) {
 	if err != nil || s == nil {
 		t.Errorf("expected mem StoreOpen() to work, got err: %v", err)
 	}
+	bm := s.BufManager()
+	if bm == nil {
+		t.Errorf("expected non-nil BufManager")
+	}
 	names, err := s.CollectionNames(nil)
 	if err != nil || len(names) != 0 {
 		t.Errorf("expected empty CollectionNames()")
@@ -55,5 +59,9 @@ func TestMemStoreOpen(t *testing.T) {
 	err = s.RemoveCollection("x")
 	if err == nil {
 		t.Errorf("expected 2nd RemoveCollection to fail")
+	}
+	err = s.Close()
+	if err != nil {
+		t.Errorf("expected ok close")
 	}
 }
