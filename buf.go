@@ -6,11 +6,15 @@ import (
 	"github.com/couchbaselabs/go-slab"
 )
 
+// defaultBufManager is an implementation of BufManager interface
+// based on the go-slab memory manager.
 type defaultBufManager struct {
 	m     sync.Mutex
 	arena *slab.Arena
 }
 
+// defaultBufRef is an implementation of the BufRef interface based on
+// the go-slab memory manager.
 type defaultBufRef struct {
 	slabLoc slab.Loc
 }
@@ -41,6 +45,16 @@ func (dbm *defaultBufManager) Alloc(size int,
 
 	return (&defaultBufRef{slabLoc}).update(dbm, 0, size,
 		partUpdater, cbData)
+}
+
+// -------------------------------------------------
+
+func (dbr *defaultBufRef) IsNil() bool {
+	if dbr == nil {
+		return true
+	}
+
+	return dbr.slabLoc.IsNil()
 }
 
 func (dbr *defaultBufRef) Len(bm BufManager) int {
@@ -127,12 +141,4 @@ func (dbr *defaultBufRef) Visit(bm BufManager, from, to int,
 	dbm.m.Unlock()
 
 	return dbr
-}
-
-func (dbr *defaultBufRef) IsNil() bool {
-	if dbr == nil {
-		return true
-	}
-
-	return dbr.slabLoc.IsNil()
 }
