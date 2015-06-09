@@ -64,4 +64,8 @@ func TestMemStoreOpen(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected ok close")
 	}
+	err = s.Close()
+	if err != nil {
+		t.Errorf("expected ok on re-close")
+	}
 }
