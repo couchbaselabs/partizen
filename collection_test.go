@@ -8,7 +8,8 @@ import (
 
 func testSimpleCursorKeys(t *testing.T, c Collection, name string,
 	ascending bool, startKey, keys string) {
-	cur, err := c.Scan([]byte(startKey), ascending, []PartitionId(nil), true)
+	cur, err := c.Scan([]byte(startKey), ascending,
+		[]PartitionId(nil), true, 0)
 	if err != nil {
 		t.Errorf(name + ": expected no Scan err")
 	}

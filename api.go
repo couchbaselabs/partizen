@@ -93,7 +93,8 @@ type Collection interface {
 	Scan(key Key,
 		ascending bool,
 		partitionIds []PartitionId, // Use nil for all partitions.
-		withValue bool) (Cursor, error)
+		withValue bool,
+		channelSize int) (Cursor, error)
 
 	// Snapshot returns a read-only snapshot of the Collection.
 	// Caller should Close() the returned read-only Collection.

@@ -199,7 +199,7 @@ func BenchmarkIterate(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		cur, _ := c.Scan([]byte(nil), true, nil, true)
+		cur, _ := c.Scan([]byte(nil), true, nil, true, 0)
 		key := []byte{}
 		for key != nil {
 			_, key, _, _, _ = cur.Next()
