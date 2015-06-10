@@ -94,7 +94,7 @@ type Collection interface {
 		ascending bool,
 		partitionIds []PartitionId, // Use nil for all partitions.
 		withValue bool,
-		channelSize int) (Cursor, error)
+		maxReadAhead int) (Cursor, error)
 
 	// Snapshot returns a read-only snapshot of the Collection.
 	// Caller should Close() the returned read-only Collection.

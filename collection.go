@@ -163,11 +163,11 @@ func (r *collection) Max(withValue bool) (
 
 func (r *collection) Scan(key Key, ascending bool,
 	partitionIds []PartitionId, // Use nil for all partitions.
-	withValue bool, channelSize int) (Cursor, error) {
+	withValue bool, maxReadAhead int) (Cursor, error) {
 	closeCh := make(chan struct{})
 
 	resultsCh, err := r.startCursor(key, ascending, partitionIds,
-		io.ReaderAt(nil), closeCh, channelSize)
+		io.ReaderAt(nil), closeCh, maxReadAhead)
 	if err != nil {
 		close(closeCh)
 		return nil, err

@@ -56,13 +56,13 @@ func (c *CursorImpl) NextBufRef() (
 
 func (r *collection) startCursor(key Key, ascending bool,
 	partitionIds []PartitionId, readerAt io.ReaderAt,
-	closeCh chan struct{}, channelSize int) (
+	closeCh chan struct{}, maxReadAhead int) (
 	resultsCh chan CursorResult, err error) {
 	if partitionIds != nil {
 		return nil, fmt.Errorf("partitionsIds unimplemented")
 	}
 
-	resultsCh = make(chan CursorResult, channelSize)
+	resultsCh = make(chan CursorResult, maxReadAhead)
 
 	kslr, ksl := r.rootAddRef()
 
