@@ -145,10 +145,11 @@ func (s *store) AddCollection(collName string, compareFuncName string) (
 	}
 
 	s.m.Lock()
-	defer s.m.Unlock()
 
 	for _, collDef := range s.footer.StoreDefLoc.storeDef.CollectionDefs {
 		if collDef.Name == collName {
+			s.m.Unlock()
+
 			return nil, ErrCollectionExists
 		}
 	}
@@ -176,7 +177,11 @@ func (s *store) AddCollection(collName string, compareFuncName string) (
 	// TODO: Perhaps sort the above arrays, but need to carefully
 	// ensure positions match across the two arrays.
 
-	return r.addRefUnlocked(), nil
+	rv := r.addRefUnlocked()
+
+	s.m.Unlock()
+
+	return rv, nil
 }
 
 func (s *store) RemoveCollection(collName string) error {
@@ -185,7 +190,6 @@ func (s *store) RemoveCollection(collName string) error {
 	}
 
 	s.m.Lock()
-	defer s.m.Unlock()
 
 	for i, collDef := range s.footer.StoreDefLoc.storeDef.CollectionDefs {
 		if collDef.Name == collName {
@@ -204,9 +208,14 @@ func (s *store) RemoveCollection(collName string) error {
 			s.footer.Collections = b[:len(b)-1]
 
 			c.decRefUnlocked()
+
+			s.m.Unlock()
+
 			return nil
 		}
 	}
+
+	s.m.Unlock()
 
 	return ErrCollectionUnknown
 }
