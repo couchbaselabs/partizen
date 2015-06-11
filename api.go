@@ -9,6 +9,9 @@ import (
 type Key []byte
 type Val []byte
 type Seq uint64
+
+// ----------------------------------------
+
 type PartitionId uint16
 type PartitionIds []PartitionId
 
@@ -28,28 +31,37 @@ func (a PartitionIds) Swap(i, j int) {
 
 // A Store is a set of collections.
 type Store interface {
+	// Close allows the system to free/recycle resources.  Further
+	// operations on a closed store or its child resources (e.g.,
+	// collections) may have undefined effects.
 	Close() error
 
-	CollectionNames([]string) ([]string, error)
+	// CollectionNames returns the list of collections, appending to
+	// the given rv slice (which may be nil or may be pre-allocated
+	// with capacity).
+	CollectionNames(rv []string) ([]string, error)
 
-	// Caller must Close() the returned Collection.
+	// Caller must Close() the returned collection.
 	GetCollection(collName string) (Collection, error)
 
-	// Caller must Close() the returned Collection.
+	// Caller must Close() the returned collection.
 	AddCollection(collName string, compareFuncName string) (Collection, error)
 
 	// Behavior is undefined for any closed collections that the
 	// caller still has references for.
 	RemoveCollection(collName string) error
 
+	// Returns the BufManager being used by this store.
+	BufManager() BufManager
+
 	// TODO: Commit changes.
 	// TODO: Store-level read-only snapshots.
-
-	BufManager() BufManager
 }
 
 // A Collection is an ordered set of key-value entries.
 type Collection interface {
+	// Further operations on a closed collection may have undefined
+	// effects.
 	Close() error
 
 	// Get returns the item information, if it exists.
@@ -81,10 +93,15 @@ type Collection interface {
 	// matchSeq of NO_MATCH_SEQ if you don't want a seq match.
 	Del(key Key, matchSeq Seq, newSeq Seq) error
 
+	// Batch atomically updates the Collection from one or more
+	// mutations.
 	Batch([]Mutation) error
 
+	// Min returns the smallest key item.
 	Min(withValue bool) (
 		partitionId PartitionId, key Key, seq Seq, val Val, err error)
+
+	// Max returns the largest key item.
 	Max(withValue bool) (
 		partitionId PartitionId, key Key, seq Seq, val Val, err error)
 
@@ -96,8 +113,8 @@ type Collection interface {
 		withValue bool,
 		maxReadAhead int) (Cursor, error)
 
-	// Snapshot returns a read-only snapshot of the Collection.
-	// Caller should Close() the returned read-only Collection.
+	// Snapshot returns a read-only snapshot of the collection.
+	// Caller should Close() the returned read-only collection.
 	Snapshot() (Collection, error)
 
 	// The seq should be the Seq that was at or before some past
