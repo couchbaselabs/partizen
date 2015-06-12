@@ -7,6 +7,22 @@ import (
 	"sort"
 )
 
+type NodeMem struct {
+	ItemLocs ItemLocs
+
+	Partitions *Partitions
+}
+
+func (n *NodeMem) GetItemLocs() ItemLocs {
+	return n.ItemLocs
+}
+
+func (n *NodeMem) GetPartitions() *Partitions {
+	return n.Partitions
+}
+
+// ----------------------------------------------------
+
 func locateItemLoc(ksl *ItemLoc, key Key,
 	bufManager BufManager, r io.ReaderAt) (*ItemLoc, error) {
 	for ksl != nil {
