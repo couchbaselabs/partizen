@@ -77,7 +77,7 @@ func TestEmptyMutate(t *testing.T) {
 	rootItemLoc := &ItemLoc{
 		Loc: Loc{
 			Type: LocTypeNode,
-			node: &NodeMem{},
+			node: &node{},
 		},
 	}
 	ksl, err = rootProcessMutations(rootItemLoc, nil, nil, 15, 32,
@@ -148,17 +148,17 @@ func TestMutationsOn1Val(t *testing.T) {
 	if ksl.Loc.node == nil || locBuf(&ksl.Loc) != nil {
 		t.Errorf("expected a keyLoc with node, no buf")
 	}
-	if ksl.Loc.node.(*NodeMem).ItemLocs.Len() != 1 {
+	if ksl.Loc.node.itemLocs.Len() != 1 {
 		t.Errorf("expected 1 child")
 	}
-	if string(ksl.Loc.node.(*NodeMem).ItemLocs.Key(0)) != "a" {
+	if string(ksl.Loc.node.itemLocs.Key(0)) != "a" {
 		t.Errorf("expected 1 child")
 	}
-	if !isSomeMemLoc(ksl.Loc.node.(*NodeMem).ItemLocs.Loc(0), LocTypeVal) {
+	if !isSomeMemLoc(ksl.Loc.node.itemLocs.Loc(0), LocTypeVal) {
 		t.Errorf("expected val child")
 	}
 
-	astr := locBuf(ksl.Loc.node.(*NodeMem).ItemLocs.Loc(0))
+	astr := locBuf(ksl.Loc.node.itemLocs.Loc(0))
 	if string(astr) != "A" {
 		t.Errorf("expected val child is A")
 	}
@@ -189,18 +189,18 @@ func TestMutationsOn1Val(t *testing.T) {
 		if ksl2.Loc.node == nil || locBuf(&ksl2.Loc) != nil {
 			t.Errorf("expected a ksl with node, no buf")
 		}
-		if ksl2.Loc.node.(*NodeMem).ItemLocs.Len() != 1 {
+		if ksl2.Loc.node.itemLocs.Len() != 1 {
 			t.Errorf("expected 1 child")
 		}
-		if string(ksl2.Loc.node.(*NodeMem).ItemLocs.Key(0)) != "a" {
+		if string(ksl2.Loc.node.itemLocs.Key(0)) != "a" {
 			t.Errorf("expected 1 child")
 		}
-		if !isSomeMemLoc(ksl2.Loc.node.(*NodeMem).ItemLocs.Loc(0),
+		if !isSomeMemLoc(ksl2.Loc.node.itemLocs.Loc(0),
 			LocTypeVal) {
 			t.Errorf("expected val child")
 		}
 
-		astr := locBuf(ksl2.Loc.node.(*NodeMem).ItemLocs.Loc(0))
+		astr := locBuf(ksl2.Loc.node.itemLocs.Loc(0))
 		if string(astr) != "A" {
 			t.Errorf("expected val child is A")
 		}
@@ -254,34 +254,34 @@ func TestMutationsOn2Vals(t *testing.T) {
 		if ksl.Loc.node == nil || locBuf(&ksl.Loc) != nil {
 			t.Errorf("expected a ksl with node, no buf")
 		}
-		if ksl.Loc.node.(*NodeMem).ItemLocs.Len() != numVals {
+		if ksl.Loc.node.itemLocs.Len() != numVals {
 			t.Errorf("expected %d children", numVals)
 		}
 		if numVals >= 1 {
 			return
 		}
-		if string(ksl.Loc.node.(*NodeMem).ItemLocs.Key(0)) != "a" {
+		if string(ksl.Loc.node.itemLocs.Key(0)) != "a" {
 			t.Errorf("expected child 0 is a")
 		}
-		if !isSomeMemLoc(ksl.Loc.node.(*NodeMem).ItemLocs.Loc(0), LocTypeVal) {
+		if !isSomeMemLoc(ksl.Loc.node.itemLocs.Loc(0), LocTypeVal) {
 			t.Errorf("expected val child")
 		}
 
-		astr := locBuf(ksl.Loc.node.(*NodeMem).ItemLocs.Loc(0))
+		astr := locBuf(ksl.Loc.node.itemLocs.Loc(0))
 		if string(astr) != "A" {
 			t.Errorf("expected val child is A")
 		}
 		if numVals >= 2 {
 			return
 		}
-		if string(ksl.Loc.node.(*NodeMem).ItemLocs.Key(1)) != "b" {
+		if string(ksl.Loc.node.itemLocs.Key(1)) != "b" {
 			t.Errorf("expected child 1 is b")
 		}
-		if !isSomeMemLoc(ksl.Loc.node.(*NodeMem).ItemLocs.Loc(1), LocTypeVal) {
+		if !isSomeMemLoc(ksl.Loc.node.itemLocs.Loc(1), LocTypeVal) {
 			t.Errorf("expected val child")
 		}
 
-		bstr := locBuf(ksl.Loc.node.(*NodeMem).ItemLocs.Loc(1))
+		bstr := locBuf(ksl.Loc.node.itemLocs.Loc(1))
 		if string(bstr) != "B" {
 			t.Errorf("expected val child is B")
 		}

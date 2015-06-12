@@ -118,7 +118,7 @@ func groupItemLocs(childItemLocs ItemLocs,
 		parents = itemLocsAppend(parents,
 			a.Key(0), maxSeq, Loc{
 				Type: LocTypeNode,
-				node: &NodeMem{ItemLocs: a, Partitions: partitions},
+				node: &node{itemLocs: a, partitions: partitions},
 			})
 		beg = i
 	}
@@ -134,7 +134,7 @@ func groupItemLocs(childItemLocs ItemLocs,
 			parents = itemLocsAppend(parents,
 				a.Key(0), maxSeq, Loc{
 					Type: LocTypeNode,
-					node: &NodeMem{ItemLocs: a, Partitions: partitions},
+					node: &node{itemLocs: a, partitions: partitions},
 				})
 		} else { // Pass the leftovers upwards.
 			for i := beg; i < n; i++ { // TODO: swizzle lock?
@@ -455,7 +455,7 @@ func rebalanceNodes(itemLocs ItemLocs,
 				rebalanced = itemLocsAppend(rebalanced,
 					a.Key(0), maxSeq, Loc{
 						Type: LocTypeNode,
-						node: &NodeMem{ItemLocs: a, Partitions: partitions},
+						node: &node{itemLocs: a, partitions: partitions},
 					})
 				rebalancing = nil
 			}
@@ -473,7 +473,7 @@ func rebalanceNodes(itemLocs ItemLocs,
 		rebalanced = itemLocsAppend(rebalanced,
 			a.Key(0), maxSeq, Loc{
 				Type: LocTypeNode,
-				node: &NodeMem{ItemLocs: a, Partitions: partitions},
+				node: &node{itemLocs: a, partitions: partitions},
 			})
 	}
 	if rebalanced != nil {

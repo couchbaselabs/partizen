@@ -7,18 +7,17 @@ import (
 	"sort"
 )
 
-type NodeMem struct {
-	ItemLocs ItemLocs
-
-	Partitions *Partitions
+type node struct {
+	itemLocs   ItemLocs
+	partitions *Partitions
 }
 
-func (n *NodeMem) GetItemLocs() ItemLocs {
-	return n.ItemLocs
+func (n *node) GetItemLocs() ItemLocs {
+	return n.itemLocs
 }
 
-func (n *NodeMem) GetPartitions() *Partitions {
-	return n.Partitions
+func (n *node) GetPartitions() *Partitions {
+	return n.partitions
 }
 
 // ----------------------------------------------------
@@ -29,30 +28,30 @@ func (loc *Loc) Read(bufManager BufManager, r io.ReaderAt) (
 
 	if loc.Type == LocTypeNode {
 		if loc.node == nil {
-			return nil, fmt.Errorf("node_io: Read loc type node TODO")
+			return nil, fmt.Errorf("node: Read loc type node TODO")
 		}
 		return loc, nil
 	}
 
 	if loc.Type == LocTypeVal {
 		if loc.bufRef.IsNil() {
-			return nil, fmt.Errorf("node_io: Read loc type val TODO")
+			return nil, fmt.Errorf("node: Read loc type val TODO")
 		}
 		return loc, nil
 	}
 
-	return nil, fmt.Errorf("node_io: Read unreadable type, loc: %v", loc)
+	return nil, fmt.Errorf("node: Read unreadable type, loc: %v", loc)
 }
 
 func ReadLocNode(loc *Loc, bufManager BufManager, r io.ReaderAt) (
-	Node, error) {
+	*node, error) {
 	loc, err := loc.Read(bufManager, r)
 	if err != nil {
 		return nil, err
 	}
 
 	if loc.node == nil {
-		return nil, fmt.Errorf("node_io: ReadLocNode, no node")
+		return nil, fmt.Errorf("node: ReadLocNode, no node")
 	}
 
 	return loc.node, nil

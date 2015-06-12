@@ -215,7 +215,7 @@ type Loc struct {
 	// in-memory representation of Node hasn't been loaded yet.
 	//
 	// TODO: Need lock to protect Loc.node swizzling?
-	node Node
+	node *node
 }
 
 const (
@@ -236,16 +236,6 @@ func (loc *Loc) BufRef(bm BufManager) BufRef {
 	loc.bufRef.AddRef(bm)
 
 	return loc.bufRef
-}
-
-// ----------------------------------------
-
-// An immutable Node of a partizen btree.
-type Node interface {
-	// Returns the immutable ItemLocs of the node.
-	GetItemLocs() ItemLocs
-
-	GetPartitions() *Partitions
 }
 
 // ----------------------------------------
