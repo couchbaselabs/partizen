@@ -47,13 +47,11 @@ func (c *CursorImpl) NextBufRef() (
 		return 0, nil, 0, nil, nil // TODO: zero/nil PartitionId.
 	}
 
-	partitions, err :=
-		r.itemLoc.GetPartitions(c.bufManager, c.readerAt)
+	partitionId, err :=
+		r.itemLoc.GetPartitionId(c.bufManager, c.readerAt)
 	if err != nil {
 		return 0, nil, 0, nil, err
 	}
-
-	partitionId := partitions.PartitionIds[0] // TODO: Wasteful!
 
 	return partitionId,
 		r.itemLoc.Key, r.itemLoc.Seq, r.itemLoc.Loc.BufRef(c.bufManager),

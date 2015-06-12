@@ -145,6 +145,20 @@ type ItemLoc struct {
 
 var zeroItemLoc ItemLoc
 
+func (iloc *ItemLoc) GetPartitionId(
+	bufManager BufManager, r io.ReaderAt) (PartitionId, error) {
+	loc, err := iloc.Loc.Read(bufManager, r)
+	if err != nil {
+		return 0, err
+	}
+
+	if loc.Type != LocTypeVal {
+		return 0, fmt.Errorf("GetPartitionId when not LocTypeVal")
+	}
+
+	return loc.partitionId, nil
+}
+
 func (iloc *ItemLoc) GetPartitions(
 	bufManager BufManager, r io.ReaderAt) (
 	*Partitions, error) {
