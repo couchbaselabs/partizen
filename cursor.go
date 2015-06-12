@@ -9,13 +9,14 @@ import (
 
 type CursorImpl struct {
 	bufManager BufManager
+	readerAt   io.ReaderAt
 	closeCh    chan struct{}
 	resultsCh  chan CursorResult
 }
 
 type CursorResult struct {
-	err error
-	ksl *ItemLoc
+	err     error
+	itemLoc *ItemLoc
 }
 
 // --------------------------------------------
@@ -43,13 +44,20 @@ func (c *CursorImpl) NextBufRef() (
 	PartitionId, Key, Seq, BufRef, error) {
 	r, ok := <-c.resultsCh
 	if !ok {
-		return 0, nil, 0, nil, nil // TODO: PartitionId.
+		return 0, nil, 0, nil, nil // TODO: zero/nil PartitionId.
 	}
 
-	partitionId := PartitionId(0) // TODO: PartitionId.
+	partitions, err :=
+		r.itemLoc.GetPartitions(c.bufManager, c.readerAt)
+	if err != nil {
+		return 0, nil, 0, nil, err
+	}
 
-	return partitionId, r.ksl.Key, r.ksl.Seq,
-		r.ksl.Loc.BufRef(c.bufManager), r.err
+	partitionId := partitions.PartitionIds[0] // TODO: Wasteful!
+
+	return partitionId,
+		r.itemLoc.Key, r.itemLoc.Seq, r.itemLoc.Loc.BufRef(c.bufManager),
+		r.err
 }
 
 // --------------------------------------------
@@ -64,15 +72,15 @@ func (r *collection) startCursor(key Key, ascending bool,
 
 	resultsCh = make(chan CursorResult, maxReadAhead)
 
-	kslr, ksl := r.rootAddRef()
+	itemLocRef, itemLoc := r.rootAddRef()
 
-	var visit func(ksl *ItemLoc) error
-	visit = func(ksl *ItemLoc) error {
-		if ksl == nil {
+	var visit func(itemLoc *ItemLoc) error
+	visit = func(itemLoc *ItemLoc) error {
+		if itemLoc == nil {
 			return nil
 		}
-		if ksl.Loc.Type == LocTypeNode {
-			node, err := ReadLocNode(&ksl.Loc,
+		if itemLoc.Loc.Type == LocTypeNode {
+			node, err := ReadLocNode(&itemLoc.Loc,
 				r.store.bufManager, readerAt)
 			if err != nil {
 				return err
@@ -80,23 +88,23 @@ func (r *collection) startCursor(key Key, ascending bool,
 			if node == nil {
 				return nil
 			}
-			ksls := node.GetItemLocs()
-			if ksls == nil {
+			itemLocs := node.GetItemLocs()
+			if itemLocs == nil {
 				return nil
 			}
-			n := ksls.Len()
+			n := itemLocs.Len()
 			if n <= 0 {
 				return nil
 			}
 			i := sort.Search(n, func(i int) bool {
-				return bytes.Compare(ksls.Key(i), key) >= 0
+				return bytes.Compare(itemLocs.Key(i), key) >= 0
 			})
 			if !ascending &&
-				(i >= n || bytes.Compare(ksls.Key(i), key) > 0) {
+				(i >= n || bytes.Compare(itemLocs.Key(i), key) > 0) {
 				i = i - 1
 			}
 			for i >= 0 && i < n {
-				err := visit(ksls.ItemLoc(i))
+				err := visit(itemLocs.ItemLoc(i))
 				if err != nil {
 					return err
 				}
@@ -109,24 +117,24 @@ func (r *collection) startCursor(key Key, ascending bool,
 			return nil
 		}
 
-		if ksl.Loc.Type == LocTypeVal {
+		if itemLoc.Loc.Type == LocTypeVal {
 			select {
 			case <-closeCh:
 				return ErrCursorClosed
-			case resultsCh <- CursorResult{err: nil, ksl: ksl}:
+			case resultsCh <- CursorResult{err: nil, itemLoc: itemLoc}:
 				// TODO: Mem mgmt.
 			}
 			return nil
 		}
 
 		return fmt.Errorf("startCursor.visit:",
-			" unexpected Loc.Type, ksl: %#v", ksl)
+			" unexpected Loc.Type, itemLoc: %#v", itemLoc)
 	}
 
 	go func() {
-		err := visit(ksl)
+		err := visit(itemLoc)
 
-		r.rootDecRef(kslr)
+		r.rootDecRef(itemLocRef)
 
 		if err != nil && err != ErrCursorClosed {
 			resultsCh <- CursorResult{err: err}

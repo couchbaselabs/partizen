@@ -166,8 +166,10 @@ func (r *collection) Scan(key Key, ascending bool,
 	withValue bool, maxReadAhead int) (Cursor, error) {
 	closeCh := make(chan struct{})
 
-	resultsCh, err := r.startCursor(key, ascending, partitionIds,
-		io.ReaderAt(nil), closeCh, maxReadAhead)
+	readerAt := io.ReaderAt(nil)
+
+	resultsCh, err := r.startCursor(key, ascending,
+		partitionIds, readerAt, closeCh, maxReadAhead)
 	if err != nil {
 		close(closeCh)
 		return nil, err
@@ -175,6 +177,7 @@ func (r *collection) Scan(key Key, ascending bool,
 
 	return &CursorImpl{
 		bufManager: r.store.bufManager,
+		readerAt:   readerAt,
 		closeCh:    closeCh,
 		resultsCh:  resultsCh,
 	}, nil
