@@ -77,8 +77,7 @@ func (dbr *defaultBufRef) AddRef(bm BufManager) {
 	}
 
 	dbm.m.Lock()
-	buf := dbm.arena.LocToBuf(dbr.slabLoc)
-	dbm.arena.AddRef(buf)
+	dbm.arena.LocAddRef(dbr.slabLoc)
 	dbm.m.Unlock()
 }
 
@@ -89,8 +88,7 @@ func (dbr *defaultBufRef) DecRef(bm BufManager) {
 	}
 
 	dbm.m.Lock()
-	buf := dbm.arena.LocToBuf(dbr.slabLoc)
-	dbm.arena.DecRef(buf)
+	dbm.arena.LocDecRef(dbr.slabLoc)
 	dbm.m.Unlock()
 }
 
