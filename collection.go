@@ -255,7 +255,7 @@ func (c *collection) mutate(
 	}
 	c.store.m.Unlock()
 
-	if err != nil {
+	if err == nil {
 		c.rootDecRef(kslr)
 	}
 
