@@ -212,6 +212,7 @@ func (r *collection) mutate(
 	}
 
 	var cbErr error
+
 	cb := func(existing *ItemLoc, isVal bool, mutation *Mutation) bool {
 		if !isVal ||
 			mutation.MatchSeq == NO_MATCH_SEQ ||
