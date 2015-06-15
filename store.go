@@ -154,30 +154,30 @@ func (s *store) AddCollection(collName string, compareFuncName string) (
 		}
 	}
 
-	c := &CollectionDef{
+	collDef := &CollectionDef{
 		Name:            collName,
 		CompareFuncName: compareFuncName,
 		MinFanOut:       s.storeOptions.DefaultMinFanOut,
 		MaxFanOut:       s.storeOptions.DefaultMaxFanOut,
 	}
-	r := &collection{
+	c := &collection{
 		refs:        1,
 		store:       s,
-		name:        c.Name,
+		name:        collDef.Name,
 		compareFunc: compareFunc,
-		minFanOut:   c.MinFanOut,
-		maxFanOut:   c.MaxFanOut,
+		minFanOut:   collDef.MinFanOut,
+		maxFanOut:   collDef.MaxFanOut,
 	}
 
 	s.footer.StoreDefLoc.storeDef.CollectionDefs =
-		append(s.footer.StoreDefLoc.storeDef.CollectionDefs, c)
+		append(s.footer.StoreDefLoc.storeDef.CollectionDefs, collDef)
 	s.footer.Collections =
-		append(s.footer.Collections, r)
+		append(s.footer.Collections, c)
 
 	// TODO: Perhaps sort the above arrays, but need to carefully
 	// ensure positions match across the two arrays.
 
-	rv := r.addRefUnlocked()
+	rv := c.addRefUnlocked()
 
 	s.m.Unlock()
 
