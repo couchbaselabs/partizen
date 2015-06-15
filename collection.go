@@ -246,12 +246,18 @@ func (c *collection) mutate(
 	} else if kslr != nil && kslr.next != nil {
 		err = ErrConcurrentMutationChain
 	} else {
+		err = nil
+
 		c.Root = &ItemLocRef{R: ksl2, refs: 1}
 		if kslr != nil {
 			kslr.next, _ = c.Root.addRef()
 		}
 	}
 	c.store.m.Unlock()
+
+	if err != nil {
+		c.rootDecRef(kslr)
+	}
 
 	c.rootDecRef(kslr)
 	return err
