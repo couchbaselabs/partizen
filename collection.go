@@ -5,80 +5,80 @@ import (
 	"io"
 )
 
-func (r *collection) Close() error {
-	r.store.m.Lock()
-	r.decRefUnlocked()
-	r.store.m.Unlock()
+func (c *collection) Close() error {
+	c.store.m.Lock()
+	c.decRefUnlocked()
+	c.store.m.Unlock()
 	return nil
 }
 
 // Must be invoked while caller has store.m locked.
-func (r *collection) addRefUnlocked() *collection {
-	r.refs++
-	return r
+func (c *collection) addRefUnlocked() *collection {
+	c.refs++
+	return c
 }
 
 // Must be invoked while caller has store.m locked.
-func (r *collection) decRefUnlocked() {
-	r.refs--
-	if r.refs <= 0 {
-		r.Root.decRef()
-		r.Root = nil
-		r.readOnly = true
+func (c *collection) decRefUnlocked() {
+	c.refs--
+	if c.refs <= 0 {
+		c.Root.decRef()
+		c.Root = nil
+		c.readOnly = true
 	}
 }
 
-func (r *collection) rootAddRef() (*ItemLocRef, *ItemLoc) {
-	r.store.m.Lock()
-	kslr, ksl := r.Root.addRef()
-	r.store.m.Unlock()
+func (c *collection) rootAddRef() (*ItemLocRef, *ItemLoc) {
+	c.store.m.Lock()
+	kslr, ksl := c.Root.addRef()
+	c.store.m.Unlock()
 	return kslr, ksl
 }
 
-func (r *collection) rootDecRef(kslr *ItemLocRef) {
-	r.store.m.Lock()
+func (c *collection) rootDecRef(kslr *ItemLocRef) {
+	c.store.m.Lock()
 	kslr.decRef()
-	r.store.m.Unlock()
+	c.store.m.Unlock()
 }
 
 // --------------------------------------------
 
-func (r *collection) Get(key Key, matchSeq Seq, withValue bool) (
+func (c *collection) Get(key Key, matchSeq Seq, withValue bool) (
 	seq Seq, val Val, err error) {
-	seq, bufRef, err := r.GetBufRef(key, matchSeq, withValue)
+	seq, bufRef, err := c.GetBufRef(key, matchSeq, withValue)
 	if err != nil || bufRef == nil {
 		return seq, nil, err
 	}
 
 	if withValue {
-		val = FromBufRef(nil, bufRef, r.store.bufManager)
+		val = FromBufRef(nil, bufRef, c.store.bufManager)
 	}
 
-	bufRef.DecRef(r.store.bufManager)
+	bufRef.DecRef(c.store.bufManager)
 
 	return seq, val, nil
 }
 
-func (r *collection) GetBufRef(key Key, matchSeq Seq, withValue bool) (
+func (c *collection) GetBufRef(key Key, matchSeq Seq, withValue bool) (
 	seq Seq, val BufRef, err error) {
 	var hitSeq Seq
 	var hitType uint8
 	var hitBufRef BufRef
 
-	kslr, ksl := r.rootAddRef()
+	kslr, ksl := c.rootAddRef()
 	hit, err := locateItemLoc(ksl, key,
-		r.store.bufManager, io.ReaderAt(nil))
+		c.store.bufManager, io.ReaderAt(nil))
 	if err == nil && hit != nil {
 		hitSeq, hitType = hit.Seq, hit.Loc.Type
 		if withValue {
-			hitBufRef = hit.Loc.BufRef(r.store.bufManager)
+			hitBufRef = hit.Loc.BufRef(c.store.bufManager)
 		}
 	}
-	r.rootDecRef(kslr)
+	c.rootDecRef(kslr)
 
 	if err != nil {
 		if hitBufRef != nil {
-			hitBufRef.DecRef(r.store.bufManager)
+			hitBufRef.DecRef(c.store.bufManager)
 		}
 		return 0, nil, err
 	}
@@ -86,13 +86,13 @@ func (r *collection) GetBufRef(key Key, matchSeq Seq, withValue bool) (
 	if matchSeq != NO_MATCH_SEQ {
 		if hit != nil && matchSeq != hitSeq {
 			if hitBufRef != nil {
-				hitBufRef.DecRef(r.store.bufManager)
+				hitBufRef.DecRef(c.store.bufManager)
 			}
 			return 0, nil, ErrMatchSeq
 		}
 		if hit == nil && matchSeq != CREATE_MATCH_SEQ {
 			if hitBufRef != nil {
-				hitBufRef.DecRef(r.store.bufManager)
+				hitBufRef.DecRef(c.store.bufManager)
 			}
 			return 0, nil, ErrMatchSeq
 		}
@@ -100,7 +100,7 @@ func (r *collection) GetBufRef(key Key, matchSeq Seq, withValue bool) (
 
 	if hit != nil && hitType != LocTypeVal {
 		if hitBufRef != nil {
-			hitBufRef.DecRef(r.store.bufManager)
+			hitBufRef.DecRef(c.store.bufManager)
 		}
 		return 0, nil, fmt.Errorf("collection.Get: bad type: %#v", hitType)
 	}
@@ -108,67 +108,67 @@ func (r *collection) GetBufRef(key Key, matchSeq Seq, withValue bool) (
 	return hitSeq, hitBufRef, nil
 }
 
-func (r *collection) Set(partitionId PartitionId, key Key,
+func (c *collection) Set(partitionId PartitionId, key Key,
 	matchSeq Seq, newSeq Seq, val Val) error {
-	valBufRef := r.store.bufManager.Alloc(len(val), CopyToBufRef, val)
+	valBufRef := c.store.bufManager.Alloc(len(val), CopyToBufRef, val)
 	if valBufRef == nil || valBufRef.IsNil() {
 		return ErrAlloc
 	}
 
-	err := r.SetBufRef(partitionId, key, matchSeq, newSeq, valBufRef)
+	err := c.SetBufRef(partitionId, key, matchSeq, newSeq, valBufRef)
 
-	valBufRef.DecRef(r.store.bufManager)
+	valBufRef.DecRef(c.store.bufManager)
 
 	return err
 }
 
-func (r *collection) SetBufRef(partitionId PartitionId, key Key,
+func (c *collection) SetBufRef(partitionId PartitionId, key Key,
 	matchSeq Seq, newSeq Seq, valBufRef BufRef) error {
 	if valBufRef == nil || valBufRef.IsNil() {
 		return ErrAlloc
 	}
 
-	return r.mutate([]Mutation{Mutation{
+	return c.mutate([]Mutation{Mutation{
 		PartitionId: partitionId,
 		Key:         key,
 		Seq:         newSeq,
 		ValBufRef:   valBufRef,
 		Op:          MUTATION_OP_UPDATE,
 		MatchSeq:    matchSeq,
-	}}, r.store.bufManager)
+	}}, c.store.bufManager)
 }
 
-func (r *collection) Del(key Key, matchSeq Seq, newSeq Seq) error {
-	return r.mutate([]Mutation{Mutation{
+func (c *collection) Del(key Key, matchSeq Seq, newSeq Seq) error {
+	return c.mutate([]Mutation{Mutation{
 		Key:      key,
 		Seq:      newSeq,
 		Op:       MUTATION_OP_DELETE,
 		MatchSeq: matchSeq,
-	}}, r.store.bufManager)
+	}}, c.store.bufManager)
 }
 
-func (r *collection) Batch(mutations []Mutation) error {
-	return r.mutate(mutations, r.store.bufManager)
+func (c *collection) Batch(mutations []Mutation) error {
+	return c.mutate(mutations, c.store.bufManager)
 }
 
-func (r *collection) Min(withValue bool) (
+func (c *collection) Min(withValue bool) (
 	partitionId PartitionId, key Key, seq Seq, val Val, err error) {
-	return r.minMax(false, withValue)
+	return c.minMax(false, withValue)
 }
 
-func (r *collection) Max(withValue bool) (
+func (c *collection) Max(withValue bool) (
 	partitionId PartitionId, key Key, seq Seq, val Val, err error) {
-	return r.minMax(true, withValue)
+	return c.minMax(true, withValue)
 }
 
-func (r *collection) Scan(key Key, ascending bool,
+func (c *collection) Scan(key Key, ascending bool,
 	partitionIds []PartitionId, // Use nil for all partitions.
 	withValue bool, maxReadAhead int) (Cursor, error) {
 	closeCh := make(chan struct{})
 
 	readerAt := io.ReaderAt(nil)
 
-	resultsCh, err := r.startCursor(key, ascending,
+	resultsCh, err := c.startCursor(key, ascending,
 		partitionIds, readerAt, closeCh, maxReadAhead)
 	if err != nil {
 		close(closeCh)
@@ -176,38 +176,38 @@ func (r *collection) Scan(key Key, ascending bool,
 	}
 
 	return &CursorImpl{
-		bufManager: r.store.bufManager,
+		bufManager: c.store.bufManager,
 		readerAt:   readerAt,
 		closeCh:    closeCh,
 		resultsCh:  resultsCh,
 	}, nil
 }
 
-func (r *collection) Snapshot() (Collection, error) {
-	r.store.m.Lock()
-	x := *r // Shallow copy.
+func (c *collection) Snapshot() (Collection, error) {
+	c.store.m.Lock()
+	x := *c // Shallow copy.
 	x.Root.addRef()
 	x.refs = 1
 	x.readOnly = true
-	r.store.m.Unlock()
+	c.store.m.Unlock()
 	return &x, nil
 }
 
-func (r *collection) Diff(partitionId PartitionId, seq Seq,
+func (c *collection) Diff(partitionId PartitionId, seq Seq,
 	exactToSeq bool) (Cursor, error) {
 	return nil, fmt.Errorf("unimplemented")
 }
 
-func (r *collection) Rollback(partitionId PartitionId, seq Seq,
+func (c *collection) Rollback(partitionId PartitionId, seq Seq,
 	exactToSeq bool) (Seq, error) {
 	return 0, fmt.Errorf("unimplemented")
 }
 
 // --------------------------------------------
 
-func (r *collection) mutate(
+func (c *collection) mutate(
 	mutations []Mutation, bufManager BufManager) error {
-	if r.readOnly {
+	if c.readOnly {
 		return ErrReadOnly
 	}
 
@@ -227,85 +227,85 @@ func (r *collection) mutate(
 		return false
 	}
 
-	kslr, ksl := r.rootAddRef()
+	kslr, ksl := c.rootAddRef()
 
 	ksl2, err := rootProcessMutations(ksl, mutations, cb,
-		int(r.minFanOut), int(r.maxFanOut), bufManager, io.ReaderAt(nil))
+		int(c.minFanOut), int(c.maxFanOut), bufManager, io.ReaderAt(nil))
 	if err != nil {
-		r.rootDecRef(kslr)
+		c.rootDecRef(kslr)
 		return err
 	}
 	if cbErr != nil {
-		r.rootDecRef(kslr)
+		c.rootDecRef(kslr)
 		return cbErr
 	}
 
-	r.store.m.Lock()
-	if kslr != r.Root {
+	c.store.m.Lock()
+	if kslr != c.Root {
 		err = ErrConcurrentMutation
 	} else if kslr != nil && kslr.next != nil {
 		err = ErrConcurrentMutationChain
 	} else {
-		r.Root = &ItemLocRef{R: ksl2, refs: 1}
+		c.Root = &ItemLocRef{R: ksl2, refs: 1}
 		if kslr != nil {
-			kslr.next, _ = r.Root.addRef()
+			kslr.next, _ = c.Root.addRef()
 		}
 	}
-	r.store.m.Unlock()
+	c.store.m.Unlock()
 
-	r.rootDecRef(kslr)
+	c.rootDecRef(kslr)
 	return err
 }
 
 // --------------------------------------------
 
-func (r *collection) minMax(locateMax bool, withValue bool) (
+func (c *collection) minMax(locateMax bool, withValue bool) (
 	partitionId PartitionId, key Key, seq Seq, val Val, err error) {
 	var bufRef BufRef
 
 	partitionId, key, seq, bufRef, err =
-		r.minMaxBufRef(locateMax, withValue)
+		c.minMaxBufRef(locateMax, withValue)
 	if err != nil || bufRef == nil {
 		return 0, nil, 0, nil, err
 	}
 
 	if withValue {
-		val = FromBufRef(nil, bufRef, r.store.bufManager)
+		val = FromBufRef(nil, bufRef, c.store.bufManager)
 	}
 
-	bufRef.DecRef(r.store.bufManager)
+	bufRef.DecRef(c.store.bufManager)
 
 	return partitionId, key, seq, val, nil
 }
 
-func (r *collection) minMaxBufRef(locateMax bool, withValue bool) (
+func (c *collection) minMaxBufRef(locateMax bool, withValue bool) (
 	partitionId PartitionId, key Key, seq Seq, bufRef BufRef, err error) {
-	kslr, ksl := r.rootAddRef()
+	kslr, ksl := c.rootAddRef()
 	if kslr == nil || ksl == nil {
-		r.rootDecRef(kslr)
+		c.rootDecRef(kslr)
 		return 0, nil, 0, nil, nil
 	}
 
 	ksl, err = locateMinMax(ksl, locateMax,
-		r.store.bufManager, io.ReaderAt(nil))
+		c.store.bufManager, io.ReaderAt(nil))
 	if err != nil {
-		r.rootDecRef(kslr)
+		c.rootDecRef(kslr)
 		return 0, nil, 0, nil, err
 	}
 	if ksl == nil {
-		r.rootDecRef(kslr)
+		c.rootDecRef(kslr)
 		return 0, nil, 0, nil, err
 	}
 	if ksl.Loc.Type != LocTypeVal {
-		r.rootDecRef(kslr)
+		c.rootDecRef(kslr)
 		return 0, nil, 0, nil,
 			fmt.Errorf("collection.minMax: unexpected type, ksl: %#v", ksl)
 	}
 
 	if withValue {
-		bufRef = ksl.Loc.BufRef(r.store.bufManager)
+		bufRef = ksl.Loc.BufRef(c.store.bufManager)
 	}
 
-	r.rootDecRef(kslr)
+	c.rootDecRef(kslr)
 	return 0, ksl.Key, ksl.Seq, bufRef, nil
 }
