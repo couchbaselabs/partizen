@@ -11,10 +11,10 @@ type CursorImpl struct {
 	bufManager BufManager
 	readerAt   io.ReaderAt
 	closeCh    chan struct{}
-	resultsCh  chan CursorResult
+	resultsCh  chan cursorResult
 }
 
-type CursorResult struct {
+type cursorResult struct {
 	err     error
 	itemLoc *ItemLoc
 }
@@ -63,12 +63,12 @@ func (c *CursorImpl) NextBufRef() (
 func (r *collection) startCursor(key Key, ascending bool,
 	partitionIds []PartitionId, readerAt io.ReaderAt,
 	closeCh chan struct{}, maxReadAhead int) (
-	resultsCh chan CursorResult, err error) {
+	resultsCh chan cursorResult, err error) {
 	if partitionIds != nil {
 		return nil, fmt.Errorf("partitionsIds unimplemented")
 	}
 
-	resultsCh = make(chan CursorResult, maxReadAhead)
+	resultsCh = make(chan cursorResult, maxReadAhead)
 
 	itemLocRef, itemLoc := r.rootAddRef()
 
@@ -119,7 +119,7 @@ func (r *collection) startCursor(key Key, ascending bool,
 			select {
 			case <-closeCh:
 				return ErrCursorClosed
-			case resultsCh <- CursorResult{err: nil, itemLoc: itemLoc}:
+			case resultsCh <- cursorResult{err: nil, itemLoc: itemLoc}:
 				// TODO: Mem mgmt.
 			}
 			return nil
@@ -135,7 +135,7 @@ func (r *collection) startCursor(key Key, ascending bool,
 		r.rootDecRef(itemLocRef)
 
 		if err != nil && err != ErrCursorClosed {
-			resultsCh <- CursorResult{err: err}
+			resultsCh <- cursorResult{err: err}
 		}
 
 		close(resultsCh)
