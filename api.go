@@ -51,7 +51,9 @@ type Store interface {
 	// caller still has references for.
 	RemoveCollection(collName string) error
 
-	// Returns the BufManager being used by this store.
+	// Returns the BufManager being used by this store, allowing
+	// applications to have more control of memory buffer (BufRef)
+	// management.
 	BufManager() BufManager
 
 	// TODO: Commit changes.
@@ -83,7 +85,8 @@ type Collection interface {
 
 	// SetBufRef is a lower-level Set() API, where the valBufRef
 	// should be immutable and will be ref-count incremented for a
-	// potentially long-lived period of time.
+	// potentially long-lived period of time.  The same valBufRef may
+	// be returned from a later call to GetBufRef().
 	SetBufRef(partitionId PartitionId, key Key, matchSeq Seq,
 		newSeq Seq, valBufRef BufRef) error
 
