@@ -7,7 +7,7 @@ import (
 	"sort"
 )
 
-type CursorImpl struct {
+type cursorImpl struct {
 	bufManager BufManager
 	readerAt   io.ReaderAt
 	closeCh    chan struct{}
@@ -21,12 +21,12 @@ type cursorResult struct {
 
 // --------------------------------------------
 
-func (c *CursorImpl) Close() error {
+func (c *cursorImpl) Close() error {
 	close(c.closeCh)
 	return nil
 }
 
-func (c *CursorImpl) Next() (
+func (c *cursorImpl) Next() (
 	PartitionId, Key, Seq, Val, error) {
 	partitionId, key, seq, bufRef, err := c.NextBufRef()
 	if err != nil || bufRef == nil {
@@ -40,7 +40,7 @@ func (c *CursorImpl) Next() (
 	return partitionId, key, seq, val, nil
 }
 
-func (c *CursorImpl) NextBufRef() (
+func (c *cursorImpl) NextBufRef() (
 	PartitionId, Key, Seq, BufRef, error) {
 	r, ok := <-c.resultsCh
 	if !ok {

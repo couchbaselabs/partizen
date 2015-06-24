@@ -185,7 +185,7 @@ func (c *collection) Scan(key Key, ascending bool,
 		return nil, err
 	}
 
-	return &CursorImpl{
+	return &cursorImpl{
 		bufManager: c.store.bufManager,
 		readerAt:   readerAt,
 		closeCh:    closeCh,
