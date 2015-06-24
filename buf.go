@@ -21,8 +21,12 @@ type defaultBufRef struct {
 
 // -------------------------------------------------
 
-func NewDefaultBufManager(startChunkSize int,
-	slabSize int, growthFactor float64,
+// NewDefaultBufManager returns a BufManager implementation based on
+// the go-slab allocator.
+func NewDefaultBufManager(
+	startChunkSize int,
+	slabSize int,
+	growthFactor float64,
 	malloc func(size int) []byte) *defaultBufManager {
 	arena := slab.NewArena(startChunkSize, slabSize, growthFactor, malloc)
 	if arena == nil {
