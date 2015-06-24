@@ -76,15 +76,15 @@ func FromBufRef(dst []byte,
 
 // -------------------------------------------------
 
-// CopyFromBufRef copies bytes from partBuf to buf, and is a more
-// advanced helper function meant to be used with BufRef.Visit().
+// CopyFromBufRef copies bytes from partBuf to buf.  It's useful as a
+// helper function that can be used with BufRef.Visit().
 func CopyFromBufRef(buf, partBuf []byte, partFrom, partTo int) bool {
 	copy(buf[partFrom:partTo], partBuf)
 	return true
 }
 
-// CopyFromBufRef copies bytes from buf to partBuf, and is a more
-// advanced helper function meant to be used with BufRef.Update() and
+// CopyToBufRef copies bytes from buf to partBuf.  It's useful as a
+// helper function that can be used with BufRef.Update() and
 // BufManager.Alloc().
 func CopyToBufRef(buf, partBuf []byte, partFrom, partTo int) bool {
 	copy(partBuf, buf[partFrom:partTo])
