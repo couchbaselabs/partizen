@@ -161,6 +161,16 @@ func (c *collection) Max(withValue bool) (
 	return c.minMax(true, withValue)
 }
 
+func (c *collection) MaxSeq(partitionId PartitionId) (
+	seq Seq, err error) {
+	return 0, fmt.Errorf("unimplemented")
+}
+
+func (c *collection) PartitionIds(outPartitionIds PartitionIds) (
+	PartitionIds, error) {
+	return nil, fmt.Errorf("unimplemented")
+}
+
 func (c *collection) Scan(key Key, ascending bool,
 	partitionIds []PartitionId, // Use nil for all partitions.
 	withValue bool, maxReadAhead int) (Cursor, error) {

@@ -108,6 +108,14 @@ type Collection interface {
 	Max(withValue bool) (
 		partitionId PartitionId, key Key, seq Seq, val Val, err error)
 
+	// MaxSeq returns the max seq for a partition.
+	MaxSeq(partitionId PartitionId) (seq Seq, err error)
+
+	// PartitionIds returns the partition id's of a collection.  If an
+	// optional non-nil outPartitionIds is provided, it will be
+	// append()'ed to and returned.
+	PartitionIds(outPartitionIds PartitionIds) (PartitionIds, error)
+
 	// Scan returns a Cursor positioned "before" the first result, so
 	// the caller should use Cursor.Next() for the first result.
 	Scan(key Key,
