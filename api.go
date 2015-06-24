@@ -144,7 +144,7 @@ type Collection interface {
 }
 
 // A Cursor starts with a position "before" the first result, so the
-// caller should use Cursor.Next() for the first result.
+// caller should use Cursor.Next() for the first result (or error).
 type Cursor interface {
 	Close() error
 
