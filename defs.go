@@ -263,7 +263,8 @@ type ItemLocsAppendable interface {
 
 // ----------------------------------------
 
-// ItemLocsArray implements the ItemLocs interface.
+// ItemLocsArray implements the ItemLocs and ItemLocsAppendable
+// interfaces.
 type ItemLocsArray []ItemLoc
 
 func (a ItemLocsArray) Len() int {
@@ -292,7 +293,8 @@ func (a ItemLocsArray) Append(x ItemLoc) ItemLocsAppendable {
 
 // ----------------------------------------
 
-// PtrItemLocsArray implements the ItemLocs interface.
+// PtrItemLocsArray implements the ItemLocs and ItemLocsAppendable
+// interfaces.
 type PtrItemLocsArray []*ItemLoc
 
 func (a PtrItemLocsArray) Len() int {
