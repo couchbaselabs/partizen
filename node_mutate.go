@@ -16,7 +16,7 @@ import (
 func rootProcessMutations(rootItemLoc *ItemLoc,
 	mutations []Mutation, cb MutationCallback,
 	minFanOut, maxFanOut int,
-	reclaimables PtrItemLocsAppendable,
+	reclaimables ReclaimableItemLocs,
 	bufManager BufManager, r io.ReaderAt) (
 	*ItemLoc, error) {
 	a, err := processMutations(rootItemLoc, mutations, 0, len(mutations),

@@ -332,8 +332,10 @@ type PtrItemLocsArrayHolder struct {
 	a PtrItemLocsArray
 }
 
-func (a PtrItemLocsArrayHolder) Append(il *ItemLoc) {
-	a.a = append(a.a, il)
+func (a *PtrItemLocsArrayHolder) Append(il *ItemLoc) {
+	if a != nil {
+		a.a = append(a.a, il)
+	}
 }
 
 // ----------------------------------------
@@ -354,6 +356,10 @@ type KeyItemLoc struct {
 	Key     Key // Key can be >= ItemLoc.Key due to partition scope.
 	ItemLoc *ItemLoc
 }
+
+// ----------------------------------------
+
+type ReclaimableItemLocs PtrItemLocsAppendable
 
 // ----------------------------------------
 
