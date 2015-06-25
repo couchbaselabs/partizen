@@ -75,8 +75,9 @@ func processMutations(itemLoc *ItemLoc,
 	m := mend - mbeg
 
 	var builder ItemLocsBuilder
-	if n <= 0 || itemLocs.Loc(0).Type == LocTypeVal { // TODO: swizzle lock?
-		// TODO: Mem mgmt / sync.Pool?
+	if n <= 0 || itemLocs.Loc(0).Type == LocTypeVal {
+		// TODO: swizzle lock?
+		// TODO: mem mgmt / sync.Pool?
 		builder = &ValsBuilder{bufManager: bufManager,
 			s: make(PtrItemLocsArray, 0, m)}
 	} else {
@@ -97,9 +98,10 @@ func processMutations(itemLoc *ItemLoc,
 func groupItemLocs(childItemLocs ItemLocs,
 	minFanOut, maxFanOut int,
 	groupedItemLocsStart ItemLocsAppendable,
-	bufManager BufManager, r io.ReaderAt) (ItemLocs, error) {
-	children, err := rebalanceNodes(childItemLocs, minFanOut, maxFanOut,
-		bufManager, r)
+	bufManager BufManager, r io.ReaderAt) (
+	ItemLocs, error) {
+	children, err :=
+		rebalanceNodes(childItemLocs, minFanOut, maxFanOut, bufManager, r)
 	if err != nil {
 		return nil, err
 	}
