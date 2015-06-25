@@ -79,7 +79,8 @@ type CollectionDef struct {
 	MaxFanOut       uint16 // Usually (2*MinFanOut)+1.
 }
 
-// A collection implements the Collection interface.
+// A collection implements the Collection interface and holds one
+// ref-count on the root ItemLocRef.
 type collection struct {
 	Root *ItemLocRef // Mutatable, access covered by store.m lock.
 	refs int32       // Mutatable, access covered by store.m lock.
@@ -110,10 +111,13 @@ func (r *ItemLocRef) addRef() (*ItemLocRef, *ItemLoc) {
 	if r == nil {
 		return nil, nil
 	}
+
 	if r.refs <= 0 {
 		panic("ItemLocRef.refs addRef saw underflow")
 	}
+
 	r.refs++
+
 	return r, r.R
 }
 
@@ -122,15 +126,18 @@ func (r *ItemLocRef) decRef() *ItemLocRef {
 	if r == nil {
 		return nil
 	}
+
 	if r.refs <= 0 {
 		panic("ItemLocRef.refs defRef saw underflow")
 	}
+
 	r.refs--
 	if r.refs <= 0 {
 		r.next.decRef()
 		r.next = nil
 		return nil
 	}
+
 	return r
 }
 
