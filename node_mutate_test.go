@@ -66,6 +66,7 @@ func isSomeMemLoc(loc *Loc, expectedLocType uint8) bool {
 
 func TestEmptyMutate(t *testing.T) {
 	il, err := rootProcessMutations(nil, nil, nil, 15, 32,
+		&PtrItemLocsArrayHolder{},
 		testBufManager, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
@@ -81,6 +82,7 @@ func TestEmptyMutate(t *testing.T) {
 		},
 	}
 	il, err = rootProcessMutations(rootItemLoc, nil, nil, 15, 32,
+		&PtrItemLocsArrayHolder{},
 		testBufManager, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
@@ -90,7 +92,9 @@ func TestEmptyMutate(t *testing.T) {
 	}
 
 	m := []Mutation{}
-	il, err = rootProcessMutations(nil, m, nil, 15, 32, testBufManager, nil)
+	il, err = rootProcessMutations(nil, m, nil, 15, 32,
+		&PtrItemLocsArrayHolder{},
+		testBufManager, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
 	}
@@ -101,7 +105,9 @@ func TestEmptyMutate(t *testing.T) {
 	m = []Mutation{
 		Mutation{},
 	} // Mutation.Op is unknown.
-	il, err = rootProcessMutations(nil, m, nil, 15, 32, testBufManager, nil)
+	il, err = rootProcessMutations(nil, m, nil, 15, 32,
+		&PtrItemLocsArrayHolder{},
+		testBufManager, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
 	}
@@ -115,7 +121,9 @@ func TestEmptyMutate(t *testing.T) {
 			Op:  MUTATION_OP_DELETE,
 		},
 	}
-	il, err = rootProcessMutations(nil, m, nil, 15, 32, testBufManager, nil)
+	il, err = rootProcessMutations(nil, m, nil, 15, 32,
+		&PtrItemLocsArrayHolder{},
+		testBufManager, nil)
 	if err != nil {
 		t.Errorf("expected ok, missing key delete on nil root, err: %#v", err)
 	}
@@ -132,7 +140,9 @@ func TestMutationsOn1Val(t *testing.T) {
 			Op:        MUTATION_OP_UPDATE,
 		},
 	}
-	il, err := rootProcessMutations(nil, m, nil, 15, 32, testBufManager, nil)
+	il, err := rootProcessMutations(nil, m, nil, 15, 32,
+		&PtrItemLocsArrayHolder{},
+		testBufManager, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
 	}
@@ -173,6 +183,7 @@ func TestMutationsOn1Val(t *testing.T) {
 			},
 		}
 		il2, err := rootProcessMutations(il2, m, nil, 15, 32,
+			&PtrItemLocsArrayHolder{},
 			testBufManager, nil)
 		if err != nil {
 			t.Errorf("expected ok, err: %#v", err)
@@ -213,6 +224,7 @@ func TestMutationsOn1Val(t *testing.T) {
 		},
 	}
 	il3, err := rootProcessMutations(il2, m, nil, 15, 32,
+		&PtrItemLocsArrayHolder{},
 		testBufManager, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
@@ -236,6 +248,7 @@ func TestMutationsOn2Vals(t *testing.T) {
 		},
 	}
 	il, err := rootProcessMutations(nil, m, nil, 15, 32,
+		&PtrItemLocsArrayHolder{},
 		testBufManager, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
@@ -299,6 +312,7 @@ func TestMutationsOn2Vals(t *testing.T) {
 			},
 		}
 		il2, err := rootProcessMutations(il2, m, nil, 15, 32,
+			&PtrItemLocsArrayHolder{},
 			testBufManager, nil)
 		if err != nil {
 			t.Errorf("expected ok, err: %#v", err)
@@ -313,6 +327,7 @@ func TestMutationsOn2Vals(t *testing.T) {
 		},
 	}
 	il3, err := rootProcessMutations(il2, m, nil, 15, 32,
+		&PtrItemLocsArrayHolder{},
 		testBufManager, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
@@ -327,6 +342,7 @@ func TestMutationsOn2Vals(t *testing.T) {
 		},
 	}
 	il4, err := rootProcessMutations(il3, m, nil, 15, 32,
+		&PtrItemLocsArrayHolder{},
 		testBufManager, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
@@ -364,6 +380,7 @@ func TestMutationsDepth(t *testing.T) {
 			CopyToBufRef, m[0].Key)
 		rootItemLoc, err =
 			rootProcessMutations(rootItemLoc, m, nil, 2, 4,
+				&PtrItemLocsArrayHolder{},
 				testBufManager, nil)
 		if err != nil {
 			t.Errorf("unexpected err: %#v", err)

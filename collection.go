@@ -249,10 +249,13 @@ func (c *collection) mutate(
 		return false
 	}
 
+	reclaimables := &PtrItemLocsArrayHolder{} // TODO: sync.Pool'able.
+
 	ilr, il := c.rootAddRef()
 
 	il2, err := rootProcessMutations(il, mutations, cb,
-		int(c.minFanOut), int(c.maxFanOut), bufManager, io.ReaderAt(nil))
+		int(c.minFanOut), int(c.maxFanOut), reclaimables,
+		bufManager, io.ReaderAt(nil))
 	if err != nil {
 		c.rootDecRef(ilr)
 		return err
@@ -274,7 +277,7 @@ func (c *collection) mutate(
 
 		// If the previous root was in-use, hook it up with a
 		// ref-count on the new root to prevent the new root's nodes
-		// from being recycled until the previous is done.
+		// from being reclaimed until the previous is done.
 		if ilr != nil && ilr.refs > 2 {
 			ilr.next, _ = c.Root.addRef()
 		}

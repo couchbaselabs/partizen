@@ -261,6 +261,10 @@ type ItemLocsAppendable interface {
 	Append(ItemLoc) ItemLocsAppendable
 }
 
+type PtrItemLocsAppendable interface {
+	Append(*ItemLoc)
+}
+
 // ----------------------------------------
 
 // ItemLocsArray implements the ItemLocs and ItemLocsAppendable
@@ -319,6 +323,17 @@ func (a PtrItemLocsArray) ItemLoc(idx int) *ItemLoc {
 
 func (a PtrItemLocsArray) Append(x ItemLoc) ItemLocsAppendable {
 	return append(a, &x)
+}
+
+// ----------------------------------------
+
+// PtrItemLocsArrayHolder implements PtrItemLocsAppendable interface.
+type PtrItemLocsArrayHolder struct {
+	a PtrItemLocsArray
+}
+
+func (a PtrItemLocsArrayHolder) Append(il *ItemLoc) {
+	a.a = append(a.a, il)
 }
 
 // ----------------------------------------
