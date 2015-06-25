@@ -6,6 +6,8 @@ import (
 	"github.com/couchbaselabs/go-slab"
 )
 
+// TODO: A BufManager implementation that leverages chunks.
+
 // defaultBufManager is an implementation of BufManager interface
 // based on the go-slab memory manager.
 type defaultBufManager struct {
