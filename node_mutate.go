@@ -13,10 +13,8 @@ import (
 // is, if the application has multiple mutations on the same key, the
 // caller must provide only the last mutation for any key.  Use nil
 // for rootItemLoc to start a brand new tree.
-func rootProcessMutations(
-	rootItemLoc *ItemLoc,
-	mutations []Mutation,
-	cb MutationCallback,
+func rootProcessMutations(rootItemLoc *ItemLoc,
+	mutations []Mutation, cb MutationCallback,
 	minFanOut, maxFanOut int,
 	bufManager BufManager, r io.ReaderAt) (
 	*ItemLoc, error) {
