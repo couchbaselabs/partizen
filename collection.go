@@ -9,12 +9,14 @@ func (c *collection) Close() error {
 	c.store.m.Lock()
 	c.decRefUnlocked()
 	c.store.m.Unlock()
+
 	return nil
 }
 
 // Must be invoked while caller has store.m locked.
 func (c *collection) addRefUnlocked() *collection {
 	c.refs++
+
 	return c
 }
 
@@ -32,6 +34,7 @@ func (c *collection) rootAddRef() (*ItemLocRef, *ItemLoc) {
 	c.store.m.Lock()
 	kslr, ksl := c.Root.addRef()
 	c.store.m.Unlock()
+
 	return kslr, ksl
 }
 
@@ -61,24 +64,27 @@ func (c *collection) Get(key Key, matchSeq Seq, withValue bool) (
 
 func (c *collection) GetBufRef(key Key, matchSeq Seq, withValue bool) (
 	seq Seq, val BufRef, err error) {
+	bufManager := c.store.bufManager
+
 	var hitSeq Seq
 	var hitType uint8
 	var hitBufRef BufRef
 
 	kslr, ksl := c.rootAddRef()
-	hit, err := locateItemLoc(ksl, key,
-		c.store.bufManager, io.ReaderAt(nil))
+
+	hit, err := locateItemLoc(ksl, key, bufManager, io.ReaderAt(nil))
 	if err == nil && hit != nil {
 		hitSeq, hitType = hit.Seq, hit.Loc.Type
 		if withValue {
-			hitBufRef = hit.Loc.BufRef(c.store.bufManager)
+			hitBufRef = hit.Loc.BufRef(bufManager)
 		}
 	}
+
 	c.rootDecRef(kslr)
 
 	if err != nil {
 		if hitBufRef != nil {
-			hitBufRef.DecRef(c.store.bufManager)
+			hitBufRef.DecRef(bufManager)
 		}
 		return 0, nil, err
 	}
@@ -86,13 +92,13 @@ func (c *collection) GetBufRef(key Key, matchSeq Seq, withValue bool) (
 	if matchSeq != NO_MATCH_SEQ {
 		if hit != nil && matchSeq != hitSeq {
 			if hitBufRef != nil {
-				hitBufRef.DecRef(c.store.bufManager)
+				hitBufRef.DecRef(bufManager)
 			}
 			return 0, nil, ErrMatchSeq
 		}
 		if hit == nil && matchSeq != CREATE_MATCH_SEQ {
 			if hitBufRef != nil {
-				hitBufRef.DecRef(c.store.bufManager)
+				hitBufRef.DecRef(bufManager)
 			}
 			return 0, nil, ErrMatchSeq
 		}
@@ -100,7 +106,7 @@ func (c *collection) GetBufRef(key Key, matchSeq Seq, withValue bool) (
 
 	if hit != nil && hitType != LocTypeVal {
 		if hitBufRef != nil {
-			hitBufRef.DecRef(c.store.bufManager)
+			hitBufRef.DecRef(bufManager)
 		}
 		return 0, nil, fmt.Errorf("collection.Get: bad type: %#v", hitType)
 	}
@@ -110,14 +116,16 @@ func (c *collection) GetBufRef(key Key, matchSeq Seq, withValue bool) (
 
 func (c *collection) Set(partitionId PartitionId, key Key,
 	matchSeq Seq, newSeq Seq, val Val) error {
-	valBufRef := c.store.bufManager.Alloc(len(val), CopyToBufRef, val)
+	bufManager := c.store.bufManager
+
+	valBufRef := bufManager.Alloc(len(val), CopyToBufRef, val)
 	if valBufRef == nil || valBufRef.IsNil() {
 		return ErrAlloc
 	}
 
 	err := c.SetBufRef(partitionId, key, matchSeq, newSeq, valBufRef)
 
-	valBufRef.DecRef(c.store.bufManager)
+	valBufRef.DecRef(bufManager)
 
 	return err
 }
@@ -294,16 +302,17 @@ func (c *collection) minMax(locateMax bool, withValue bool) (
 	return partitionId, key, seq, val, nil
 }
 
-func (c *collection) minMaxBufRef(locateMax bool, withValue bool) (
+func (c *collection) minMaxBufRef(wantMax bool, withValue bool) (
 	partitionId PartitionId, key Key, seq Seq, bufRef BufRef, err error) {
+	bufManager := c.store.bufManager
+
 	kslr, ksl := c.rootAddRef()
 	if kslr == nil || ksl == nil {
 		c.rootDecRef(kslr)
 		return 0, nil, 0, nil, nil
 	}
 
-	ksl, err = locateMinMax(ksl, locateMax,
-		c.store.bufManager, io.ReaderAt(nil))
+	ksl, err = locateMinMax(ksl, wantMax, bufManager, io.ReaderAt(nil))
 	if err != nil {
 		c.rootDecRef(kslr)
 		return 0, nil, 0, nil, err
@@ -319,7 +328,7 @@ func (c *collection) minMaxBufRef(locateMax bool, withValue bool) (
 	}
 
 	if withValue {
-		bufRef = ksl.Loc.BufRef(c.store.bufManager)
+		bufRef = ksl.Loc.BufRef(bufManager)
 	}
 
 	c.rootDecRef(kslr)

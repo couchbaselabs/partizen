@@ -172,6 +172,7 @@ func (s *store) AddCollection(collName string, compareFuncName string) (
 		MinFanOut:       s.storeOptions.DefaultMinFanOut,
 		MaxFanOut:       s.storeOptions.DefaultMaxFanOut,
 	}
+
 	c := &collection{
 		refs:        1,
 		store:       s,

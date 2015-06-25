@@ -97,7 +97,7 @@ func locateItemLoc(ksl *ItemLoc, key Key,
 	return nil, nil
 }
 
-func locateMinMax(ksl *ItemLoc, locateMax bool,
+func locateMinMax(ksl *ItemLoc, wantMax bool,
 	bufManager BufManager, r io.ReaderAt) (*ItemLoc, error) {
 	for ksl != nil {
 		if ksl.Loc.Type == LocTypeNode {
@@ -116,7 +116,7 @@ func locateMinMax(ksl *ItemLoc, locateMax bool,
 			if n <= 0 {
 				return nil, nil
 			}
-			if locateMax {
+			if wantMax {
 				ksl = ksls.ItemLoc(n - 1)
 			} else {
 				ksl = ksls.ItemLoc(0)
