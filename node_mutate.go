@@ -25,7 +25,7 @@ func rootProcessMutations(rootItemLoc *ItemLoc,
 	bufManager BufManager, r io.ReaderAt) (
 	*ItemLoc, error) {
 	a, err := processMutations(rootItemLoc, mutations, 0, len(mutations),
-		cb, minFanOut, maxFanOut, bufManager, r)
+		cb, minFanOut, maxFanOut, reclaimables, bufManager, r)
 	if err != nil {
 		return nil, fmt.Errorf("rootProcessMutations:"+
 			" rootItemLoc: %#v, err: %v", rootItemLoc, err)
@@ -53,6 +53,7 @@ func processMutations(itemLoc *ItemLoc,
 	mbeg, mend int, // The subset [mbeg, mend) of mutations to process.
 	cb MutationCallback,
 	minFanOut, maxFanOut int,
+	reclaimables ReclaimableItemLocs,
 	bufManager BufManager, r io.ReaderAt) (
 	ItemLocs, error) {
 	var itemLocs ItemLocs
@@ -82,11 +83,17 @@ func processMutations(itemLoc *ItemLoc,
 	if n <= 0 || itemLocs.Loc(0).Type == LocTypeVal {
 		// TODO: swizzle lock?
 		// TODO: mem mgmt / sync.Pool?
-		builder = &ValsBuilder{bufManager: bufManager,
-			s: make(PtrItemLocsArray, 0, m)}
+		builder = &ValsBuilder{
+			bufManager:   bufManager,
+			reclaimables: reclaimables,
+			s:            make(PtrItemLocsArray, 0, m),
+		}
 	} else {
-		builder = &NodesBuilder{bufManager: bufManager,
-			NodeMutations: make([]NodeMutations, 0, m)}
+		builder = &NodesBuilder{
+			bufManager:    bufManager,
+			reclaimables:  reclaimables,
+			NodeMutations: make([]NodeMutations, 0, m),
+		}
 	}
 
 	if !mergeMutations(itemLocs, 0, n, mutations, mbeg, mend,
@@ -289,8 +296,9 @@ type ItemLocsBuilder interface {
 // array of LocTypeVal ItemLoc's, which can be then used as input as
 // the children to create new leaf Nodes.
 type ValsBuilder struct {
-	bufManager BufManager
-	s          PtrItemLocsArray
+	bufManager   BufManager
+	reclaimables ReclaimableItemLocs
+	s            PtrItemLocsArray
 }
 
 func (b *ValsBuilder) AddExisting(existing *ItemLoc) {
@@ -351,6 +359,7 @@ func mutationToValItemLoc(m *Mutation, bufManager BufManager) *ItemLoc {
 // the children to create new interior Nodes.
 type NodesBuilder struct {
 	bufManager    BufManager
+	reclaimables  ReclaimableItemLocs
 	NodeMutations []NodeMutations
 }
 
@@ -416,7 +425,7 @@ func (b *NodesBuilder) Done(mutations []Mutation, cb MutationCallback,
 		} else {
 			children, err := processMutations(nm.BaseItemLoc,
 				mutations, nm.MutationsBeg, nm.MutationsEnd,
-				cb, minFanOut, maxFanOut, bufManager, r)
+				cb, minFanOut, maxFanOut, b.reclaimables, bufManager, r)
 			if err != nil {
 				return nil, fmt.Errorf("NodesBuilder.Done:"+
 					" BaseItemLoc: %#v, err: %v", nm.BaseItemLoc, err)
