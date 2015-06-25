@@ -359,10 +359,6 @@ type KeyItemLoc struct {
 
 // ----------------------------------------
 
-type ReclaimableItemLocs PtrItemLocsAppendable
-
-// ----------------------------------------
-
 // MutationCallback returns true if the mutation should proceed, or
 // false if the mutation should be skipped.  In either case, the
 // processing of the batch of mutations will continue.  The existing
