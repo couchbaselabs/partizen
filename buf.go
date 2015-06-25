@@ -47,8 +47,9 @@ func (dbm *defaultBufManager) Alloc(size int,
 		return nil
 	}
 
-	return (&defaultBufRef{slabLoc}).update(dbm, 0, size,
-		partUpdater, cbData)
+	dbr := &defaultBufRef{slabLoc}
+
+	return dbr.update(dbm, 0, size, partUpdater, cbData)
 }
 
 // -------------------------------------------------
