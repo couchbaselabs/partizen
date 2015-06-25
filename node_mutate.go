@@ -311,9 +311,13 @@ func (b *ValsBuilder) AddUpdate(existing *ItemLoc,
 	if cb != nil && !cb(existing, true, mutation) {
 		return false
 	}
+
 	if mutation.Op == MUTATION_OP_UPDATE {
 		b.s = append(b.s, mutationToValItemLoc(mutation, bufManager))
+
+		b.reclaimables.Append(existing)
 	}
+
 	return true
 }
 
@@ -323,9 +327,11 @@ func (b *ValsBuilder) AddNew(
 	if cb != nil && !cb(nil, true, mutation) {
 		return false
 	}
+
 	if mutation.Op == MUTATION_OP_UPDATE {
 		b.s = append(b.s, mutationToValItemLoc(mutation, bufManager))
 	}
+
 	return true
 }
 
@@ -383,11 +389,13 @@ func (b *NodesBuilder) AddUpdate(existing *ItemLoc,
 	if cb != nil && !cb(existing, false, mutation) {
 		return false
 	}
+
 	b.NodeMutations = append(b.NodeMutations, NodeMutations{
 		BaseItemLoc:  existing,
 		MutationsBeg: mutationIdx,
 		MutationsEnd: mutationIdx + 1,
 	})
+
 	return true
 }
 
@@ -397,6 +405,7 @@ func (b *NodesBuilder) AddNew(
 	if cb != nil && !cb(nil, false, mutation) {
 		return false
 	}
+
 	if len(b.NodeMutations) <= 0 {
 		b.NodeMutations = append(b.NodeMutations, NodeMutations{
 			MutationsBeg: mutationIdx,
@@ -409,6 +418,7 @@ func (b *NodesBuilder) AddNew(
 		}
 		nm.MutationsEnd = mutationIdx + 1
 	}
+
 	return true
 }
 
@@ -438,6 +448,8 @@ func (b *NodesBuilder) Done(mutations []Mutation, cb MutationCallback,
 			}
 
 			rv = rvx.(PtrItemLocsArray)
+
+			b.reclaimables.Append(nm.BaseItemLoc)
 		}
 	}
 
