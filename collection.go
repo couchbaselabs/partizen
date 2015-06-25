@@ -13,6 +13,8 @@ func (c *collection) Close() error {
 	return nil
 }
 
+// --------------------------------------------
+
 // Must be invoked while caller has store.m locked.
 func (c *collection) addRefUnlocked() *collection {
 	c.refs++
@@ -29,6 +31,8 @@ func (c *collection) decRefUnlocked() {
 		c.readOnly = true
 	}
 }
+
+// --------------------------------------------
 
 func (c *collection) rootAddRef() (*ItemLocRef, *ItemLoc) {
 	c.store.m.Lock()
