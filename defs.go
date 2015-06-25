@@ -319,6 +319,7 @@ func (a PtrItemLocsArray) Append(x ItemLoc) ItemLocsAppendable {
 
 // ----------------------------------------
 
+// Partitions represent a mapping of PartitionId's to KeyItemLoc's.
 type Partitions struct {
 	PartitionIds PartitionIds
 
@@ -327,8 +328,11 @@ type Partitions struct {
 	KeyItemLocs [][]KeyItemLoc
 }
 
+// KeyItemLoc represents a Key associated with an ItemLoc.  We can't
+// just use ItemLoc.Key, because ItemLoc.Key represents the minimum
+// key for an ItemLoc.
 type KeyItemLoc struct {
-	Key     Key // Key might be >= ItemLoc.Key due to partition scope.
+	Key     Key // Key can be >= ItemLoc.Key due to partition scope.
 	ItemLoc *ItemLoc
 }
 
