@@ -26,7 +26,7 @@ func (c *collection) addRefUnlocked() *collection {
 func (c *collection) decRefUnlocked() {
 	c.refs--
 	if c.refs <= 0 {
-		c.Root.decRef()
+		c.Root.decRef(c.store.bufManager)
 		c.Root = nil
 		c.readOnly = true
 	}
@@ -44,7 +44,7 @@ func (c *collection) rootAddRef() (*ItemLocRef, *ItemLoc) {
 
 func (c *collection) rootDecRef(ilr *ItemLocRef) {
 	c.store.m.Lock()
-	ilr.decRef()
+	ilr.decRef(c.store.bufManager)
 	c.store.m.Unlock()
 }
 

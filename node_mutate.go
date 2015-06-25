@@ -260,7 +260,7 @@ func nextItemLoc(idx, n int, itemLocs ItemLocs) (
 	if idx < n {
 		return itemLocs.ItemLoc(idx), true, idx // TODO: swizzle lock?
 	}
-	return &zeroItemLoc, false, idx
+	return &NilItemLoc, false, idx
 }
 
 func nextMutation(idx, n int, mutations []Mutation) (
@@ -268,7 +268,7 @@ func nextMutation(idx, n int, mutations []Mutation) (
 	if idx < n {
 		return &mutations[idx], true, idx
 	}
-	return &zeroMutation, false, idx
+	return &NilMutation, false, idx
 }
 
 // --------------------------------------------------

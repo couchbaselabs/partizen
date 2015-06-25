@@ -124,7 +124,7 @@ func (r *ItemLocRef) addRef() (*ItemLocRef, *ItemLoc) {
 }
 
 // DecRef must be invoked by caller with collection.store.m locked.
-func (r *ItemLocRef) decRef() *ItemLocRef {
+func (r *ItemLocRef) decRef(bufManager BufManager) *ItemLocRef {
 	if r == nil {
 		return nil
 	}
@@ -135,10 +135,12 @@ func (r *ItemLocRef) decRef() *ItemLocRef {
 
 	r.refs--
 	if r.refs <= 0 {
-		r.next.decRef()
+		r.next.decRef(bufManager)
 		r.next = nil
 
-		// r.reclaimables.Reclaim()
+		if r.reclaimables != nil {
+			r.reclaimables.Reset(bufManager)
+		}
 
 		return nil
 	}
@@ -160,7 +162,7 @@ type ItemLoc struct {
 	Loc Loc
 }
 
-var zeroItemLoc ItemLoc
+var NilItemLoc ItemLoc
 
 func (iloc *ItemLoc) GetPartitionId(
 	bufManager BufManager, r io.ReaderAt) (PartitionId, error) {
@@ -275,6 +277,7 @@ type PtrItemLocsAppendable interface {
 	Len() int
 	ItemLoc(idx int) *ItemLoc
 	Append(*ItemLoc)
+	Reset(bufManager BufManager)
 }
 
 // ----------------------------------------
@@ -368,6 +371,18 @@ func (a *PtrItemLocsArrayHolder) Append(il *ItemLoc) {
 	a.a = append(a.a, il)
 }
 
+func (a *PtrItemLocsArrayHolder) Reset(bufManager BufManager) {
+	if a == nil || a.a == nil {
+		return
+	}
+
+	for i, il := range a.a {
+		il.Loc.bufRef.DecRef(bufManager)
+
+		a.a[i] = nil
+	}
+}
+
 // ----------------------------------------
 
 // Partitions represent a mapping of PartitionId's to KeyItemLoc's.
@@ -397,4 +412,4 @@ type KeyItemLoc struct {
 type MutationCallback func(existing *ItemLoc, isVal bool,
 	mutation *Mutation) bool
 
-var zeroMutation Mutation
+var NilMutation Mutation
