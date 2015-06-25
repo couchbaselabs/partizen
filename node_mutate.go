@@ -13,8 +13,11 @@ import (
 // is, if the application has multiple mutations on the same key, the
 // caller must provide only the last mutation for any key.  Use nil
 // for rootItemLoc to start a brand new tree.
-func rootProcessMutations(rootItemLoc *ItemLoc, mutations []Mutation,
-	cb MutationCallback, minFanOut, maxFanOut int,
+func rootProcessMutations(
+	rootItemLoc *ItemLoc,
+	mutations []Mutation,
+	cb MutationCallback,
+	minFanOut, maxFanOut int,
 	bufManager BufManager, r io.ReaderAt) (
 	*ItemLoc, error) {
 	a, err := processMutations(rootItemLoc, mutations, 0, len(mutations),
@@ -39,10 +42,12 @@ func rootProcessMutations(rootItemLoc *ItemLoc, mutations []Mutation,
 	return nil, nil
 }
 
-// processMutations recursively applies the batch of
-// mutations down the tree, building up copy-on-write new nodes.
+// processMutations recursively applies the batch of mutations down
+// the tree, building up copy-on-write new nodes.
 func processMutations(itemLoc *ItemLoc,
-	mutations []Mutation, mbeg, mend int, cb MutationCallback,
+	mutations []Mutation,
+	mbeg, mend int, // The subset [mbeg, mend) of mutations to process.
+	cb MutationCallback,
 	minFanOut, maxFanOut int,
 	bufManager BufManager, r io.ReaderAt) (
 	ItemLocs, error) {
