@@ -7,11 +7,6 @@ import (
 	"sort"
 )
 
-// ReclaimableItemLocs is used to track ItemLocs that were
-// obsoleted/replaced by mutations and can be reclaimed and recycled
-// after root ref-counts reach zero.
-type ReclaimableItemLocs PtrItemLocsAppendable
-
 // rootProcessMutations is the entry function for applying a batch of
 // copy-on-write mutations to a tree (rootItemLoc).  The mutations
 // must be ascending key ordered, and must have no duplicates.  That

@@ -104,6 +104,8 @@ type ItemLocRef struct {
 
 	// We might own a reference count on a chained ItemLocRef.
 	next *ItemLocRef // Mutator must have store.m locked.
+
+	reclaimables ReclaimableItemLocs
 }
 
 // AddRef must be invoked by caller with collection.store.m locked.
@@ -135,11 +137,19 @@ func (r *ItemLocRef) decRef() *ItemLocRef {
 	if r.refs <= 0 {
 		r.next.decRef()
 		r.next = nil
+
+		// r.reclaimables.Reclaim()
+
 		return nil
 	}
 
 	return r
 }
+
+// ReclaimableItemLocs is used to track ItemLocs that were
+// obsoleted/replaced by mutations and so can be reclaimed and
+// recycled after root ref-counts reach zero.
+type ReclaimableItemLocs PtrItemLocsAppendable
 
 // ----------------------------------------
 
@@ -262,6 +272,8 @@ type ItemLocsAppendable interface {
 }
 
 type PtrItemLocsAppendable interface {
+	Len() int
+	ItemLoc(idx int) *ItemLoc
 	Append(*ItemLoc)
 }
 
@@ -332,10 +344,28 @@ type PtrItemLocsArrayHolder struct {
 	a PtrItemLocsArray
 }
 
-func (a *PtrItemLocsArrayHolder) Append(il *ItemLoc) {
-	if a != nil {
-		a.a = append(a.a, il)
+func (a *PtrItemLocsArrayHolder) Len() int {
+	if a == nil || a.a == nil {
+		return 0
 	}
+
+	return a.a.Len()
+}
+
+func (a *PtrItemLocsArrayHolder) ItemLoc(idx int) *ItemLoc {
+	if a == nil || a.a == nil {
+		return nil
+	}
+
+	return a.a.ItemLoc(idx)
+}
+
+func (a *PtrItemLocsArrayHolder) Append(il *ItemLoc) {
+	if a == nil {
+		return
+	}
+
+	a.a = append(a.a, il)
 }
 
 // ----------------------------------------
