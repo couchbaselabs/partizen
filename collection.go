@@ -271,7 +271,11 @@ func (c *collection) mutate(
 		err = nil
 
 		c.Root = &ItemLocRef{R: il2, refs: 1}
-		if ilr != nil {
+
+		// If the previous root was in-use, hook it up with a
+		// ref-count on the new root to prevent the new root's nodes
+		// from being recycled until the previous is done.
+		if ilr != nil && ilr.refs > 2 {
 			ilr.next, _ = c.Root.addRef()
 		}
 	}
