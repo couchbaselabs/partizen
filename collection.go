@@ -278,10 +278,10 @@ func (c *collection) mutate(
 	c.store.m.Unlock()
 
 	if err == nil {
-		c.rootDecRef(ilr)
+		c.rootDecRef(ilr) // Because c.Root was replaced.
 	}
 
-	c.rootDecRef(ilr)
+	c.rootDecRef(ilr) // Matches above c.rootAddRef().
 	return err
 }
 
