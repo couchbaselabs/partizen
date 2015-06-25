@@ -81,8 +81,8 @@ type CollectionDef struct {
 
 // A collection implements the Collection interface.
 type collection struct {
-	Root *ItemLocRef // Mutator must have store.m locked.
-	refs int32       // Mutator must have store.m locked.
+	Root *ItemLocRef // Mutatable, access covered by store.m lock.
+	refs int32       // Mutatable, access covered by store.m lock.
 
 	// The following fields are immutable.
 	store       *store // Pointer to parent store.
