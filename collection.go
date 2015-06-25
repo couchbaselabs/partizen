@@ -32,15 +32,15 @@ func (c *collection) decRefUnlocked() {
 
 func (c *collection) rootAddRef() (*ItemLocRef, *ItemLoc) {
 	c.store.m.Lock()
-	kslr, ksl := c.Root.addRef()
+	ilr, il := c.Root.addRef()
 	c.store.m.Unlock()
 
-	return kslr, ksl
+	return ilr, il
 }
 
-func (c *collection) rootDecRef(kslr *ItemLocRef) {
+func (c *collection) rootDecRef(ilr *ItemLocRef) {
 	c.store.m.Lock()
-	kslr.decRef()
+	ilr.decRef()
 	c.store.m.Unlock()
 }
 
@@ -70,9 +70,9 @@ func (c *collection) GetBufRef(key Key, matchSeq Seq, withValue bool) (
 	var hitType uint8
 	var hitBufRef BufRef
 
-	kslr, ksl := c.rootAddRef()
+	ilr, il := c.rootAddRef()
 
-	hit, err := locateItemLoc(ksl, key, bufManager, io.ReaderAt(nil))
+	hit, err := locateItemLoc(il, key, bufManager, io.ReaderAt(nil))
 	if err == nil && hit != nil {
 		hitSeq, hitType = hit.Seq, hit.Loc.Type
 		if withValue {
@@ -80,7 +80,7 @@ func (c *collection) GetBufRef(key Key, matchSeq Seq, withValue bool) (
 		}
 	}
 
-	c.rootDecRef(kslr)
+	c.rootDecRef(ilr)
 
 	if err != nil {
 		if hitBufRef != nil {
@@ -245,39 +245,39 @@ func (c *collection) mutate(
 		return false
 	}
 
-	kslr, ksl := c.rootAddRef()
+	ilr, il := c.rootAddRef()
 
-	ksl2, err := rootProcessMutations(ksl, mutations, cb,
+	il2, err := rootProcessMutations(il, mutations, cb,
 		int(c.minFanOut), int(c.maxFanOut), bufManager, io.ReaderAt(nil))
 	if err != nil {
-		c.rootDecRef(kslr)
+		c.rootDecRef(ilr)
 		return err
 	}
 	if cbErr != nil {
-		c.rootDecRef(kslr)
+		c.rootDecRef(ilr)
 		return cbErr
 	}
 
 	c.store.m.Lock()
-	if kslr != c.Root {
+	if ilr != c.Root {
 		err = ErrConcurrentMutation
-	} else if kslr != nil && kslr.next != nil {
+	} else if ilr != nil && ilr.next != nil {
 		err = ErrConcurrentMutationChain
 	} else {
 		err = nil
 
-		c.Root = &ItemLocRef{R: ksl2, refs: 1}
-		if kslr != nil {
-			kslr.next, _ = c.Root.addRef()
+		c.Root = &ItemLocRef{R: il2, refs: 1}
+		if ilr != nil {
+			ilr.next, _ = c.Root.addRef()
 		}
 	}
 	c.store.m.Unlock()
 
 	if err == nil {
-		c.rootDecRef(kslr)
+		c.rootDecRef(ilr)
 	}
 
-	c.rootDecRef(kslr)
+	c.rootDecRef(ilr)
 	return err
 }
 
@@ -306,31 +306,31 @@ func (c *collection) minMaxBufRef(wantMax bool, withValue bool) (
 	partitionId PartitionId, key Key, seq Seq, bufRef BufRef, err error) {
 	bufManager := c.store.bufManager
 
-	kslr, ksl := c.rootAddRef()
-	if kslr == nil || ksl == nil {
-		c.rootDecRef(kslr)
+	ilr, il := c.rootAddRef()
+	if ilr == nil || il == nil {
+		c.rootDecRef(ilr)
 		return 0, nil, 0, nil, nil
 	}
 
-	ksl, err = locateMinMax(ksl, wantMax, bufManager, io.ReaderAt(nil))
+	il, err = locateMinMax(il, wantMax, bufManager, io.ReaderAt(nil))
 	if err != nil {
-		c.rootDecRef(kslr)
+		c.rootDecRef(ilr)
 		return 0, nil, 0, nil, err
 	}
-	if ksl == nil {
-		c.rootDecRef(kslr)
+	if il == nil {
+		c.rootDecRef(ilr)
 		return 0, nil, 0, nil, err
 	}
-	if ksl.Loc.Type != LocTypeVal {
-		c.rootDecRef(kslr)
+	if il.Loc.Type != LocTypeVal {
+		c.rootDecRef(ilr)
 		return 0, nil, 0, nil,
-			fmt.Errorf("collection.minMax: unexpected type, ksl: %#v", ksl)
+			fmt.Errorf("collection.minMax: unexpected type, il: %#v", il)
 	}
 
 	if withValue {
-		bufRef = ksl.Loc.BufRef(bufManager)
+		bufRef = il.Loc.BufRef(bufManager)
 	}
 
-	c.rootDecRef(kslr)
-	return 0, ksl.Key, ksl.Seq, bufRef, nil
+	c.rootDecRef(ilr)
+	return 0, il.Key, il.Seq, bufRef, nil
 }

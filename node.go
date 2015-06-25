@@ -59,35 +59,35 @@ func ReadLocNode(loc *Loc, bufManager BufManager, r io.ReaderAt) (
 
 // ----------------------------------------------------
 
-func locateItemLoc(ksl *ItemLoc, key Key,
+func locateItemLoc(il *ItemLoc, key Key,
 	bufManager BufManager, r io.ReaderAt) (*ItemLoc, error) {
-	for ksl != nil {
-		if ksl.Loc.Type == LocTypeNode {
-			node, err := ReadLocNode(&ksl.Loc, bufManager, r)
+	for il != nil {
+		if il.Loc.Type == LocTypeNode {
+			node, err := ReadLocNode(&il.Loc, bufManager, r)
 			if err != nil {
 				return nil, err
 			}
 			if node == nil {
 				return nil, nil
 			}
-			ksls := node.GetItemLocs()
-			if ksls == nil {
+			ils := node.GetItemLocs()
+			if ils == nil {
 				return nil, nil
 			}
-			n := ksls.Len()
+			n := ils.Len()
 			if n <= 0 {
 				return nil, nil
 			}
 			i := sort.Search(n, func(i int) bool {
-				return bytes.Compare(ksls.Key(i), key) >= 0
+				return bytes.Compare(ils.Key(i), key) >= 0
 			})
-			if i >= n || !bytes.Equal(ksls.Key(i), key) {
+			if i >= n || !bytes.Equal(ils.Key(i), key) {
 				return nil, nil
 			}
-			ksl = ksls.ItemLoc(i)
-		} else if ksl.Loc.Type == LocTypeVal {
-			if bytes.Equal(ksl.Key, key) {
-				return ksl, nil
+			il = ils.ItemLoc(i)
+		} else if il.Loc.Type == LocTypeVal {
+			if bytes.Equal(il.Key, key) {
+				return il, nil
 			}
 			return nil, nil
 		} else {
@@ -97,32 +97,32 @@ func locateItemLoc(ksl *ItemLoc, key Key,
 	return nil, nil
 }
 
-func locateMinMax(ksl *ItemLoc, wantMax bool,
+func locateMinMax(il *ItemLoc, wantMax bool,
 	bufManager BufManager, r io.ReaderAt) (*ItemLoc, error) {
-	for ksl != nil {
-		if ksl.Loc.Type == LocTypeNode {
-			node, err := ReadLocNode(&ksl.Loc, bufManager, r)
+	for il != nil {
+		if il.Loc.Type == LocTypeNode {
+			node, err := ReadLocNode(&il.Loc, bufManager, r)
 			if err != nil {
 				return nil, err
 			}
 			if node == nil {
 				return nil, nil
 			}
-			ksls := node.GetItemLocs()
-			if ksls == nil {
+			ils := node.GetItemLocs()
+			if ils == nil {
 				return nil, nil
 			}
-			n := ksls.Len()
+			n := ils.Len()
 			if n <= 0 {
 				return nil, nil
 			}
 			if wantMax {
-				ksl = ksls.ItemLoc(n - 1)
+				il = ils.ItemLoc(n - 1)
 			} else {
-				ksl = ksls.ItemLoc(0)
+				il = ils.ItemLoc(0)
 			}
-		} else if ksl.Loc.Type == LocTypeVal {
-			return ksl, nil
+		} else if il.Loc.Type == LocTypeVal {
+			return il, nil
 		} else {
 			return nil, fmt.Errorf("locateMinMax")
 		}

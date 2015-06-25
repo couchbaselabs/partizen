@@ -154,7 +154,7 @@ func itemLocsLen(a ItemLocs) int {
 }
 
 func itemLocsSlice(a ItemLocs, from, to int) (ItemLocs, Seq) {
-	kslArr := make(ItemLocsArray, to-from)
+	ilArr := make(ItemLocsArray, to-from)
 	maxSeq := Seq(0)
 
 	lenKeys := 0
@@ -173,14 +173,14 @@ func itemLocsSlice(a ItemLocs, from, to int) (ItemLocs, Seq) {
 			maxSeq = seq
 		}
 
-		kslArr[i-from] = ItemLoc{
+		ilArr[i-from] = ItemLoc{
 			Key: key,
 			Seq: seq,
 			Loc: *(a.Loc(i)), // TODO: swizzle lock?
 		}
 	}
 
-	return kslArr, maxSeq
+	return ilArr, maxSeq
 }
 
 func itemLocsAppend(g ItemLocsAppendable,
