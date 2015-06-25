@@ -9,18 +9,22 @@ import (
 func storeOpen(storeFile StoreFile, storeOptions *StoreOptions) (
 	Store, error) {
 	storeOptions = initStoreOptions(storeOptions)
+
 	header, err := readHeader(storeFile, storeOptions)
 	if err != nil {
 		return nil, err
 	}
+
 	footer, err := readFooter(storeFile, storeOptions, header, MAX_UINT64)
 	if err != nil {
 		return nil, err
 	}
+
 	bufManager := storeOptions.BufManager
 	if bufManager == nil {
 		bufManager = NewDefaultBufManager(32, 1024*1024, 1.25, nil)
 	}
+
 	return &store{
 		storeFile:    storeFile,
 		storeOptions: *storeOptions,
@@ -35,6 +39,7 @@ func initStoreOptions(o *StoreOptions) *StoreOptions {
 	if o == nil {
 		o = &DefaultOptions
 	}
+
 	rv := &StoreOptions{
 		CompareFuncs:     o.CompareFuncs,
 		DefaultPageSize:  o.DefaultPageSize,
@@ -60,6 +65,7 @@ func initStoreOptions(o *StoreOptions) *StoreOptions {
 	if rv.BufManager == nil {
 		rv.BufManager = DefaultOptions.BufManager
 	}
+
 	return rv
 }
 
@@ -77,10 +83,13 @@ func readHeader(f StoreFile, o *StoreOptions) (*Header, error) {
 		Magic1: uint64(HEADER_MAGIC1),
 		UUID:   uint64(rand.Int63()),
 	}
+
 	copy(header.Version[:], []byte(HEADER_VERSION+"\x00"))
+
 	if f == nil { // Memory only case.
 		return header, nil
 	}
+
 	// TODO: Actually read the header from f.
 	return nil, fmt.Errorf("unimplemented")
 }
@@ -92,11 +101,14 @@ func readFooter(f StoreFile, o *StoreOptions, header *Header,
 	}
 	footer.StoreDefLoc.Type = LocTypeStoreDef
 	footer.StoreDefLoc.storeDef = &StoreDef{}
+
 	if f == nil { // Memory only case.
 		return footer, nil
 	}
+
 	// TODO: Actually scan and read the footer from f.
 	// TODO: Footer should have copies of magic & uuid bytes for double-check.
+
 	return footer, nil
 }
 
