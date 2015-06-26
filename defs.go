@@ -217,15 +217,14 @@ type Loc struct {
 	Flags    uint8
 	CheckSum uint16 // An optional checksum of the bytes buf.
 
-	// Transient; non-nil when the Loc is read into memory or when the
-	// bytes of the Loc are prepared for writing.  The len of the
-	// slabLoc's buf should equal Loc.Size.
+	// Transient; non-nil when the LocTypeVal is dirty (not yet
+	// persisted) or loaded-&-parsed back into memory.
 	//
-	// TODO: Need lock to protect Loc.bufRef swizzling?
-	bufRef BufRef
+	// TODO: Need lock to protect Loc.valBufRef swizzling?
+	valBufRef BufRef
 
-	// Transient; partitionId is valid only when buf is non-nil and
-	// Type is LocTypeVal.
+	// Transient; partitionId is valid only when valBufRef is non-nil
+	// and Type is LocTypeVal.
 	//
 	// TODO: Need lock to protect Loc.partitionId swizzling?
 	partitionId PartitionId
@@ -245,16 +244,16 @@ const (
 	LocTypeStoreDef uint8 = 0x03
 )
 
-// Returns the Loc's BufRef, and if non-nil will add an additional
-// ref-count that must be DecRef()'ed.
-func (loc *Loc) BufRef(bm BufManager) BufRef {
-	if loc.bufRef == nil || loc.bufRef.IsNil() {
+// Returns the Loc's valBufRef, adding an additional ref-count that
+// must be DecRef()'ed by the caller.
+func (loc *Loc) ValBufRef(bm BufManager) BufRef {
+	if loc.valBufRef == nil || loc.valBufRef.IsNil() {
 		return nil
 	}
 
-	loc.bufRef.AddRef(bm)
+	loc.valBufRef.AddRef(bm)
 
-	return loc.bufRef
+	return loc.valBufRef
 }
 
 // ----------------------------------------
@@ -377,7 +376,8 @@ func (a *PtrItemLocsArrayHolder) Reset(bufManager BufManager) {
 	}
 
 	for i, il := range a.a {
-		il.Loc.bufRef.DecRef(bufManager)
+		il.Loc.valBufRef.DecRef(bufManager)
+		il.Loc.valBufRef = nil
 
 		a.a[i] = nil
 	}

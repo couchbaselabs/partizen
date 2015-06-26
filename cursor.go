@@ -53,7 +53,7 @@ func (c *cursorImpl) NextBufRef() (
 	}
 
 	return partitionId,
-		r.itemLoc.Key, r.itemLoc.Seq, r.itemLoc.Loc.BufRef(c.bufManager),
+		r.itemLoc.Key, r.itemLoc.Seq, r.itemLoc.Loc.ValBufRef(c.bufManager),
 		r.err
 }
 

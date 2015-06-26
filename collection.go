@@ -67,7 +67,7 @@ func (c *collection) Get(key Key, matchSeq Seq, withValue bool) (
 }
 
 func (c *collection) GetBufRef(key Key, matchSeq Seq, withValue bool) (
-	seq Seq, val BufRef, err error) {
+	Seq, BufRef, error) {
 	bufManager := c.store.bufManager
 
 	var hitSeq Seq
@@ -81,7 +81,7 @@ func (c *collection) GetBufRef(key Key, matchSeq Seq, withValue bool) (
 	if err == nil && hit != nil {
 		hitSeq, hitType = hit.Seq, hit.Loc.Type
 		if withValue {
-			hitBufRef = hit.Loc.BufRef(bufManager)
+			hitBufRef = hit.Loc.ValBufRef(bufManager)
 		}
 	}
 
@@ -315,7 +315,7 @@ func (c *collection) minMax(locateMax bool, withValue bool) (
 }
 
 func (c *collection) minMaxBufRef(wantMax bool, withValue bool) (
-	partitionId PartitionId, key Key, seq Seq, bufRef BufRef, err error) {
+	PartitionId, Key, Seq, BufRef, error) {
 	bufManager := c.store.bufManager
 
 	ilr, il := c.rootAddRef()
@@ -324,25 +324,27 @@ func (c *collection) minMaxBufRef(wantMax bool, withValue bool) (
 		return 0, nil, 0, nil, nil
 	}
 
-	il, err = locateMinMax(il, wantMax, bufManager, io.ReaderAt(nil))
+	ilMM, err := locateMinMax(il, wantMax, bufManager, io.ReaderAt(nil))
 	if err != nil {
 		c.rootDecRef(ilr)
 		return 0, nil, 0, nil, err
 	}
-	if il == nil {
+	if ilMM == nil {
 		c.rootDecRef(ilr)
 		return 0, nil, 0, nil, err
 	}
-	if il.Loc.Type != LocTypeVal {
+	if ilMM.Loc.Type != LocTypeVal {
 		c.rootDecRef(ilr)
 		return 0, nil, 0, nil,
-			fmt.Errorf("collection.minMax: unexpected type, il: %#v", il)
+			fmt.Errorf("collection.minMax: unexpected type,"+
+				" ilMM: %#v", ilMM)
 	}
 
+	var val BufRef
 	if withValue {
-		bufRef = il.Loc.BufRef(bufManager)
+		val = ilMM.Loc.ValBufRef(bufManager)
 	}
 
 	c.rootDecRef(ilr)
-	return 0, il.Key, il.Seq, bufRef, nil
+	return 0, ilMM.Key, ilMM.Seq, val, nil
 }

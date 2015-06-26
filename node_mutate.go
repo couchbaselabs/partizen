@@ -347,7 +347,7 @@ func mutationToValItemLoc(m *Mutation, bufManager BufManager) *ItemLoc {
 		Loc: Loc{
 			Type:        LocTypeVal,
 			Size:        uint32(bufLen),
-			bufRef:      m.ValBufRef,
+			valBufRef:   m.ValBufRef,
 			partitionId: m.PartitionId,
 		},
 	}
