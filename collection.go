@@ -274,7 +274,7 @@ func (c *collection) mutate(
 	} else {
 		err = nil
 
-		c.root = &ItemLocRef{R: il2, refs: 1}
+		c.root = &ItemLocRef{il: il2, refs: 1}
 
 		// If the previous root was in-use, hook it up with a
 		// ref-count on the new root to prevent the new root's nodes

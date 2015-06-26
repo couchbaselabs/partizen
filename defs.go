@@ -98,7 +98,7 @@ type collection struct {
 
 // An ItemLocRef represents a ref-counted reference to an ItemLoc.
 type ItemLocRef struct {
-	R *ItemLoc // Immutable.
+	il *ItemLoc // Immutable.
 
 	refs int32 // Mutator must have store.m locked.
 
@@ -120,7 +120,7 @@ func (r *ItemLocRef) addRef() (*ItemLocRef, *ItemLoc) {
 
 	r.refs++
 
-	return r, r.R
+	return r, r.il
 }
 
 // DecRef must be invoked by caller with collection.store.m locked.
