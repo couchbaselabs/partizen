@@ -26,8 +26,8 @@ func (c *collection) addRefUnlocked() *collection {
 func (c *collection) decRefUnlocked() {
 	c.refs--
 	if c.refs <= 0 {
-		c.Root.decRef(c.store.bufManager)
-		c.Root = nil
+		c.root.decRef(c.store.bufManager)
+		c.root = nil
 		c.readOnly = true
 	}
 }
@@ -36,7 +36,7 @@ func (c *collection) decRefUnlocked() {
 
 func (c *collection) rootAddRef() (*ItemLocRef, *ItemLoc) {
 	c.store.m.Lock()
-	ilr, il := c.Root.addRef()
+	ilr, il := c.root.addRef()
 	c.store.m.Unlock()
 
 	return ilr, il
@@ -208,7 +208,7 @@ func (c *collection) Scan(key Key, ascending bool,
 func (c *collection) Snapshot() (Collection, error) {
 	c.store.m.Lock()
 	x := *c // Shallow copy.
-	x.Root.addRef()
+	x.root.addRef()
 	x.refs = 1
 	x.readOnly = true
 	c.store.m.Unlock()
@@ -266,26 +266,26 @@ func (c *collection) mutate(
 	}
 
 	c.store.m.Lock()
-	if ilr != c.Root {
+	if ilr != c.root {
 		err = ErrConcurrentMutation
 	} else if ilr != nil && ilr.next != nil {
 		err = ErrConcurrentMutationChain
 	} else {
 		err = nil
 
-		c.Root = &ItemLocRef{R: il2, refs: 1}
+		c.root = &ItemLocRef{R: il2, refs: 1}
 
 		// If the previous root was in-use, hook it up with a
 		// ref-count on the new root to prevent the new root's nodes
 		// from being reclaimed until the previous is done.
 		if ilr != nil && ilr.refs > 2 {
-			ilr.next, _ = c.Root.addRef()
+			ilr.next, _ = c.root.addRef()
 		}
 	}
 	c.store.m.Unlock()
 
 	if err == nil {
-		c.rootDecRef(ilr) // Because c.Root was replaced.
+		c.rootDecRef(ilr) // Because c.root was replaced.
 	}
 
 	c.rootDecRef(ilr) // Matches above c.rootAddRef().
