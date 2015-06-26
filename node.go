@@ -59,7 +59,7 @@ func ReadLocNode(loc *Loc, bufManager BufManager, r io.ReaderAt) (
 
 // ----------------------------------------------------
 
-func locateItemLoc(il *ItemLoc, key Key,
+func locateItemLoc(il *ItemLoc, key Key, compareFunc CompareFunc,
 	bufManager BufManager, r io.ReaderAt) (*ItemLoc, error) {
 	for il != nil {
 		if il.Loc.Type == LocTypeNode {
@@ -79,9 +79,9 @@ func locateItemLoc(il *ItemLoc, key Key,
 				return nil, nil
 			}
 			i := sort.Search(n, func(i int) bool {
-				return bytes.Compare(ils.Key(i), key) >= 0
+				return compareFunc(ils.Key(i), key) >= 0
 			})
-			if i >= n || !bytes.Equal(ils.Key(i), key) {
+			if i >= n || compareFunc(ils.Key(i), key) != 0 {
 				return nil, nil
 			}
 			il = ils.ItemLoc(i)

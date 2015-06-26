@@ -76,7 +76,8 @@ func (c *collection) GetBufRef(key Key, matchSeq Seq, withValue bool) (
 
 	ilr, il := c.rootAddRef()
 
-	hit, err := locateItemLoc(il, key, bufManager, io.ReaderAt(nil))
+	hit, err := locateItemLoc(il, key, c.compareFunc,
+		bufManager, io.ReaderAt(nil))
 	if err == nil && hit != nil {
 		hitSeq, hitType = hit.Seq, hit.Loc.Type
 		if withValue {

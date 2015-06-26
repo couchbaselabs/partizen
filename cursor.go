@@ -1,7 +1,6 @@
 package partizen
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"sort"
@@ -95,10 +94,10 @@ func (r *collection) startCursor(key Key, ascending bool,
 				return nil
 			}
 			i := sort.Search(n, func(i int) bool {
-				return bytes.Compare(itemLocs.Key(i), key) >= 0
+				return r.compareFunc(itemLocs.Key(i), key) >= 0
 			})
 			if !ascending &&
-				(i >= n || bytes.Compare(itemLocs.Key(i), key) > 0) {
+				(i >= n || r.compareFunc(itemLocs.Key(i), key) > 0) {
 				i = i - 1
 			}
 			for i >= 0 && i < n {
