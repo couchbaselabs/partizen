@@ -11,6 +11,7 @@ type cursorImpl struct {
 	readerAt   io.ReaderAt
 	closeCh    chan struct{}
 	resultsCh  chan cursorResult
+	withValue  bool
 }
 
 type cursorResult struct {
@@ -42,8 +43,8 @@ func (c *cursorImpl) Next() (
 func (c *cursorImpl) NextBufRef() (
 	PartitionId, Key, Seq, BufRef, error) {
 	r, ok := <-c.resultsCh
-	if !ok {
-		return 0, nil, 0, nil, nil // TODO: zero/nil PartitionId.
+	if !ok || r.err != nil {
+		return 0, nil, 0, nil, r.err // TODO: zero/nil PartitionId.
 	}
 
 	loc, err := r.itemLoc.Loc.Read(c.bufManager, c.readerAt)
@@ -51,8 +52,12 @@ func (c *cursorImpl) NextBufRef() (
 		return 0, nil, 0, nil, err
 	}
 
-	return loc.leafPartitionId, r.itemLoc.Key, r.itemLoc.Seq,
-		loc.LeafValBufRef(c.bufManager), r.err
+	var val BufRef
+	if c.withValue {
+		val = loc.LeafValBufRef(c.bufManager)
+	}
+
+	return loc.leafPartitionId, r.itemLoc.Key, r.itemLoc.Seq, val, nil
 }
 
 // --------------------------------------------

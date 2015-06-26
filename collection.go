@@ -203,6 +203,7 @@ func (c *collection) Scan(key Key, ascending bool,
 		readerAt:   readerAt,
 		closeCh:    closeCh,
 		resultsCh:  resultsCh,
+		withValue:  withValue,
 	}, nil
 }
 
