@@ -46,14 +46,13 @@ func (c *cursorImpl) NextBufRef() (
 		return 0, nil, 0, nil, nil // TODO: zero/nil PartitionId.
 	}
 
-	partitionId, err :=
-		r.itemLoc.GetPartitionId(c.bufManager, c.readerAt)
+	loc, err := r.itemLoc.Loc.Read(c.bufManager, c.readerAt)
 	if err != nil {
 		return 0, nil, 0, nil, err
 	}
 
-	return partitionId, r.itemLoc.Key, r.itemLoc.Seq,
-		r.itemLoc.Loc.LeafValBufRef(c.bufManager), r.err
+	return loc.leafPartitionId, r.itemLoc.Key, r.itemLoc.Seq,
+		loc.LeafValBufRef(c.bufManager), r.err
 }
 
 // --------------------------------------------
