@@ -217,20 +217,22 @@ type Loc struct {
 	Flags    uint8
 	CheckSum uint16 // An optional checksum of the bytes buf.
 
-	// Transient; non-nil when the LocTypeVal is dirty (not yet
-	// persisted) or loaded-&-parsed back into memory.
+	// Transient; only used when Type is LocTypeVal.  If nil,
+	// in-memory representation hasn't been loaded yet.  When non-nil,
+	// it might be dirty (not yet persisted, Offset == 0).
 	//
 	// TODO: Need lock to protect Loc.valBufRef swizzling?
 	valBufRef BufRef
 
-	// Transient; partitionId is valid only when valBufRef is non-nil
-	// and Type is LocTypeVal.
+	// Transient; only used when Type is LocTypeVal and when valBufRef
+	// is non-nil.
 	//
 	// TODO: Need lock to protect Loc.partitionId swizzling?
 	partitionId PartitionId
 
 	// Transient; only used when Type is LocTypeNode.  If nil,
-	// in-memory representation of Node hasn't been loaded yet.
+	// in-memory representation hasn't been loaded yet.  When non-nil,
+	// it might be dirty (not yet persisted, Offset == 0).
 	//
 	// TODO: Need lock to protect Loc.node swizzling?
 	node *node
