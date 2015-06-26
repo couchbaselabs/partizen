@@ -175,7 +175,7 @@ func (iloc *ItemLoc) GetPartitionId(
 		return 0, fmt.Errorf("GetPartitionId when not LocTypeVal")
 	}
 
-	return loc.partitionId, nil
+	return loc.leafPartitionId, nil
 }
 
 func (iloc *ItemLoc) GetPartitions(
@@ -190,17 +190,21 @@ func (iloc *ItemLoc) GetPartitions(
 		return loc.node.GetPartitions(), nil
 	}
 
-	if loc.Type == LocTypeVal {
-		return &Partitions{
-			PartitionIds: []PartitionId{loc.partitionId},
-			KeyItemLocs: [][]KeyItemLoc{[]KeyItemLoc{KeyItemLoc{
-				Key:     iloc.Key,
-				ItemLoc: iloc,
-			}}},
-		}, nil
+	if loc.Type != LocTypeVal {
+		return nil, fmt.Errorf("defs: GetPartitions type, iloc: %v", iloc)
 	}
 
-	return nil, fmt.Errorf("defs: GetPartitions bad type, iloc: %v", iloc)
+	if loc.leafValBufRef == nil || loc.leafValBufRef.IsNil() {
+		return nil, fmt.Errorf("defs: GetPartitions leafValBufRef nil")
+	}
+
+	return &Partitions{
+		PartitionIds: []PartitionId{loc.leafPartitionId},
+		KeyItemLocs: [][]KeyItemLoc{[]KeyItemLoc{KeyItemLoc{
+			Key:     iloc.Key,
+			ItemLoc: iloc,
+		}}},
+	}, nil
 }
 
 // ----------------------------------------
@@ -221,20 +225,20 @@ type Loc struct {
 	// in-memory representation hasn't been loaded yet.  When non-nil,
 	// it might be dirty (not yet persisted, Offset == 0).
 	//
-	// TODO: Need lock to protect Loc.valBufRef swizzling?
-	valBufRef BufRef
+	// TODO: Need lock to protect swizzling?
+	leafValBufRef BufRef
 
-	// Transient; only used when Type is LocTypeVal and when valBufRef
-	// is non-nil.
+	// Transient; only used when Type is LocTypeVal and when
+	// leafValBufRef is non-nil.
 	//
-	// TODO: Need lock to protect Loc.partitionId swizzling?
-	partitionId PartitionId
+	// TODO: Need lock to protect swizzling?
+	leafPartitionId PartitionId
 
 	// Transient; only used when Type is LocTypeNode.  If nil,
 	// in-memory representation hasn't been loaded yet.  When non-nil,
 	// it might be dirty (not yet persisted, Offset == 0).
 	//
-	// TODO: Need lock to protect Loc.node swizzling?
+	// TODO: Need lock to protect swizzling?
 	node *node
 }
 
@@ -246,16 +250,16 @@ const (
 	LocTypeStoreDef uint8 = 0x03
 )
 
-// Returns the Loc's valBufRef, adding an additional ref-count that
-// must be DecRef()'ed by the caller.
-func (loc *Loc) ValBufRef(bm BufManager) BufRef {
-	if loc.valBufRef == nil || loc.valBufRef.IsNil() {
+// Returns the Loc's leafValBufRef, adding an additional ref-count
+// that must be DecRef()'ed by the caller.
+func (loc *Loc) LeafValBufRef(bm BufManager) BufRef {
+	if loc.leafValBufRef == nil || loc.leafValBufRef.IsNil() {
 		return nil
 	}
 
-	loc.valBufRef.AddRef(bm)
+	loc.leafValBufRef.AddRef(bm)
 
-	return loc.valBufRef
+	return loc.leafValBufRef
 }
 
 // ----------------------------------------
@@ -378,8 +382,10 @@ func (a *PtrItemLocsArrayHolder) Reset(bufManager BufManager) {
 	}
 
 	for i, il := range a.a {
-		il.Loc.valBufRef.DecRef(bufManager)
-		il.Loc.valBufRef = nil
+		il.Loc.leafValBufRef.DecRef(bufManager)
+		il.Loc.leafValBufRef = nil
+		il.Loc.leafPartitionId = 0
+		il.Loc.node = nil
 
 		a.a[i] = nil
 	}

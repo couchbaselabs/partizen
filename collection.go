@@ -81,7 +81,7 @@ func (c *collection) GetBufRef(key Key, matchSeq Seq, withValue bool) (
 	if err == nil && hit != nil {
 		hitSeq, hitType = hit.Seq, hit.Loc.Type
 		if withValue {
-			hitBufRef = hit.Loc.ValBufRef(bufManager)
+			hitBufRef = hit.Loc.LeafValBufRef(bufManager)
 		}
 	}
 
@@ -342,7 +342,7 @@ func (c *collection) minMaxBufRef(wantMax bool, withValue bool) (
 
 	var val BufRef
 	if withValue {
-		val = ilMM.Loc.ValBufRef(bufManager)
+		val = ilMM.Loc.LeafValBufRef(bufManager)
 	}
 
 	c.rootDecRef(ilr)

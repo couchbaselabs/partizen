@@ -52,9 +52,8 @@ func (c *cursorImpl) NextBufRef() (
 		return 0, nil, 0, nil, err
 	}
 
-	return partitionId,
-		r.itemLoc.Key, r.itemLoc.Seq, r.itemLoc.Loc.ValBufRef(c.bufManager),
-		r.err
+	return partitionId, r.itemLoc.Key, r.itemLoc.Seq,
+		r.itemLoc.Loc.LeafValBufRef(c.bufManager), r.err
 }
 
 // --------------------------------------------

@@ -345,10 +345,10 @@ func mutationToValItemLoc(m *Mutation, bufManager BufManager) *ItemLoc {
 		Key: m.Key, // NOTE: We copy key in groupItemLocs/itemLocsSlice.
 		Seq: m.Seq,
 		Loc: Loc{
-			Type:        LocTypeVal,
-			Size:        uint32(bufLen),
-			valBufRef:   m.ValBufRef,
-			partitionId: m.PartitionId,
+			Type:            LocTypeVal,
+			Size:            uint32(bufLen),
+			leafValBufRef:   m.ValBufRef,
+			leafPartitionId: m.PartitionId,
 		},
 	}
 }
