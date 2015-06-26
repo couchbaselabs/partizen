@@ -72,15 +72,15 @@ func (r *collection) startCursor(key Key, ascending bool,
 
 	resultsCh = make(chan cursorResult, maxReadAhead)
 
-	itemLocRef, itemLoc := r.rootAddRef()
+	rootILR, rootIL := r.rootAddRef()
 
-	var visit func(itemLoc *ItemLoc) error
-	visit = func(itemLoc *ItemLoc) error {
-		if itemLoc == nil {
+	var visit func(il *ItemLoc) error
+	visit = func(il *ItemLoc) error {
+		if il == nil {
 			return nil
 		}
-		if itemLoc.Loc.Type == LocTypeNode {
-			node, err := ReadLocNode(&itemLoc.Loc,
+		if il.Loc.Type == LocTypeNode {
+			node, err := ReadLocNode(&il.Loc,
 				r.store.bufManager, readerAt)
 			if err != nil {
 				return err
@@ -88,23 +88,23 @@ func (r *collection) startCursor(key Key, ascending bool,
 			if node == nil {
 				return nil
 			}
-			itemLocs := node.GetItemLocs()
-			if itemLocs == nil {
+			ils := node.GetItemLocs()
+			if ils == nil {
 				return nil
 			}
-			n := itemLocs.Len()
+			n := ils.Len()
 			if n <= 0 {
 				return nil
 			}
 			i := sort.Search(n, func(i int) bool {
-				return r.compareFunc(itemLocs.Key(i), key) >= 0
+				return r.compareFunc(ils.Key(i), key) >= 0
 			})
 			if !ascending &&
-				(i >= n || r.compareFunc(itemLocs.Key(i), key) > 0) {
+				(i >= n || r.compareFunc(ils.Key(i), key) > 0) {
 				i = i - 1
 			}
 			for i >= 0 && i < n {
-				err := visit(itemLocs.ItemLoc(i))
+				err := visit(ils.ItemLoc(i))
 				if err != nil {
 					return err
 				}
@@ -117,24 +117,24 @@ func (r *collection) startCursor(key Key, ascending bool,
 			return nil
 		}
 
-		if itemLoc.Loc.Type == LocTypeVal {
+		if il.Loc.Type == LocTypeVal {
 			select {
 			case <-closeCh:
 				return ErrCursorClosed
-			case resultsCh <- cursorResult{err: nil, itemLoc: itemLoc}:
+			case resultsCh <- cursorResult{err: nil, itemLoc: il}:
 				// TODO: Mem mgmt.
 			}
 			return nil
 		}
 
 		return fmt.Errorf("startCursor.visit:",
-			" unexpected Loc.Type, itemLoc: %#v", itemLoc)
+			" unexpected Loc.Type, il: %#v", il)
 	}
 
 	go func() {
-		err := visit(itemLoc)
+		err := visit(rootIL)
 
-		r.rootDecRef(itemLocRef)
+		r.rootDecRef(rootILR)
 
 		if err != nil && err != ErrCursorClosed {
 			resultsCh <- cursorResult{err: err}
