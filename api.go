@@ -236,3 +236,24 @@ const NO_MATCH_SEQ = Seq(0xffffffffffffffff)
 // specify that the caller explicitly wants a creation instead of an
 // update of an existing item.
 const CREATE_MATCH_SEQ = Seq(0xfffffffffffffffe)
+
+// ------------------------------------------------------------
+
+type ItemBufRef interface {
+	IsNil() bool
+
+	AddRef(bm BufManager)
+	DecRef(bm BufManager)
+
+	PartitionId(bm BufManager) PartitionId
+
+	Key(bm BufManager, out Key) Key
+
+	Val(bm BufManager, out Val) Val
+
+	ValVisit(bm BufManager, from, to int,
+		partVisitor func(cbData, partBuf []byte,
+			partFrom, partTo int) bool, cbData []byte)
+
+	Seq(bm BufManager) Seq
+}
