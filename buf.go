@@ -8,16 +8,16 @@ import (
 
 // TODO: A BufManager implementation that leverages chunks.
 
-// defaultBufManager is an implementation of BufManager interface
+// DefaultBufManager is an implementation of BufManager interface
 // based on the go-slab memory manager.
-type defaultBufManager struct {
+type DefaultBufManager struct {
 	m     sync.Mutex
 	arena *slab.Arena
 }
 
-// defaultBufRef is an implementation of the BufRef interface based on
+// DefaultBufRef is an implementation of the BufRef interface based on
 // the go-slab memory manager.
-type defaultBufRef struct {
+type DefaultBufRef struct {
 	slabLoc slab.Loc
 }
 
@@ -29,16 +29,16 @@ func NewDefaultBufManager(
 	startChunkSize int,
 	slabSize int,
 	growthFactor float64,
-	malloc func(size int) []byte) *defaultBufManager {
+	malloc func(size int) []byte) *DefaultBufManager {
 	arena := slab.NewArena(startChunkSize, slabSize, growthFactor, malloc)
 	if arena == nil {
 		return nil
 	}
 
-	return &defaultBufManager{arena: arena}
+	return &DefaultBufManager{arena: arena}
 }
 
-func (dbm *defaultBufManager) Alloc(size int,
+func (dbm *DefaultBufManager) Alloc(size int,
 	partUpdater func(cbData, partBuf []byte,
 		partFrom, partTo int) bool, cbData []byte) BufRef {
 	dbm.m.Lock()
@@ -49,14 +49,14 @@ func (dbm *defaultBufManager) Alloc(size int,
 		return nil
 	}
 
-	dbr := &defaultBufRef{slabLoc}
+	dbr := &DefaultBufRef{slabLoc}
 
 	return dbr.update(dbm, 0, size, partUpdater, cbData)
 }
 
 // -------------------------------------------------
 
-func (dbr *defaultBufRef) IsNil() bool {
+func (dbr *DefaultBufRef) IsNil() bool {
 	if dbr == nil {
 		return true
 	}
@@ -64,8 +64,8 @@ func (dbr *defaultBufRef) IsNil() bool {
 	return dbr.slabLoc.IsNil()
 }
 
-func (dbr *defaultBufRef) Len(bm BufManager) int {
-	dbm, ok := bm.(*defaultBufManager)
+func (dbr *DefaultBufRef) Len(bm BufManager) int {
+	dbm, ok := bm.(*DefaultBufManager)
 	if !ok || dbm == nil {
 		return 0
 	}
@@ -77,8 +77,8 @@ func (dbr *defaultBufRef) Len(bm BufManager) int {
 	return n
 }
 
-func (dbr *defaultBufRef) AddRef(bm BufManager) {
-	dbm, ok := bm.(*defaultBufManager)
+func (dbr *DefaultBufRef) AddRef(bm BufManager) {
+	dbm, ok := bm.(*DefaultBufManager)
 	if !ok || dbm == nil {
 		return
 	}
@@ -88,8 +88,8 @@ func (dbr *defaultBufRef) AddRef(bm BufManager) {
 	dbm.m.Unlock()
 }
 
-func (dbr *defaultBufRef) DecRef(bm BufManager) {
-	dbm, ok := bm.(*defaultBufManager)
+func (dbr *DefaultBufRef) DecRef(bm BufManager) {
+	dbm, ok := bm.(*DefaultBufManager)
 	if !ok || dbm == nil {
 		return
 	}
@@ -99,11 +99,11 @@ func (dbr *defaultBufRef) DecRef(bm BufManager) {
 	dbm.m.Unlock()
 }
 
-func (dbr *defaultBufRef) Update(bm BufManager, from, to int,
+func (dbr *DefaultBufRef) Update(bm BufManager, from, to int,
 	partUpdater func(cbData, partBuf []byte,
 		partFrom, partTo int) bool,
 	cbData []byte) BufRef {
-	dbm, ok := bm.(*defaultBufManager)
+	dbm, ok := bm.(*DefaultBufManager)
 	if !ok || dbm == nil {
 		return nil
 	}
@@ -111,7 +111,7 @@ func (dbr *defaultBufRef) Update(bm BufManager, from, to int,
 	return dbr.update(dbm, from, to, partUpdater, cbData)
 }
 
-func (dbr *defaultBufRef) update(dbm *defaultBufManager, from, to int,
+func (dbr *DefaultBufRef) update(dbm *DefaultBufManager, from, to int,
 	partUpdater func(cbData, partBuf []byte,
 		partFrom, partTo int) bool,
 	cbData []byte) BufRef {
@@ -127,7 +127,7 @@ func (dbr *defaultBufRef) update(dbm *defaultBufManager, from, to int,
 	return dbr
 }
 
-func (dbr *defaultBufRef) Visit(bm BufManager, from, to int,
+func (dbr *DefaultBufRef) Visit(bm BufManager, from, to int,
 	partVisitor func(cbData, partBuf []byte,
 		partFrom, partTo int) bool,
 	cbData []byte) BufRef {
@@ -135,7 +135,7 @@ func (dbr *defaultBufRef) Visit(bm BufManager, from, to int,
 		return dbr
 	}
 
-	dbm, ok := bm.(*defaultBufManager)
+	dbm, ok := bm.(*DefaultBufManager)
 	if !ok || dbm == nil {
 		return nil
 	}
