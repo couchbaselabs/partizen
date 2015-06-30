@@ -78,7 +78,7 @@ func TestEmptyMutate(t *testing.T) {
 	rootItemLoc := &ItemLoc{
 		Loc: Loc{
 			Type: LocTypeNode,
-			node: &node{},
+			node: &Node{},
 		},
 	}
 	il, err = rootProcessMutations(rootItemLoc, nil, nil, 15, 32,

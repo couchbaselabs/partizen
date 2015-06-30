@@ -205,7 +205,7 @@ func itemLocsGroupAppend(src ItemLocs, beg, end int, dst ItemLocsAppendable,
 	return itemLocsAppend(dst,
 		a.Key(0), maxSeq, Loc{
 			Type: LocTypeNode,
-			node: &node{itemLocs: a, partitions: partitions},
+			node: &Node{itemLocs: a, partitions: partitions},
 		}), nil
 }
 

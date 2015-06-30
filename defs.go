@@ -225,7 +225,7 @@ type Loc struct {
 	// it might be dirty (not yet persisted, Offset == 0).
 	//
 	// TODO: Need lock to protect swizzling?
-	node *node
+	node *Node
 }
 
 const (

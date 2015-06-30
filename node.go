@@ -7,16 +7,16 @@ import (
 	"sort"
 )
 
-type node struct {
+type Node struct {
 	itemLocs   ItemLocs
 	partitions *Partitions
 }
 
-func (n *node) GetItemLocs() ItemLocs {
+func (n *Node) GetItemLocs() ItemLocs {
 	return n.itemLocs
 }
 
-func (n *node) GetPartitions() *Partitions {
+func (n *Node) GetPartitions() *Partitions {
 	return n.partitions
 }
 
@@ -44,7 +44,7 @@ func (loc *Loc) Read(bufManager BufManager, r io.ReaderAt) (
 }
 
 func ReadLocNode(loc *Loc, bufManager BufManager, r io.ReaderAt) (
-	*node, error) {
+	*Node, error) {
 	loc, err := loc.Read(bufManager, r)
 	if err != nil {
 		return nil, err
