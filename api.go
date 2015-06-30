@@ -239,10 +239,12 @@ const CREATE_MATCH_SEQ = Seq(0xfffffffffffffffe)
 
 // ------------------------------------------------------------
 
-// ItemBufRef represents the in-memory bytes of an Item.
+// ItemBufRef represents the in-memory bytes of an item.
 type ItemBufRef interface {
 	IsNil() bool
 
+	// Len returns the full number of bytes required for a persisted
+	// item (PartitionId + Key + Val + Seq + any other metadata).
 	Len(bm BufManager) int
 
 	AddRef(bm BufManager)
@@ -250,9 +252,13 @@ type ItemBufRef interface {
 
 	PartitionId(bm BufManager) PartitionId
 
+	// Key returns the Key, optionally appending to a non-nil out
+	// parameter so the caller can leverage pre-allocated memory.
 	Key(bm BufManager, out Key) Key
 	KeyLen(bm BufManager) int
 
+	// Val returns the Val, optionally appending to a non-nil out
+	// parameter so the caller can leverage pre-allocated memory.
 	Val(bm BufManager, out Val) Val
 	ValLen(bm BufManager) int
 	ValVisit(bm BufManager, from, to int,
