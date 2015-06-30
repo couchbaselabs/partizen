@@ -7,8 +7,8 @@ import (
 )
 
 type Key []byte
-type Val []byte
 type Seq uint64
+type Val []byte
 
 // ----------------------------------------
 
@@ -257,6 +257,8 @@ type ItemBufRef interface {
 	Key(bm BufManager, out Key) Key
 	KeyLen(bm BufManager) int
 
+	Seq(bm BufManager) Seq
+
 	// Val returns the Val, optionally appending to a non-nil out
 	// parameter so the caller can leverage pre-allocated memory.
 	Val(bm BufManager, out Val) Val
@@ -264,6 +266,4 @@ type ItemBufRef interface {
 	ValVisit(bm BufManager, from, to int,
 		partVisitor func(cbData, partBuf []byte,
 			partFrom, partTo int) bool, cbData []byte)
-
-	Seq(bm BufManager) Seq
 }
