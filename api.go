@@ -239,8 +239,11 @@ const CREATE_MATCH_SEQ = Seq(0xfffffffffffffffe)
 
 // ------------------------------------------------------------
 
+// ItemBufRef represents the in-memory bytes of an Item.
 type ItemBufRef interface {
 	IsNil() bool
+
+	Len(bm BufManager) int
 
 	AddRef(bm BufManager)
 	DecRef(bm BufManager)
@@ -248,9 +251,10 @@ type ItemBufRef interface {
 	PartitionId(bm BufManager) PartitionId
 
 	Key(bm BufManager, out Key) Key
+	KeyLen(bm BufManager) int
 
 	Val(bm BufManager, out Val) Val
-
+	ValLen(bm BufManager) int
 	ValVisit(bm BufManager, from, to int,
 		partVisitor func(cbData, partBuf []byte,
 			partFrom, partTo int) bool, cbData []byte)
