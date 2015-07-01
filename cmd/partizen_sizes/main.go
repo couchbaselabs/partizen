@@ -34,11 +34,11 @@ func main() {
 	var Footer partizen.Footer
 	fmt.Printf("partizen.Footer: %d\n", unsafe.Sizeof(Footer))
 
-	var ItemLocRef partizen.ItemLocRef
-	fmt.Printf("partizen.ItemLocRef: %d\n", unsafe.Sizeof(ItemLocRef))
+	var KeySeqLocRef partizen.KeySeqLocRef
+	fmt.Printf("partizen.KeySeqLocRef: %d\n", unsafe.Sizeof(KeySeqLocRef))
 
-	var ItemLoc partizen.ItemLoc
-	fmt.Printf("partizen.ItemLoc: %d\n", unsafe.Sizeof(ItemLoc))
+	var KeySeqLoc partizen.KeySeqLoc
+	fmt.Printf("partizen.KeySeqLoc: %d\n", unsafe.Sizeof(KeySeqLoc))
 
 	var Loc partizen.Loc
 	fmt.Printf("partizen.Loc: %d\n", unsafe.Sizeof(Loc))
@@ -55,8 +55,8 @@ func main() {
 	var Partitions partizen.Partitions
 	fmt.Printf("partizen.Partitions: %d\n", unsafe.Sizeof(Partitions))
 
-	var KeyItemLoc partizen.KeyItemLoc
-	fmt.Printf("partizen.KeyItemLoc: %d\n", unsafe.Sizeof(KeyItemLoc))
+	var KeyKeySeqLoc partizen.KeyKeySeqLoc
+	fmt.Printf("partizen.KeyKeySeqLoc: %d\n", unsafe.Sizeof(KeyKeySeqLoc))
 
 	var slabLoc slab.Loc
 	fmt.Printf("slab.Loc: %d\n", unsafe.Sizeof(slabLoc))

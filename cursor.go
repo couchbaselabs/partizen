@@ -15,8 +15,8 @@ type cursorImpl struct {
 }
 
 type cursorResult struct {
-	err     error
-	itemLoc *ItemLoc
+	err   error
+	ksLoc *KeySeqLoc
 }
 
 // --------------------------------------------
@@ -47,7 +47,7 @@ func (c *cursorImpl) NextBufRef() (
 		return 0, nil, 0, nil, r.err // TODO: zero/nil PartitionId.
 	}
 
-	loc, err := r.itemLoc.Loc.Read(c.bufManager, c.readerAt)
+	loc, err := r.ksLoc.Loc.Read(c.bufManager, c.readerAt)
 	if err != nil {
 		return 0, nil, 0, nil, err
 	}
@@ -57,7 +57,7 @@ func (c *cursorImpl) NextBufRef() (
 		val = loc.LeafValBufRef(c.bufManager)
 	}
 
-	return loc.leafPartitionId, r.itemLoc.Key, r.itemLoc.Seq, val, nil
+	return loc.leafPartitionId, r.ksLoc.Key, r.ksLoc.Seq, val, nil
 }
 
 // --------------------------------------------
@@ -74,8 +74,8 @@ func (r *collection) startCursor(key Key, ascending bool,
 
 	rootILR, rootIL := r.rootAddRef()
 
-	var visit func(il *ItemLoc) error
-	visit = func(il *ItemLoc) error {
+	var visit func(il *KeySeqLoc) error
+	visit = func(il *KeySeqLoc) error {
 		if il == nil {
 			return nil
 		}
@@ -88,7 +88,7 @@ func (r *collection) startCursor(key Key, ascending bool,
 			if node == nil {
 				return nil
 			}
-			ils := node.GetItemLocs()
+			ils := node.GetKeySeqLocs()
 			if ils == nil {
 				return nil
 			}
@@ -104,7 +104,7 @@ func (r *collection) startCursor(key Key, ascending bool,
 				i = i - 1
 			}
 			for i >= 0 && i < n {
-				err := visit(ils.ItemLoc(i))
+				err := visit(ils.KeySeqLoc(i))
 				if err != nil {
 					return err
 				}
@@ -121,7 +121,7 @@ func (r *collection) startCursor(key Key, ascending bool,
 			select {
 			case <-closeCh:
 				return ErrCursorClosed
-			case resultsCh <- cursorResult{err: nil, itemLoc: il}:
+			case resultsCh <- cursorResult{err: nil, ksLoc: il}:
 				// TODO: Mem mgmt.
 			}
 			return nil

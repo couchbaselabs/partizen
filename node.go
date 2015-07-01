@@ -8,12 +8,12 @@ import (
 )
 
 type Node struct {
-	itemLocs   ItemLocs
+	ksLocs     KeySeqLocs
 	partitions *Partitions
 }
 
-func (n *Node) GetItemLocs() ItemLocs {
-	return n.itemLocs
+func (n *Node) GetKeySeqLocs() KeySeqLocs {
+	return n.ksLocs
 }
 
 func (n *Node) GetPartitions() *Partitions {
@@ -59,8 +59,8 @@ func ReadLocNode(loc *Loc, bufManager BufManager, r io.ReaderAt) (
 
 // ----------------------------------------------------
 
-func locateItemLoc(il *ItemLoc, key Key, compareFunc CompareFunc,
-	bufManager BufManager, r io.ReaderAt) (*ItemLoc, error) {
+func locateKeySeqLoc(il *KeySeqLoc, key Key, compareFunc CompareFunc,
+	bufManager BufManager, r io.ReaderAt) (*KeySeqLoc, error) {
 	for il != nil {
 		if il.Loc.Type == LocTypeNode {
 			node, err := ReadLocNode(&il.Loc, bufManager, r)
@@ -70,7 +70,7 @@ func locateItemLoc(il *ItemLoc, key Key, compareFunc CompareFunc,
 			if node == nil {
 				return nil, nil
 			}
-			ils := node.GetItemLocs()
+			ils := node.GetKeySeqLocs()
 			if ils == nil {
 				return nil, nil
 			}
@@ -84,21 +84,21 @@ func locateItemLoc(il *ItemLoc, key Key, compareFunc CompareFunc,
 			if i >= n || compareFunc(ils.Key(i), key) != 0 {
 				return nil, nil
 			}
-			il = ils.ItemLoc(i)
+			il = ils.KeySeqLoc(i)
 		} else if il.Loc.Type == LocTypeVal {
 			if bytes.Equal(il.Key, key) {
 				return il, nil
 			}
 			return nil, nil
 		} else {
-			return nil, fmt.Errorf("locateItemLoc")
+			return nil, fmt.Errorf("locateKeySeqLoc")
 		}
 	}
 	return nil, nil
 }
 
-func locateMinMax(il *ItemLoc, wantMax bool,
-	bufManager BufManager, r io.ReaderAt) (*ItemLoc, error) {
+func locateMinMax(il *KeySeqLoc, wantMax bool,
+	bufManager BufManager, r io.ReaderAt) (*KeySeqLoc, error) {
 	for il != nil {
 		if il.Loc.Type == LocTypeNode {
 			node, err := ReadLocNode(&il.Loc, bufManager, r)
@@ -108,7 +108,7 @@ func locateMinMax(il *ItemLoc, wantMax bool,
 			if node == nil {
 				return nil, nil
 			}
-			ils := node.GetItemLocs()
+			ils := node.GetKeySeqLocs()
 			if ils == nil {
 				return nil, nil
 			}
@@ -117,9 +117,9 @@ func locateMinMax(il *ItemLoc, wantMax bool,
 				return nil, nil
 			}
 			if wantMax {
-				il = ils.ItemLoc(n - 1)
+				il = ils.KeySeqLoc(n - 1)
 			} else {
-				il = ils.ItemLoc(0)
+				il = ils.KeySeqLoc(0)
 			}
 		} else if il.Loc.Type == LocTypeVal {
 			return il, nil
