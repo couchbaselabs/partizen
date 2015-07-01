@@ -34,7 +34,7 @@ func (c *collection) decRefUnlocked() {
 
 // --------------------------------------------
 
-func (c *collection) rootAddRef() (*KeySeqLocRef, *KeySeqLoc) {
+func (c *collection) rootAddRef() (*ChildLocRef, *ChildLoc) {
 	c.store.m.Lock()
 	ilr, il := c.root.addRef()
 	c.store.m.Unlock()
@@ -42,7 +42,7 @@ func (c *collection) rootAddRef() (*KeySeqLocRef, *KeySeqLoc) {
 	return ilr, il
 }
 
-func (c *collection) rootDecRef(ilr *KeySeqLocRef) {
+func (c *collection) rootDecRef(ilr *ChildLocRef) {
 	c.store.m.Lock()
 	ilr.decRef(c.store.bufManager)
 	c.store.m.Unlock()
@@ -76,7 +76,7 @@ func (c *collection) GetBufRef(key Key, matchSeq Seq, withValue bool) (
 
 	ilr, il := c.rootAddRef()
 
-	hit, err := locateKeySeqLoc(il, key, c.compareFunc,
+	hit, err := locateChildLoc(il, key, c.compareFunc,
 		bufManager, io.ReaderAt(nil))
 	if err == nil && hit != nil {
 		hitSeq, hitType = hit.Seq, hit.Loc.Type
@@ -237,7 +237,7 @@ func (c *collection) mutate(
 
 	var cbErr error
 
-	cb := func(existing *KeySeqLoc, isVal bool, mutation *Mutation) bool {
+	cb := func(existing *ChildLoc, isVal bool, mutation *Mutation) bool {
 		if !isVal ||
 			mutation.MatchSeq == NO_MATCH_SEQ ||
 			(existing == nil && mutation.MatchSeq == CREATE_MATCH_SEQ) ||
@@ -251,7 +251,7 @@ func (c *collection) mutate(
 		return false
 	}
 
-	reclaimables := &PtrKeySeqLocsArrayHolder{} // TODO: sync.Pool'able.
+	reclaimables := &PtrChildLocsArrayHolder{} // TODO: sync.Pool'able.
 
 	ilr, il := c.rootAddRef()
 
@@ -275,7 +275,7 @@ func (c *collection) mutate(
 	} else {
 		err = nil
 
-		c.root = &KeySeqLocRef{il: il2, refs: 1}
+		c.root = &ChildLocRef{il: il2, refs: 1}
 
 		// If the previous root was in-use, hook it up with a
 		// ref-count on the new root to prevent the new root's nodes

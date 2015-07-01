@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"unsafe"
 
-	"github.com/couchbaselabs/partizen"
 	"github.com/couchbaselabs/go-slab"
-
+	"github.com/couchbaselabs/partizen"
 )
 
 func main() {
@@ -34,11 +33,11 @@ func main() {
 	var Footer partizen.Footer
 	fmt.Printf("partizen.Footer: %d\n", unsafe.Sizeof(Footer))
 
-	var KeySeqLocRef partizen.KeySeqLocRef
-	fmt.Printf("partizen.KeySeqLocRef: %d\n", unsafe.Sizeof(KeySeqLocRef))
+	var ChildLocRef partizen.ChildLocRef
+	fmt.Printf("partizen.ChildLocRef: %d\n", unsafe.Sizeof(ChildLocRef))
 
-	var KeySeqLoc partizen.KeySeqLoc
-	fmt.Printf("partizen.KeySeqLoc: %d\n", unsafe.Sizeof(KeySeqLoc))
+	var ChildLoc partizen.ChildLoc
+	fmt.Printf("partizen.ChildLoc: %d\n", unsafe.Sizeof(ChildLoc))
 
 	var Loc partizen.Loc
 	fmt.Printf("partizen.Loc: %d\n", unsafe.Sizeof(Loc))
@@ -55,8 +54,8 @@ func main() {
 	var Partitions partizen.Partitions
 	fmt.Printf("partizen.Partitions: %d\n", unsafe.Sizeof(Partitions))
 
-	var KeyKeySeqLoc partizen.KeyKeySeqLoc
-	fmt.Printf("partizen.KeyKeySeqLoc: %d\n", unsafe.Sizeof(KeyKeySeqLoc))
+	var KeyChildLoc partizen.KeyChildLoc
+	fmt.Printf("partizen.KeyChildLoc: %d\n", unsafe.Sizeof(KeyChildLoc))
 
 	var slabLoc slab.Loc
 	fmt.Printf("slab.Loc: %d\n", unsafe.Sizeof(slabLoc))

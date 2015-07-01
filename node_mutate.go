@@ -8,34 +8,34 @@ import (
 )
 
 // rootProcessMutations is the entry function for applying a batch of
-// copy-on-write mutations to a tree (rootKeySeqLoc).  The mutations
+// copy-on-write mutations to a tree (rootChildLoc).  The mutations
 // must be ascending key ordered, and must have no duplicates.  That
 // is, if the application has multiple mutations on the same key, the
 // caller must provide only the last mutation for any key.  Use nil
-// for rootKeySeqLoc to start a brand new tree.
-func rootProcessMutations(rootKeySeqLoc *KeySeqLoc,
+// for rootChildLoc to start a brand new tree.
+func rootProcessMutations(rootChildLoc *ChildLoc,
 	mutations []Mutation, cb MutationCallback,
 	minFanOut, maxFanOut int,
-	reclaimables ReclaimableKeySeqLocs,
+	reclaimables ReclaimableChildLocs,
 	bufManager BufManager, r io.ReaderAt) (
-	*KeySeqLoc, error) {
-	a, err := processMutations(rootKeySeqLoc, mutations, 0, len(mutations),
+	*ChildLoc, error) {
+	a, err := processMutations(rootChildLoc, mutations, 0, len(mutations),
 		cb, minFanOut, maxFanOut, reclaimables, bufManager, r)
 	if err != nil {
 		return nil, fmt.Errorf("rootProcessMutations:"+
-			" rootKeySeqLoc: %#v, err: %v", rootKeySeqLoc, err)
+			" rootChildLoc: %#v, err: %v", rootChildLoc, err)
 	}
 	if a != nil {
 		// TODO: needs swizzle lock?
 		for a.Len() > 1 || (a.Len() > 0 && a.Loc(0).Type == LocTypeVal) {
-			a, err = groupKeySeqLocs(a, minFanOut, maxFanOut, nil,
+			a, err = groupChildLocs(a, minFanOut, maxFanOut, nil,
 				bufManager, r)
 			if err != nil {
 				return nil, err
 			}
 		}
 		if a.Len() > 0 {
-			return a.KeySeqLoc(0), nil // TODO: swizzle lock?
+			return a.ChildLoc(0), nil // TODO: swizzle lock?
 		}
 	}
 	return nil, nil
@@ -43,45 +43,45 @@ func rootProcessMutations(rootKeySeqLoc *KeySeqLoc,
 
 // processMutations recursively applies the batch of mutations down
 // the tree, building up copy-on-write new nodes.
-func processMutations(ksLoc *KeySeqLoc,
+func processMutations(childLoc *ChildLoc,
 	mutations []Mutation,
 	mbeg, mend int, // The subset [mbeg, mend) of mutations to process.
 	cb MutationCallback,
 	minFanOut, maxFanOut int,
-	reclaimables ReclaimableKeySeqLocs,
+	reclaimables ReclaimableChildLocs,
 	bufManager BufManager, r io.ReaderAt) (
-	KeySeqLocs, error) {
-	var ksLocs KeySeqLocs
+	ChildLocs, error) {
+	var childLocs ChildLocs
 
-	if ksLoc != nil {
-		if ksLoc.Loc.Type == LocTypeNode {
-			node, err := ReadLocNode(&ksLoc.Loc, bufManager, r)
+	if childLoc != nil {
+		if childLoc.Loc.Type == LocTypeNode {
+			node, err := ReadLocNode(&childLoc.Loc, bufManager, r)
 			if err != nil {
 				return nil, fmt.Errorf("processMutations:"+
-					" ksLoc: %#v, err: %v", ksLoc, err)
+					" childLoc: %#v, err: %v", childLoc, err)
 			}
 			if node != nil {
-				ksLocs = node.GetKeySeqLocs()
+				childLocs = node.GetChildLocs()
 			}
-		} else if ksLoc.Loc.Type == LocTypeVal {
-			ksLocs = PtrKeySeqLocsArray{ksLoc}
+		} else if childLoc.Loc.Type == LocTypeVal {
+			childLocs = PtrChildLocsArray{childLoc}
 		} else {
 			return nil, fmt.Errorf("processMutations:"+
-				" unexpected ksLoc.Type, ksLoc: %#v", ksLoc)
+				" unexpected childLoc.Type, childLoc: %#v", childLoc)
 		}
 	}
 
-	n := ksLocsLen(ksLocs)
+	n := childLocsLen(childLocs)
 	m := mend - mbeg
 
-	var builder KeySeqLocsBuilder
-	if n <= 0 || ksLocs.Loc(0).Type == LocTypeVal {
+	var builder ChildLocsBuilder
+	if n <= 0 || childLocs.Loc(0).Type == LocTypeVal {
 		// TODO: swizzle lock?
 		// TODO: mem mgmt / sync.Pool?
 		builder = &ValsBuilder{
 			bufManager:   bufManager,
 			reclaimables: reclaimables,
-			s:            make(PtrKeySeqLocsArray, 0, m),
+			s:            make(PtrChildLocsArray, 0, m),
 		}
 	} else {
 		builder = &NodesBuilder{
@@ -91,7 +91,7 @@ func processMutations(ksLoc *KeySeqLoc,
 		}
 	}
 
-	if !mergeMutations(ksLocs, 0, n, mutations, mbeg, mend,
+	if !mergeMutations(childLocs, 0, n, mutations, mbeg, mend,
 		cb, bufManager, builder) {
 		return nil, ErrMatchSeq
 	}
@@ -99,30 +99,30 @@ func processMutations(ksLoc *KeySeqLoc,
 	return builder.Done(mutations, cb, minFanOut, maxFanOut, bufManager, r)
 }
 
-// groupKeySeqLocs assigns a key-ordered sequence of children to new
+// groupChildLocs assigns a key-ordered sequence of children to new
 // parent nodes, where the parent nodes will meet the given maxFanOut.
-func groupKeySeqLocs(childKeySeqLocs KeySeqLocs,
+func groupChildLocs(childChildLocs ChildLocs,
 	minFanOut, maxFanOut int,
-	groupedKeySeqLocsStart KeySeqLocsAppendable,
+	groupedChildLocsStart ChildLocsAppendable,
 	bufManager BufManager, r io.ReaderAt) (
-	KeySeqLocs, error) {
+	ChildLocs, error) {
 	children, err :=
-		rebalanceNodes(childKeySeqLocs, minFanOut, maxFanOut, bufManager, r)
+		rebalanceNodes(childChildLocs, minFanOut, maxFanOut, bufManager, r)
 	if err != nil {
 		return nil, err
 	}
 
-	parents := groupedKeySeqLocsStart
+	parents := groupedChildLocsStart
 
 	// TODO: A more optimal grouping approach would instead partition
 	// the children more evenly, instead of the current approach where
 	// the last group of children might be unfairly too small as it
 	// has only the simple leftover remainder of children.
-	n := ksLocsLen(children)
+	n := childLocsLen(children)
 	beg := 0
 	for i := maxFanOut; i < n; i = i + maxFanOut {
 		parents, err =
-			ksLocsGroupAppend(children, beg, i, parents, bufManager, r)
+			childLocsGroupAppend(children, beg, i, parents, bufManager, r)
 		if err != nil {
 			return nil, err
 		}
@@ -132,13 +132,13 @@ func groupKeySeqLocs(childKeySeqLocs KeySeqLocs,
 	if beg < n { // If there were leftovers...
 		if beg <= 0 { // If there were only leftovers, group them...
 			parents, err =
-				ksLocsGroupAppend(children, beg, n, parents, bufManager, r)
+				childLocsGroupAppend(children, beg, n, parents, bufManager, r)
 			if err != nil {
 				return nil, err
 			}
 		} else { // Pass the leftovers upwards.
 			for i := beg; i < n; i++ { // TODO: swizzle lock?
-				parents = parents.Append(*children.KeySeqLoc(i))
+				parents = parents.Append(*children.ChildLoc(i))
 			}
 		}
 	}
@@ -146,15 +146,15 @@ func groupKeySeqLocs(childKeySeqLocs KeySeqLocs,
 	return parents, nil
 }
 
-func ksLocsLen(a KeySeqLocs) int {
+func childLocsLen(a ChildLocs) int {
 	if a == nil {
 		return 0
 	}
 	return a.Len()
 }
 
-func ksLocsSlice(a KeySeqLocs, from, to int) (KeySeqLocs, Seq) {
-	ilArr := make(KeySeqLocsArray, to-from)
+func childLocsSlice(a ChildLocs, from, to int) (ChildLocs, Seq) {
+	ilArr := make(ChildLocsArray, to-from)
 	maxSeq := Seq(0)
 
 	lenKeys := 0
@@ -173,7 +173,7 @@ func ksLocsSlice(a KeySeqLocs, from, to int) (KeySeqLocs, Seq) {
 			maxSeq = seq
 		}
 
-		ilArr[i-from] = KeySeqLoc{
+		ilArr[i-from] = ChildLoc{
 			Key: key,
 			Seq: seq,
 			Loc: *(a.Loc(i)), // TODO: swizzle lock?
@@ -183,43 +183,43 @@ func ksLocsSlice(a KeySeqLocs, from, to int) (KeySeqLocs, Seq) {
 	return ilArr, maxSeq
 }
 
-func ksLocsAppend(
-	dst KeySeqLocsAppendable,
-	key Key, seq Seq, loc Loc) KeySeqLocsAppendable {
+func childLocsAppend(
+	dst ChildLocsAppendable,
+	key Key, seq Seq, loc Loc) ChildLocsAppendable {
 	if dst == nil {
-		return KeySeqLocsArray{KeySeqLoc{Key: key, Seq: seq, Loc: loc}}
+		return ChildLocsArray{ChildLoc{Key: key, Seq: seq, Loc: loc}}
 	}
-	return dst.Append(KeySeqLoc{Key: key, Seq: seq, Loc: loc})
+	return dst.Append(ChildLoc{Key: key, Seq: seq, Loc: loc})
 }
 
-func ksLocsGroupAppend(src KeySeqLocs, beg, end int, dst KeySeqLocsAppendable,
+func childLocsGroupAppend(src ChildLocs, beg, end int, dst ChildLocsAppendable,
 	bufManager BufManager, r io.ReaderAt) (
-	KeySeqLocsAppendable, error) {
-	a, maxSeq := ksLocsSlice(src, beg, end)
+	ChildLocsAppendable, error) {
+	a, maxSeq := childLocsSlice(src, beg, end)
 
-	partitions, err := ksLocsGroupByPartitionIds(a, bufManager, r)
+	partitions, err := childLocsGroupByPartitionIds(a, bufManager, r)
 	if err != nil {
 		return nil, err
 	}
 
-	return ksLocsAppend(dst,
+	return childLocsAppend(dst,
 		a.Key(0), maxSeq, Loc{
 			Type: LocTypeNode,
-			node: &Node{ksLocs: a, partitions: partitions},
+			node: &Node{childLocs: a, partitions: partitions},
 		}), nil
 }
 
 // mergeMutations zippers together a key-ordered sequence of existing
-// KeySeqLoc's with a key-ordered sequence of mutations.
+// ChildLoc's with a key-ordered sequence of mutations.
 func mergeMutations(
-	existings KeySeqLocs,
+	existings ChildLocs,
 	ebeg, eend int, // Sub-range of existings[ebeg:eend] to process.
 	mutations []Mutation,
 	mbeg, mend int, // Sub-range of mutations[mbeg:mend] to process.
 	cb MutationCallback,
 	bufManager BufManager,
-	builder KeySeqLocsBuilder) bool {
-	existing, eok, ecur := nextKeySeqLoc(ebeg, eend, existings)
+	builder ChildLocsBuilder) bool {
+	existing, eok, ecur := nextChildLoc(ebeg, eend, existings)
 	mutation, mok, mcur := nextMutation(mbeg, mend, mutations)
 
 	for eok && mok {
@@ -227,13 +227,13 @@ func mergeMutations(
 		c := bytes.Compare(existing.Key, mutation.Key)
 		if c < 0 {
 			builder.AddExisting(existing)
-			existing, eok, ecur = nextKeySeqLoc(ecur+1, eend, existings)
+			existing, eok, ecur = nextChildLoc(ecur+1, eend, existings)
 		} else {
 			if c == 0 {
 				if !builder.AddUpdate(existing, mutation, mcur, cb, bufManager) {
 					return false
 				}
-				existing, eok, ecur = nextKeySeqLoc(ecur+1, eend, existings)
+				existing, eok, ecur = nextChildLoc(ecur+1, eend, existings)
 			} else {
 				if !builder.AddNew(mutation, mcur, cb, bufManager) {
 					return false
@@ -244,7 +244,7 @@ func mergeMutations(
 	}
 	for eok {
 		builder.AddExisting(existing)
-		existing, eok, ecur = nextKeySeqLoc(ecur+1, eend, existings)
+		existing, eok, ecur = nextChildLoc(ecur+1, eend, existings)
 	}
 	for mok {
 		if !builder.AddNew(mutation, mcur, cb, bufManager) {
@@ -255,12 +255,12 @@ func mergeMutations(
 	return true
 }
 
-func nextKeySeqLoc(idx, n int, ksLocs KeySeqLocs) (
-	*KeySeqLoc, bool, int) {
+func nextChildLoc(idx, n int, childLocs ChildLocs) (
+	*ChildLoc, bool, int) {
 	if idx < n {
-		return ksLocs.KeySeqLoc(idx), true, idx // TODO: swizzle lock?
+		return childLocs.ChildLoc(idx), true, idx // TODO: swizzle lock?
 	}
-	return &NilKeySeqLoc, false, idx
+	return &NilChildLoc, false, idx
 }
 
 func nextMutation(idx, n int, mutations []Mutation) (
@@ -273,34 +273,34 @@ func nextMutation(idx, n int, mutations []Mutation) (
 
 // --------------------------------------------------
 
-type KeySeqLocsBuilder interface {
-	AddExisting(existing *KeySeqLoc)
-	AddUpdate(existing *KeySeqLoc,
+type ChildLocsBuilder interface {
+	AddExisting(existing *ChildLoc)
+	AddUpdate(existing *ChildLoc,
 		mutation *Mutation, mutationIdx int,
 		cb MutationCallback, bufManager BufManager) bool
 	AddNew(mutation *Mutation, mutationIdx int,
 		cb MutationCallback, bufManager BufManager) bool
 	Done(mutations []Mutation, cb MutationCallback,
 		minFanOut, maxFanOut int, bufManager BufManager, r io.ReaderAt) (
-		KeySeqLocs, error)
+		ChildLocs, error)
 }
 
 // --------------------------------------------------
 
-// A ValsBuilder implements the KeySeqLocsBuilder interface to return an
-// array of LocTypeVal KeySeqLoc's, which can be then used as input as
+// A ValsBuilder implements the ChildLocsBuilder interface to return an
+// array of LocTypeVal ChildLoc's, which can be then used as input as
 // the children to create new leaf Nodes.
 type ValsBuilder struct {
 	bufManager   BufManager
-	reclaimables ReclaimableKeySeqLocs
-	s            PtrKeySeqLocsArray
+	reclaimables ReclaimableChildLocs
+	s            PtrChildLocsArray
 }
 
-func (b *ValsBuilder) AddExisting(existing *KeySeqLoc) {
+func (b *ValsBuilder) AddExisting(existing *ChildLoc) {
 	b.s = append(b.s, existing)
 }
 
-func (b *ValsBuilder) AddUpdate(existing *KeySeqLoc,
+func (b *ValsBuilder) AddUpdate(existing *ChildLoc,
 	mutation *Mutation, mutationIdx int,
 	cb MutationCallback, bufManager BufManager) bool {
 	if cb != nil && !cb(existing, true, mutation) {
@@ -308,7 +308,7 @@ func (b *ValsBuilder) AddUpdate(existing *KeySeqLoc,
 	}
 
 	if mutation.Op == MUTATION_OP_UPDATE {
-		b.s = append(b.s, mutationToValKeySeqLoc(mutation, bufManager))
+		b.s = append(b.s, mutationToValChildLoc(mutation, bufManager))
 
 		b.reclaimables.Append(existing)
 	}
@@ -324,7 +324,7 @@ func (b *ValsBuilder) AddNew(
 	}
 
 	if mutation.Op == MUTATION_OP_UPDATE {
-		b.s = append(b.s, mutationToValKeySeqLoc(mutation, bufManager))
+		b.s = append(b.s, mutationToValChildLoc(mutation, bufManager))
 	}
 
 	return true
@@ -332,17 +332,17 @@ func (b *ValsBuilder) AddNew(
 
 func (b *ValsBuilder) Done(mutations []Mutation, cb MutationCallback,
 	minFanOut, maxFanOut int, bufManager BufManager, r io.ReaderAt) (
-	KeySeqLocs, error) {
+	ChildLocs, error) {
 	return b.s, nil
 }
 
-func mutationToValKeySeqLoc(m *Mutation, bufManager BufManager) *KeySeqLoc {
+func mutationToValChildLoc(m *Mutation, bufManager BufManager) *ChildLoc {
 	m.ValBufRef.AddRef(bufManager)
 
 	bufLen := m.ValBufRef.Len(bufManager)
 
-	return &KeySeqLoc{
-		Key: m.Key, // NOTE: We copy key in groupKeySeqLocs/ksLocsSlice.
+	return &ChildLoc{
+		Key: m.Key, // NOTE: We copy key in groupChildLocs/childLocsSlice.
 		Seq: m.Seq,
 		Loc: Loc{
 			Type:            LocTypeVal,
@@ -355,30 +355,30 @@ func mutationToValKeySeqLoc(m *Mutation, bufManager BufManager) *KeySeqLoc {
 
 // --------------------------------------------------
 
-// An NodesBuilder implements the KeySeqLocsBuilder interface to return an
-// array of LocTypeNode KeySeqLoc's, which can be then used as input as
+// An NodesBuilder implements the ChildLocsBuilder interface to return an
+// array of LocTypeNode ChildLoc's, which can be then used as input as
 // the children to create new interior Nodes.
 type NodesBuilder struct {
 	bufManager    BufManager
-	reclaimables  ReclaimableKeySeqLocs
+	reclaimables  ReclaimableChildLocs
 	NodeMutations []NodeMutations
 }
 
 type NodeMutations struct {
-	BaseKeySeqLoc *KeySeqLoc
-	MutationsBeg  int // Inclusive index into []Mutation.
-	MutationsEnd  int // Exclusive index into []Mutation.
+	BaseChildLoc *ChildLoc
+	MutationsBeg int // Inclusive index into []Mutation.
+	MutationsEnd int // Exclusive index into []Mutation.
 }
 
-func (b *NodesBuilder) AddExisting(existing *KeySeqLoc) {
+func (b *NodesBuilder) AddExisting(existing *ChildLoc) {
 	b.NodeMutations = append(b.NodeMutations, NodeMutations{
-		BaseKeySeqLoc: existing,
-		MutationsBeg:  -1,
-		MutationsEnd:  -1,
+		BaseChildLoc: existing,
+		MutationsBeg: -1,
+		MutationsEnd: -1,
 	})
 }
 
-func (b *NodesBuilder) AddUpdate(existing *KeySeqLoc,
+func (b *NodesBuilder) AddUpdate(existing *ChildLoc,
 	mutation *Mutation, mutationIdx int,
 	cb MutationCallback, bufManager BufManager) bool {
 	if cb != nil && !cb(existing, false, mutation) {
@@ -386,9 +386,9 @@ func (b *NodesBuilder) AddUpdate(existing *KeySeqLoc,
 	}
 
 	b.NodeMutations = append(b.NodeMutations, NodeMutations{
-		BaseKeySeqLoc: existing,
-		MutationsBeg:  mutationIdx,
-		MutationsEnd:  mutationIdx + 1,
+		BaseChildLoc: existing,
+		MutationsBeg: mutationIdx,
+		MutationsEnd: mutationIdx + 1,
 	})
 
 	return true
@@ -419,32 +419,32 @@ func (b *NodesBuilder) AddNew(
 
 func (b *NodesBuilder) Done(mutations []Mutation, cb MutationCallback,
 	minFanOut, maxFanOut int, bufManager BufManager, r io.ReaderAt) (
-	KeySeqLocs, error) {
-	rv := PtrKeySeqLocsArray{}
+	ChildLocs, error) {
+	rv := PtrChildLocsArray{}
 
 	for _, nm := range b.NodeMutations {
 		if nm.MutationsBeg >= nm.MutationsEnd {
-			if nm.BaseKeySeqLoc != nil {
-				rv = append(rv, nm.BaseKeySeqLoc)
+			if nm.BaseChildLoc != nil {
+				rv = append(rv, nm.BaseChildLoc)
 			}
 		} else {
-			children, err := processMutations(nm.BaseKeySeqLoc,
+			children, err := processMutations(nm.BaseChildLoc,
 				mutations, nm.MutationsBeg, nm.MutationsEnd,
 				cb, minFanOut, maxFanOut, b.reclaimables, bufManager, r)
 			if err != nil {
 				return nil, fmt.Errorf("NodesBuilder.Done:"+
-					" BaseKeySeqLoc: %#v, err: %v", nm.BaseKeySeqLoc, err)
+					" BaseChildLoc: %#v, err: %v", nm.BaseChildLoc, err)
 			}
 
-			rvx, err := groupKeySeqLocs(children,
+			rvx, err := groupChildLocs(children,
 				minFanOut, maxFanOut, rv, bufManager, r)
 			if err != nil {
 				return nil, err
 			}
 
-			rv = rvx.(PtrKeySeqLocsArray)
+			rv = rvx.(PtrChildLocsArray)
 
-			b.reclaimables.Append(nm.BaseKeySeqLoc)
+			b.reclaimables.Append(nm.BaseChildLoc)
 		}
 	}
 
@@ -453,31 +453,31 @@ func (b *NodesBuilder) Done(mutations []Mutation, cb MutationCallback,
 
 // --------------------------------------------------
 
-func rebalanceNodes(ksLocs KeySeqLocs,
+func rebalanceNodes(childLocs ChildLocs,
 	minFanOut, maxFanOut int,
-	bufManager BufManager, r io.ReaderAt) (rv KeySeqLocs, err error) {
-	// If the ksLocs are all nodes, then some of those nodes might
+	bufManager BufManager, r io.ReaderAt) (rv ChildLocs, err error) {
+	// If the childLocs are all nodes, then some of those nodes might
 	// be much smaller than others and might benefit from rebalancing.
-	var rebalanced KeySeqLocsAppendable
-	var rebalancing PtrKeySeqLocsArray
+	var rebalanced ChildLocsAppendable
+	var rebalancing PtrChildLocsArray
 
 	// TODO: Knowing whether those child nodes are either in-memory
 	// and/or are dirty would also be helpful hints as to whether to
 	// attempt some rebalancing.
-	n := ksLocsLen(ksLocs)
+	n := childLocsLen(childLocs)
 	for i := 0; i < n; i++ {
-		loc := ksLocs.Loc(i) // TODO: swizzle lock?
+		loc := childLocs.Loc(i) // TODO: swizzle lock?
 		if loc.Type != LocTypeNode || loc.node == nil {
-			return ksLocs, nil // TODO: Mem mgmt.
+			return childLocs, nil // TODO: Mem mgmt.
 		}
-		kids := loc.node.GetKeySeqLocs()
+		kids := loc.node.GetChildLocs()
 		for j := 0; j < kids.Len(); j++ {
 			// TODO: swizzle lock?
-			rebalancing = ksLocsAppend(rebalancing,
-				kids.Key(j), kids.Seq(j), *kids.Loc(j)).(PtrKeySeqLocsArray)
-			if ksLocsLen(rebalancing) >= maxFanOut {
+			rebalancing = childLocsAppend(rebalancing,
+				kids.Key(j), kids.Seq(j), *kids.Loc(j)).(PtrChildLocsArray)
+			if childLocsLen(rebalancing) >= maxFanOut {
 				rebalanced, err =
-					ksLocsGroupAppend(rebalancing, 0, rebalancing.Len(),
+					childLocsGroupAppend(rebalancing, 0, rebalancing.Len(),
 						rebalanced, bufManager, r)
 				if err != nil {
 					return nil, err
@@ -489,7 +489,7 @@ func rebalanceNodes(ksLocs KeySeqLocs,
 	}
 	if rebalancing != nil {
 		rebalanced, err =
-			ksLocsGroupAppend(rebalancing, 0, rebalancing.Len(),
+			childLocsGroupAppend(rebalancing, 0, rebalancing.Len(),
 				rebalanced, bufManager, r)
 		if err != nil {
 			return nil, err
@@ -499,20 +499,20 @@ func rebalanceNodes(ksLocs KeySeqLocs,
 		return rebalanced, nil
 	}
 
-	return ksLocs, nil
+	return childLocs, nil
 }
 
 // --------------------------------------------------
 
-func ksLocsGroupByPartitionIds(a KeySeqLocs,
+func childLocsGroupByPartitionIds(a ChildLocs,
 	bufManager BufManager, r io.ReaderAt) (
 	*Partitions, error) {
 	partitionIds := make(PartitionIds, 0, a.Len())
 
-	m := map[PartitionId][]KeyKeySeqLoc{}
+	m := map[PartitionId][]KeyChildLoc{}
 	n := a.Len()
 	for i := 0; i < n; i++ {
-		partitions, err := a.KeySeqLoc(i).GetPartitions(bufManager, r)
+		partitions, err := a.ChildLoc(i).GetPartitions(bufManager, r)
 		if err != nil {
 			return nil, err
 		}
@@ -523,11 +523,11 @@ func ksLocsGroupByPartitionIds(a KeySeqLocs,
 				partitionIds = append(partitionIds, partitionId)
 			}
 
-			keyKeySeqLoc := partitions.KeyKeySeqLocs[j][0]
+			keyChildLoc := partitions.KeyChildLocs[j][0]
 
-			m[partitionId] = append(prev, KeyKeySeqLoc{
-				Key:       keyKeySeqLoc.Key,
-				KeySeqLoc: keyKeySeqLoc.KeySeqLoc,
+			m[partitionId] = append(prev, KeyChildLoc{
+				Key:      keyChildLoc.Key,
+				ChildLoc: keyChildLoc.ChildLoc,
 			})
 		}
 	}
@@ -535,12 +535,12 @@ func ksLocsGroupByPartitionIds(a KeySeqLocs,
 	sort.Sort(partitionIds)
 
 	p := &Partitions{
-		PartitionIds:  partitionIds,
-		KeyKeySeqLocs: make([][]KeyKeySeqLoc, len(partitionIds)),
+		PartitionIds: partitionIds,
+		KeyChildLocs: make([][]KeyChildLoc, len(partitionIds)),
 	}
 
 	for i := 0; i < len(partitionIds); i++ {
-		p.KeyKeySeqLocs[i] = m[partitionIds[i]]
+		p.KeyChildLocs[i] = m[partitionIds[i]]
 	}
 
 	return p, nil

@@ -28,13 +28,13 @@ func printPrefix(n int) {
 	}
 }
 
-func printTree(il *KeySeqLoc, depth int) {
-	a := il.Loc.node.GetKeySeqLocs()
+func printTree(il *ChildLoc, depth int) {
+	a := il.Loc.node.GetChildLocs()
 	n := a.Len()
 	depth1 := depth + 1
 	for i := 0; i < n; i++ {
 		printPrefix(depth)
-		cil := a.KeySeqLoc(i)
+		cil := a.ChildLoc(i)
 		if cil.Loc.Type == LocTypeVal {
 			fmt.Printf("%s = %s\n",
 				cil.Key, locBuf(&cil.Loc))
@@ -66,7 +66,7 @@ func isSomeMemLoc(loc *Loc, expectedLocType uint8) bool {
 
 func TestEmptyMutate(t *testing.T) {
 	il, err := rootProcessMutations(nil, nil, nil, 15, 32,
-		&PtrKeySeqLocsArrayHolder{},
+		&PtrChildLocsArrayHolder{},
 		testBufManager, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
@@ -75,14 +75,14 @@ func TestEmptyMutate(t *testing.T) {
 		t.Errorf("expected nil il on nil, nil")
 	}
 
-	rootKeySeqLoc := &KeySeqLoc{
+	rootChildLoc := &ChildLoc{
 		Loc: Loc{
 			Type: LocTypeNode,
 			node: &Node{},
 		},
 	}
-	il, err = rootProcessMutations(rootKeySeqLoc, nil, nil, 15, 32,
-		&PtrKeySeqLocsArrayHolder{},
+	il, err = rootProcessMutations(rootChildLoc, nil, nil, 15, 32,
+		&PtrChildLocsArrayHolder{},
 		testBufManager, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
@@ -93,7 +93,7 @@ func TestEmptyMutate(t *testing.T) {
 
 	m := []Mutation{}
 	il, err = rootProcessMutations(nil, m, nil, 15, 32,
-		&PtrKeySeqLocsArrayHolder{},
+		&PtrChildLocsArrayHolder{},
 		testBufManager, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
@@ -106,7 +106,7 @@ func TestEmptyMutate(t *testing.T) {
 		Mutation{},
 	} // Mutation.Op is unknown.
 	il, err = rootProcessMutations(nil, m, nil, 15, 32,
-		&PtrKeySeqLocsArrayHolder{},
+		&PtrChildLocsArrayHolder{},
 		testBufManager, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
@@ -122,7 +122,7 @@ func TestEmptyMutate(t *testing.T) {
 		},
 	}
 	il, err = rootProcessMutations(nil, m, nil, 15, 32,
-		&PtrKeySeqLocsArrayHolder{},
+		&PtrChildLocsArrayHolder{},
 		testBufManager, nil)
 	if err != nil {
 		t.Errorf("expected ok, missing key delete on nil root, err: %#v", err)
@@ -141,7 +141,7 @@ func TestMutationsOn1Val(t *testing.T) {
 		},
 	}
 	il, err := rootProcessMutations(nil, m, nil, 15, 32,
-		&PtrKeySeqLocsArrayHolder{},
+		&PtrChildLocsArrayHolder{},
 		testBufManager, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
@@ -158,17 +158,17 @@ func TestMutationsOn1Val(t *testing.T) {
 	if il.Loc.node == nil || locBuf(&il.Loc) != nil {
 		t.Errorf("expected a keyLoc with node, no buf")
 	}
-	if il.Loc.node.ksLocs.Len() != 1 {
+	if il.Loc.node.childLocs.Len() != 1 {
 		t.Errorf("expected 1 child")
 	}
-	if string(il.Loc.node.ksLocs.Key(0)) != "a" {
+	if string(il.Loc.node.childLocs.Key(0)) != "a" {
 		t.Errorf("expected 1 child")
 	}
-	if !isSomeMemLoc(il.Loc.node.ksLocs.Loc(0), LocTypeVal) {
+	if !isSomeMemLoc(il.Loc.node.childLocs.Loc(0), LocTypeVal) {
 		t.Errorf("expected val child")
 	}
 
-	astr := locBuf(il.Loc.node.ksLocs.Loc(0))
+	astr := locBuf(il.Loc.node.childLocs.Loc(0))
 	if string(astr) != "A" {
 		t.Errorf("expected val child is A")
 	}
@@ -183,7 +183,7 @@ func TestMutationsOn1Val(t *testing.T) {
 			},
 		}
 		il2, err := rootProcessMutations(il2, m, nil, 15, 32,
-			&PtrKeySeqLocsArrayHolder{},
+			&PtrChildLocsArrayHolder{},
 			testBufManager, nil)
 		if err != nil {
 			t.Errorf("expected ok, err: %#v", err)
@@ -200,18 +200,18 @@ func TestMutationsOn1Val(t *testing.T) {
 		if il2.Loc.node == nil || locBuf(&il2.Loc) != nil {
 			t.Errorf("expected a il with node, no buf")
 		}
-		if il2.Loc.node.ksLocs.Len() != 1 {
+		if il2.Loc.node.childLocs.Len() != 1 {
 			t.Errorf("expected 1 child")
 		}
-		if string(il2.Loc.node.ksLocs.Key(0)) != "a" {
+		if string(il2.Loc.node.childLocs.Key(0)) != "a" {
 			t.Errorf("expected 1 child")
 		}
-		if !isSomeMemLoc(il2.Loc.node.ksLocs.Loc(0),
+		if !isSomeMemLoc(il2.Loc.node.childLocs.Loc(0),
 			LocTypeVal) {
 			t.Errorf("expected val child")
 		}
 
-		astr := locBuf(il2.Loc.node.ksLocs.Loc(0))
+		astr := locBuf(il2.Loc.node.childLocs.Loc(0))
 		if string(astr) != "A" {
 			t.Errorf("expected val child is A")
 		}
@@ -224,7 +224,7 @@ func TestMutationsOn1Val(t *testing.T) {
 		},
 	}
 	il3, err := rootProcessMutations(il2, m, nil, 15, 32,
-		&PtrKeySeqLocsArrayHolder{},
+		&PtrChildLocsArrayHolder{},
 		testBufManager, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
@@ -248,13 +248,13 @@ func TestMutationsOn2Vals(t *testing.T) {
 		},
 	}
 	il, err := rootProcessMutations(nil, m, nil, 15, 32,
-		&PtrKeySeqLocsArrayHolder{},
+		&PtrChildLocsArrayHolder{},
 		testBufManager, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
 	}
 
-	checkHasNVals := func(il *KeySeqLoc, numVals int) {
+	checkHasNVals := func(il *ChildLoc, numVals int) {
 		if il == nil {
 			t.Errorf("expected a il")
 		}
@@ -267,34 +267,34 @@ func TestMutationsOn2Vals(t *testing.T) {
 		if il.Loc.node == nil || locBuf(&il.Loc) != nil {
 			t.Errorf("expected a il with node, no buf")
 		}
-		if il.Loc.node.ksLocs.Len() != numVals {
+		if il.Loc.node.childLocs.Len() != numVals {
 			t.Errorf("expected %d children", numVals)
 		}
 		if numVals >= 1 {
 			return
 		}
-		if string(il.Loc.node.ksLocs.Key(0)) != "a" {
+		if string(il.Loc.node.childLocs.Key(0)) != "a" {
 			t.Errorf("expected child 0 is a")
 		}
-		if !isSomeMemLoc(il.Loc.node.ksLocs.Loc(0), LocTypeVal) {
+		if !isSomeMemLoc(il.Loc.node.childLocs.Loc(0), LocTypeVal) {
 			t.Errorf("expected val child")
 		}
 
-		astr := locBuf(il.Loc.node.ksLocs.Loc(0))
+		astr := locBuf(il.Loc.node.childLocs.Loc(0))
 		if string(astr) != "A" {
 			t.Errorf("expected val child is A")
 		}
 		if numVals >= 2 {
 			return
 		}
-		if string(il.Loc.node.ksLocs.Key(1)) != "b" {
+		if string(il.Loc.node.childLocs.Key(1)) != "b" {
 			t.Errorf("expected child 1 is b")
 		}
-		if !isSomeMemLoc(il.Loc.node.ksLocs.Loc(1), LocTypeVal) {
+		if !isSomeMemLoc(il.Loc.node.childLocs.Loc(1), LocTypeVal) {
 			t.Errorf("expected val child")
 		}
 
-		bstr := locBuf(il.Loc.node.ksLocs.Loc(1))
+		bstr := locBuf(il.Loc.node.childLocs.Loc(1))
 		if string(bstr) != "B" {
 			t.Errorf("expected val child is B")
 		}
@@ -312,7 +312,7 @@ func TestMutationsOn2Vals(t *testing.T) {
 			},
 		}
 		il2, err := rootProcessMutations(il2, m, nil, 15, 32,
-			&PtrKeySeqLocsArrayHolder{},
+			&PtrChildLocsArrayHolder{},
 			testBufManager, nil)
 		if err != nil {
 			t.Errorf("expected ok, err: %#v", err)
@@ -327,7 +327,7 @@ func TestMutationsOn2Vals(t *testing.T) {
 		},
 	}
 	il3, err := rootProcessMutations(il2, m, nil, 15, 32,
-		&PtrKeySeqLocsArrayHolder{},
+		&PtrChildLocsArrayHolder{},
 		testBufManager, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
@@ -342,7 +342,7 @@ func TestMutationsOn2Vals(t *testing.T) {
 		},
 	}
 	il4, err := rootProcessMutations(il3, m, nil, 15, 32,
-		&PtrKeySeqLocsArrayHolder{},
+		&PtrChildLocsArrayHolder{},
 		testBufManager, nil)
 	if err != nil {
 		t.Errorf("expected ok, err: %#v", err)
@@ -370,7 +370,7 @@ func TestMutationsDepth(t *testing.T) {
 		delta = func(c, i int) int { return i - 1 }
 	}
 
-	var rootKeySeqLoc *KeySeqLoc
+	var rootChildLoc *ChildLoc
 	var err error
 	m := make([]Mutation, 1, 1)
 	m[0].Op = MUTATION_OP_UPDATE
@@ -378,15 +378,15 @@ func TestMutationsDepth(t *testing.T) {
 		m[0].Key = []byte(fmt.Sprintf("%4d", i))
 		m[0].ValBufRef = testBufManager.Alloc(len(m[0].Key),
 			CopyToBufRef, m[0].Key)
-		rootKeySeqLoc, err =
-			rootProcessMutations(rootKeySeqLoc, m, nil, 2, 4,
-				&PtrKeySeqLocsArrayHolder{},
+		rootChildLoc, err =
+			rootProcessMutations(rootChildLoc, m, nil, 2, 4,
+				&PtrChildLocsArrayHolder{},
 				testBufManager, nil)
 		if err != nil {
 			t.Errorf("unexpected err: %#v", err)
 		}
 
 		fmt.Printf("================= %d\n", i)
-		printTree(rootKeySeqLoc, 0)
+		printTree(rootChildLoc, 0)
 	}
 }

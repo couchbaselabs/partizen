@@ -80,10 +80,10 @@ type CollectionDef struct {
 }
 
 // A collection implements the Collection interface and holds one
-// ref-count on the root KeySeqLocRef.
+// ref-count on the root ChildLocRef.
 type collection struct {
-	root *KeySeqLocRef // Mutatable, access covered by store.m lock.
-	refs int32         // Mutatable, access covered by store.m lock.
+	root *ChildLocRef // Mutatable, access covered by store.m lock.
+	refs int32        // Mutatable, access covered by store.m lock.
 
 	// The following fields are immutable.
 	store       *store // Pointer to parent store.
@@ -96,26 +96,26 @@ type collection struct {
 
 // ----------------------------------------
 
-// A KeySeqLocRef represents a ref-counted reference to a KeySeqLoc.
-type KeySeqLocRef struct {
-	il *KeySeqLoc // Immutable.
+// A ChildLocRef represents a ref-counted reference to a ChildLoc.
+type ChildLocRef struct {
+	il *ChildLoc // Immutable.
 
 	refs int32 // Mutator must have store.m locked.
 
-	// We might own a reference count on a chained KeySeqLocRef.
-	next *KeySeqLocRef // Mutator must have store.m locked.
+	// We might own a reference count on a chained ChildLocRef.
+	next *ChildLocRef // Mutator must have store.m locked.
 
-	reclaimables ReclaimableKeySeqLocs
+	reclaimables ReclaimableChildLocs
 }
 
 // AddRef must be invoked by caller with collection.store.m locked.
-func (r *KeySeqLocRef) addRef() (*KeySeqLocRef, *KeySeqLoc) {
+func (r *ChildLocRef) addRef() (*ChildLocRef, *ChildLoc) {
 	if r == nil {
 		return nil, nil
 	}
 
 	if r.refs <= 0 {
-		panic("KeySeqLocRef.refs addRef saw underflow")
+		panic("ChildLocRef.refs addRef saw underflow")
 	}
 
 	r.refs++
@@ -124,13 +124,13 @@ func (r *KeySeqLocRef) addRef() (*KeySeqLocRef, *KeySeqLoc) {
 }
 
 // DecRef must be invoked by caller with collection.store.m locked.
-func (r *KeySeqLocRef) decRef(bufManager BufManager) *KeySeqLocRef {
+func (r *ChildLocRef) decRef(bufManager BufManager) *ChildLocRef {
 	if r == nil {
 		return nil
 	}
 
 	if r.refs <= 0 {
-		panic("KeySeqLocRef.refs defRef saw underflow")
+		panic("ChildLocRef.refs defRef saw underflow")
 	}
 
 	r.refs--
@@ -148,26 +148,26 @@ func (r *KeySeqLocRef) decRef(bufManager BufManager) *KeySeqLocRef {
 	return r
 }
 
-// ReclaimableKeySeqLocs is used to track KeySeqLocs that were
+// ReclaimableChildLocs is used to track ChildLocs that were
 // obsoleted/replaced by mutations and so can be reclaimed and
 // recycled after root ref-counts reach zero.
-type ReclaimableKeySeqLocs PtrKeySeqLocsAppendable
+type ReclaimableChildLocs PtrChildLocsAppendable
 
 // ----------------------------------------
 
-// A KeySeqLoc represents a Key, Seq and Loc association.
-type KeySeqLoc struct {
+// A ChildLoc represents a Key, Seq and Loc association.
+type ChildLoc struct {
 	Key Key // The minimum Key.
 	Seq Seq // The maximum Seq.
 	Loc Loc
 }
 
-var NilKeySeqLoc KeySeqLoc
+var NilChildLoc ChildLoc
 
-func (iloc *KeySeqLoc) GetPartitions(
+func (ksl *ChildLoc) GetPartitions(
 	bufManager BufManager, r io.ReaderAt) (
 	*Partitions, error) {
-	loc, err := iloc.Loc.Read(bufManager, r)
+	loc, err := ksl.Loc.Read(bufManager, r)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +177,7 @@ func (iloc *KeySeqLoc) GetPartitions(
 	}
 
 	if loc.Type != LocTypeVal {
-		return nil, fmt.Errorf("defs: GetPartitions type, iloc: %v", iloc)
+		return nil, fmt.Errorf("defs: GetPartitions type, ksl: %v", ksl)
 	}
 
 	if loc.leafValBufRef == nil || loc.leafValBufRef.IsNil() {
@@ -186,9 +186,9 @@ func (iloc *KeySeqLoc) GetPartitions(
 
 	return &Partitions{
 		PartitionIds: []PartitionId{loc.leafPartitionId},
-		KeyKeySeqLocs: [][]KeyKeySeqLoc{[]KeyKeySeqLoc{KeyKeySeqLoc{
-			Key:       iloc.Key,
-			KeySeqLoc: iloc,
+		KeyChildLocs: [][]KeyChildLoc{[]KeyChildLoc{KeyChildLoc{
+			Key:      ksl.Key,
+			ChildLoc: ksl,
 		}}},
 	}, nil
 }
@@ -250,95 +250,95 @@ func (loc *Loc) LeafValBufRef(bm BufManager) BufRef {
 
 // ----------------------------------------
 
-type KeySeqLocs interface {
+type ChildLocs interface {
 	Len() int
 	Key(idx int) Key
 	Seq(idx int) Seq
 	Loc(idx int) *Loc
-	KeySeqLoc(idx int) *KeySeqLoc
+	ChildLoc(idx int) *ChildLoc
 }
 
-type KeySeqLocsAppendable interface {
-	KeySeqLocs
+type ChildLocsAppendable interface {
+	ChildLocs
 
-	Append(KeySeqLoc) KeySeqLocsAppendable
+	Append(ChildLoc) ChildLocsAppendable
 }
 
-type PtrKeySeqLocsAppendable interface {
+type PtrChildLocsAppendable interface {
 	Len() int
-	KeySeqLoc(idx int) *KeySeqLoc
-	Append(*KeySeqLoc)
+	ChildLoc(idx int) *ChildLoc
+	Append(*ChildLoc)
 	Reset(bufManager BufManager)
 }
 
 // ----------------------------------------
 
-// KeySeqLocsArray implements the KeySeqLocs and KeySeqLocsAppendable
+// ChildLocsArray implements the ChildLocs and ChildLocsAppendable
 // interfaces.
-type KeySeqLocsArray []KeySeqLoc
+type ChildLocsArray []ChildLoc
 
-func (a KeySeqLocsArray) Len() int {
+func (a ChildLocsArray) Len() int {
 	return len(a)
 }
 
-func (a KeySeqLocsArray) Key(idx int) Key {
+func (a ChildLocsArray) Key(idx int) Key {
 	return a[idx].Key
 }
 
-func (a KeySeqLocsArray) Seq(idx int) Seq {
+func (a ChildLocsArray) Seq(idx int) Seq {
 	return a[idx].Seq
 }
 
-func (a KeySeqLocsArray) Loc(idx int) *Loc {
+func (a ChildLocsArray) Loc(idx int) *Loc {
 	return &a[idx].Loc
 }
 
-func (a KeySeqLocsArray) KeySeqLoc(idx int) *KeySeqLoc {
+func (a ChildLocsArray) ChildLoc(idx int) *ChildLoc {
 	return &a[idx]
 }
 
-func (a KeySeqLocsArray) Append(x KeySeqLoc) KeySeqLocsAppendable {
+func (a ChildLocsArray) Append(x ChildLoc) ChildLocsAppendable {
 	return append(a, x)
 }
 
 // ----------------------------------------
 
-// PtrKeySeqLocsArray implements the KeySeqLocs and KeySeqLocsAppendable
+// PtrChildLocsArray implements the ChildLocs and ChildLocsAppendable
 // interfaces.
-type PtrKeySeqLocsArray []*KeySeqLoc
+type PtrChildLocsArray []*ChildLoc
 
-func (a PtrKeySeqLocsArray) Len() int {
+func (a PtrChildLocsArray) Len() int {
 	return len(a)
 }
 
-func (a PtrKeySeqLocsArray) Key(idx int) Key {
+func (a PtrChildLocsArray) Key(idx int) Key {
 	return a[idx].Key
 }
 
-func (a PtrKeySeqLocsArray) Seq(idx int) Seq {
+func (a PtrChildLocsArray) Seq(idx int) Seq {
 	return a[idx].Seq
 }
 
-func (a PtrKeySeqLocsArray) Loc(idx int) *Loc {
+func (a PtrChildLocsArray) Loc(idx int) *Loc {
 	return &a[idx].Loc
 }
 
-func (a PtrKeySeqLocsArray) KeySeqLoc(idx int) *KeySeqLoc {
+func (a PtrChildLocsArray) ChildLoc(idx int) *ChildLoc {
 	return a[idx]
 }
 
-func (a PtrKeySeqLocsArray) Append(x KeySeqLoc) KeySeqLocsAppendable {
+func (a PtrChildLocsArray) Append(x ChildLoc) ChildLocsAppendable {
 	return append(a, &x)
 }
 
 // ----------------------------------------
 
-// PtrKeySeqLocsArrayHolder implements PtrKeySeqLocsAppendable interface.
-type PtrKeySeqLocsArrayHolder struct {
-	a PtrKeySeqLocsArray
+// PtrChildLocsArrayHolder implements PtrChildLocsAppendable interface.
+type PtrChildLocsArrayHolder struct {
+	a PtrChildLocsArray
 }
 
-func (a *PtrKeySeqLocsArrayHolder) Len() int {
+func (a *PtrChildLocsArrayHolder) Len() int {
 	if a == nil || a.a == nil {
 		return 0
 	}
@@ -346,15 +346,15 @@ func (a *PtrKeySeqLocsArrayHolder) Len() int {
 	return a.a.Len()
 }
 
-func (a *PtrKeySeqLocsArrayHolder) KeySeqLoc(idx int) *KeySeqLoc {
+func (a *PtrChildLocsArrayHolder) ChildLoc(idx int) *ChildLoc {
 	if a == nil || a.a == nil {
 		return nil
 	}
 
-	return a.a.KeySeqLoc(idx)
+	return a.a.ChildLoc(idx)
 }
 
-func (a *PtrKeySeqLocsArrayHolder) Append(il *KeySeqLoc) {
+func (a *PtrChildLocsArrayHolder) Append(il *ChildLoc) {
 	if a == nil {
 		return
 	}
@@ -362,7 +362,7 @@ func (a *PtrKeySeqLocsArrayHolder) Append(il *KeySeqLoc) {
 	a.a = append(a.a, il)
 }
 
-func (a *PtrKeySeqLocsArrayHolder) Reset(bufManager BufManager) {
+func (a *PtrChildLocsArrayHolder) Reset(bufManager BufManager) {
 	if a == nil || a.a == nil {
 		return
 	}
@@ -379,21 +379,21 @@ func (a *PtrKeySeqLocsArrayHolder) Reset(bufManager BufManager) {
 
 // ----------------------------------------
 
-// Partitions represent a mapping of PartitionId's to KeyKeySeqLoc's.
+// Partitions represent a mapping of PartitionId's to KeyChildLoc's.
 type Partitions struct {
 	PartitionIds PartitionIds
 
 	// 1-to-1 paired with entries from PartitionIds, so
-	// len(KeyKeySeqLocs) == len(PartitionIds).
-	KeyKeySeqLocs [][]KeyKeySeqLoc
+	// len(KeyChildLocs) == len(PartitionIds).
+	KeyChildLocs [][]KeyChildLoc
 }
 
-// KeyKeySeqLoc represents a Key associated with a KeySeqLoc.  We
-// can't just use KeySeqLoc's Key, because a KeySeqLoc's Key
-// represents the minimum key for a KeySeqLoc.
-type KeyKeySeqLoc struct {
-	Key       Key // Key can be >= KeySeqLoc.Key due to partition scope.
-	KeySeqLoc *KeySeqLoc
+// KeyChildLoc represents a Key associated with a ChildLoc.  We
+// can't just use ChildLoc's Key, because a ChildLoc's Key
+// represents the minimum key for a ChildLoc.
+type KeyChildLoc struct {
+	Key      Key // Key can be >= ChildLoc.Key due to partition scope.
+	ChildLoc *ChildLoc
 }
 
 // ----------------------------------------
@@ -402,8 +402,8 @@ type KeyKeySeqLoc struct {
 // false if the mutation should be skipped.  In either case, the
 // processing of the batch of mutations will continue.  The existing
 // may be nil in case there's no previous item.  The isVal is true if
-// the existing is for a leaf level KeySeqLoc (e.g., LocTypeVal).
-type MutationCallback func(existing *KeySeqLoc, isVal bool,
+// the existing is for a leaf level ChildLoc (e.g., LocTypeVal).
+type MutationCallback func(existing *ChildLoc, isVal bool,
 	mutation *Mutation) bool
 
 var NilMutation Mutation
