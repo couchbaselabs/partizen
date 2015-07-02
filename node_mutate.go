@@ -100,7 +100,8 @@ func processMutations(childLoc *ChildLoc,
 }
 
 // groupChildLocs assigns a key-ordered sequence of children to new
-// parent nodes, where the parent nodes will meet the given maxFanOut.
+// parent nodes, where the parent nodes will meet the given
+// minFanOut/maxFanOut.
 func groupChildLocs(childChildLocs ChildLocs,
 	minFanOut, maxFanOut int,
 	groupedChildLocsStart ChildLocsAppendable,
