@@ -1,6 +1,7 @@
 package partizen
 
 import (
+	"encoding/binary"
 	"sync"
 
 	"github.com/couchbaselabs/go-slab"
@@ -54,14 +55,47 @@ func (dbm *DefaultBufManager) Alloc(size int,
 	return dbr.update(dbm, 0, size, partUpdater, cbData)
 }
 
+// -------------------------------------------------
+
+// Layout of item bytes:
+//   FUTURE_RESERVED(2) + PartitionId(2) +
+//   KeyLen(4) + ValLen(4) + Seq(8) +
+//   KeyBytes + ValBytes.
+const itemFutureReservedBeg = 0
+const itemFutureReservedEnd = 2 // 0 + 2.
+const itemPartitionIdBeg = 2
+const itemPartitionIdEnd = 4 // 2 + 2.
+const itemKeyLenBeg = 4
+const itemKeyLenEnd = 8 // 4 + 4.
+const itemValLenBeg = 8
+const itemValLenEnd = 12 // 8 + 4.
+const itemSeqBeg = 12
+const itemSeqEnd = 20 // 12 + 8.
+const itemHdr = 20
+
+var zeroes8 []byte = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0}
+var zeroes4 []byte = zeroes8[0:4]
+
 func (dbm *DefaultBufManager) AllocItem(keyLen int, valLen int) ItemBufRef {
-	// Layout of buf:
-	//   RESERVED_PREFIX(2) + PartitionId(2) +
-	//   KeyLen(4) + ValLen(4) + Seq(8) +
-	//   KeyBytes + ValBytes.
-	// len := 2 + 2 + 4 + 4 + 8 + keyLen + valLen
-	// return bufManager.Alloc(len, nil)
-	return nil
+	len := itemHdr + keyLen + valLen
+
+	dbm.m.Lock()
+	buf := dbm.arena.Alloc(len)
+	dbm.m.Unlock()
+
+	if buf == nil {
+		return nil
+	}
+
+	// FUTURE_RESERVED + PartitionId.
+	copy(buf[itemFutureReservedBeg:itemPartitionIdEnd], zeroes4)
+
+	binary.BigEndian.PutUint32(buf[itemKeyLenBeg:itemKeyLenEnd], uint32(keyLen))
+	binary.BigEndian.PutUint32(buf[itemValLenBeg:itemValLenEnd], uint32(valLen))
+
+	copy(buf[itemSeqBeg:itemSeqEnd], zeroes8) // Seq.
+
+	return &DefaultBufRef{dbm.arena.BufToLoc(buf)}
 }
 
 // -------------------------------------------------
@@ -164,6 +198,10 @@ func (dbr *DefaultBufRef) PartitionId(bm BufManager) PartitionId {
 	return 0 // TODO.
 }
 
+func (dbr *DefaultBufRef) SetPartitionId(bm BufManager,
+	partitionId PartitionId) {
+}
+
 func (dbr *DefaultBufRef) Key(bm BufManager, out Key) Key {
 	return nil // TODO.
 }
@@ -174,6 +212,9 @@ func (dbr *DefaultBufRef) KeyLen(bm BufManager) int {
 
 func (dbr *DefaultBufRef) Seq(bm BufManager) Seq {
 	return 0
+}
+
+func (dbr *DefaultBufRef) SetSeq(bm BufManager, seq Seq) {
 }
 
 func (dbr *DefaultBufRef) Val(bm BufManager, out Val) Val {
