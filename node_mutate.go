@@ -188,6 +188,7 @@ func childLocsAppend(
 	dst ChildLocsAppendable,
 	key Key, seq Seq, loc Loc) ChildLocsAppendable {
 	if dst == nil {
+		// TODO: Use more capacity / sync.Pool?
 		return ChildLocsArray{ChildLoc{Key: key, Seq: seq, Loc: loc}}
 	}
 	return dst.Append(ChildLoc{Key: key, Seq: seq, Loc: loc})
