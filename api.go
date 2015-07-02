@@ -10,6 +10,9 @@ type Key []byte
 type Seq uint64
 type Val []byte
 
+const MAX_KEY_LEN = 1024 * 1024 // In bytes.
+const MAX_VAL_LEN = 1024 * 1024 * 100 // In bytes.
+
 // ----------------------------------------
 
 type PartitionId uint16
