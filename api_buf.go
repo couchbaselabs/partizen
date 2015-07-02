@@ -9,6 +9,10 @@ type BufManager interface {
 	Alloc(size int,
 		partUpdater func(cbData, partBuf []byte,
 			partFrom, partTo int) bool, cbData []byte) BufRef
+
+	// AllocItem allocates an ItemBufRef to represent the persisted
+	// bytes for an item, including its Key, Val and other metadata.
+	AllocItem(keyLen int, valLen int) ItemBufRef
 }
 
 // A BufRef represents a reference to memory that's managed by a
@@ -89,4 +93,37 @@ func CopyFromBufRef(buf, partBuf []byte, partFrom, partTo int) bool {
 func CopyToBufRef(buf, partBuf []byte, partFrom, partTo int) bool {
 	copy(partBuf, buf[partFrom:partTo])
 	return true
+}
+
+// -------------------------------------------------
+
+// ItemBufRef represents the in-memory bytes of an item.
+type ItemBufRef interface {
+	IsNil() bool
+
+	// Len returns the full number of bytes required for a persisted
+	// item (PartitionId + Key + Val + Seq + any other metadata).
+	Len(bm BufManager) int
+
+	AddRef(bm BufManager)
+	DecRef(bm BufManager)
+
+	PartitionId(bm BufManager) PartitionId
+	SetPartitionId(bm BufManager, partitionId PartitionId)
+
+	// Key returns the Key, optionally appending to a non-nil out
+	// parameter so the caller can leverage pre-allocated memory.
+	Key(bm BufManager, out Key) Key
+	KeyLen(bm BufManager) int
+
+	Seq(bm BufManager) Seq
+	SetSeq(bm BufManager, seq Seq)
+
+	// Val returns the Val, optionally appending to a non-nil out
+	// parameter so the caller can leverage pre-allocated memory.
+	Val(bm BufManager, out Val) Val
+	ValLen(bm BufManager) int
+	ValVisit(bm BufManager, from, to int,
+		partVisitor func(cbData, partBuf []byte,
+			partFrom, partTo int) bool, cbData []byte)
 }

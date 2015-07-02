@@ -54,6 +54,16 @@ func (dbm *DefaultBufManager) Alloc(size int,
 	return dbr.update(dbm, 0, size, partUpdater, cbData)
 }
 
+func (dbm *DefaultBufManager) AllocItem(keyLen int, valLen int) ItemBufRef {
+	// Layout of buf:
+	//   RESERVED_PREFIX(2) + PartitionId(2) +
+	//   KeyLen(4) + ValLen(4) + Seq(8) +
+	//   KeyBytes + ValBytes.
+	// len := 2 + 2 + 4 + 4 + 8 + keyLen + valLen
+	// return bufManager.Alloc(len, nil)
+	return nil
+}
+
 // -------------------------------------------------
 
 func (dbr *DefaultBufRef) IsNil() bool {
@@ -146,4 +156,35 @@ func (dbr *DefaultBufRef) Visit(bm BufManager, from, to int,
 	dbm.m.Unlock()
 
 	return dbr
+}
+
+// -------------------------------------------------
+
+func (dbr *DefaultBufRef) PartitionId(bm BufManager) PartitionId {
+	return 0 // TODO.
+}
+
+func (dbr *DefaultBufRef) Key(bm BufManager, out Key) Key {
+	return nil // TODO.
+}
+
+func (dbr *DefaultBufRef) KeyLen(bm BufManager) int {
+	return 0 // TODO.
+}
+
+func (dbr *DefaultBufRef) Seq(bm BufManager) Seq {
+	return 0
+}
+
+func (dbr *DefaultBufRef) Val(bm BufManager, out Val) Val {
+	return nil
+}
+
+func (dbr *DefaultBufRef) ValLen(bm BufManager) int {
+	return 0
+}
+
+func (dbr *DefaultBufRef) ValVisit(bm BufManager, from, to int,
+	partVisitor func(cbData, partBuf []byte,
+		partFrom, partTo int) bool, cbData []byte) {
 }

@@ -10,7 +10,7 @@ type Key []byte
 type Seq uint64
 type Val []byte
 
-const MAX_KEY_LEN = 1024 * 1024 // In bytes.
+const MAX_KEY_LEN = 1024 * 1024       // In bytes.
 const MAX_VAL_LEN = 1024 * 1024 * 100 // In bytes.
 
 // ----------------------------------------
@@ -239,34 +239,3 @@ const NO_MATCH_SEQ = Seq(0xffffffffffffffff)
 // specify that the caller explicitly wants a creation instead of an
 // update of an existing item.
 const CREATE_MATCH_SEQ = Seq(0xfffffffffffffffe)
-
-// ------------------------------------------------------------
-
-// ItemBufRef represents the in-memory bytes of an item.
-type ItemBufRef interface {
-	IsNil() bool
-
-	// Len returns the full number of bytes required for a persisted
-	// item (PartitionId + Key + Val + Seq + any other metadata).
-	Len(bm BufManager) int
-
-	AddRef(bm BufManager)
-	DecRef(bm BufManager)
-
-	PartitionId(bm BufManager) PartitionId
-
-	// Key returns the Key, optionally appending to a non-nil out
-	// parameter so the caller can leverage pre-allocated memory.
-	Key(bm BufManager, out Key) Key
-	KeyLen(bm BufManager) int
-
-	Seq(bm BufManager) Seq
-
-	// Val returns the Val, optionally appending to a non-nil out
-	// parameter so the caller can leverage pre-allocated memory.
-	Val(bm BufManager, out Val) Val
-	ValLen(bm BufManager) int
-	ValVisit(bm BufManager, from, to int,
-		partVisitor func(cbData, partBuf []byte,
-			partFrom, partTo int) bool, cbData []byte)
-}
