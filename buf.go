@@ -224,7 +224,13 @@ func (dbr *DefaultBufRef) SetPartitionId(bm BufManager,
 }
 
 func (dbr *DefaultBufRef) KeyLen(bm BufManager) int {
-	return 0 // TODO.
+	dbm := bm.(*DefaultBufManager)
+
+	dbm.m.Lock()
+	buf := dbm.arena.LocToBuf(dbr.slabLoc)
+	dbm.m.Unlock()
+
+	return int(binary.BigEndian.Uint32(buf[itemKeyLenBeg:itemKeyLenEnd]))
 }
 
 func (dbr *DefaultBufRef) KeyVisit(bm BufManager, from, to int,
@@ -260,7 +266,13 @@ func (dbr *DefaultBufRef) SetSeq(bm BufManager, seq Seq) {
 }
 
 func (dbr *DefaultBufRef) ValLen(bm BufManager) int {
-	return 0 // TODO.
+	dbm := bm.(*DefaultBufManager)
+
+	dbm.m.Lock()
+	buf := dbm.arena.LocToBuf(dbr.slabLoc)
+	dbm.m.Unlock()
+
+	return int(binary.BigEndian.Uint32(buf[itemValLenBeg:itemValLenEnd]))
 }
 
 func (dbr *DefaultBufRef) ValVisit(bm BufManager, from, to int,
