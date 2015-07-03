@@ -223,12 +223,20 @@ func (dbr *DefaultBufRef) SetPartitionId(bm BufManager,
 		uint16(partitionId))
 }
 
-func (dbr *DefaultBufRef) Key(bm BufManager, out Key) Key {
-	return nil // TODO.
-}
-
 func (dbr *DefaultBufRef) KeyLen(bm BufManager) int {
 	return 0 // TODO.
+}
+
+func (dbr *DefaultBufRef) KeyVisit(bm BufManager, from, to int,
+	partVisitor func(cbData, partBuf []byte,
+		partFrom, partTo int) bool, cbData []byte) {
+	// TODO.
+}
+
+func (dbr *DefaultBufRef) KeyUpdate(bm BufManager, from, to int,
+	partVisitor func(cbData, partBuf []byte,
+		partFrom, partTo int) bool, cbData []byte) {
+	// TODO.
 }
 
 func (dbr *DefaultBufRef) Seq(bm BufManager) Seq {
@@ -251,15 +259,17 @@ func (dbr *DefaultBufRef) SetSeq(bm BufManager, seq Seq) {
 	binary.BigEndian.PutUint64(buf[itemSeqBeg:itemSeqEnd], uint64(seq))
 }
 
-func (dbr *DefaultBufRef) Val(bm BufManager, out Val) Val {
-	return nil // TODO.
-}
-
 func (dbr *DefaultBufRef) ValLen(bm BufManager) int {
 	return 0 // TODO.
 }
 
 func (dbr *DefaultBufRef) ValVisit(bm BufManager, from, to int,
+	partVisitor func(cbData, partBuf []byte,
+		partFrom, partTo int) bool, cbData []byte) {
+	// TODO.
+}
+
+func (dbr *DefaultBufRef) ValUpdate(bm BufManager, from, to int,
 	partVisitor func(cbData, partBuf []byte,
 		partFrom, partTo int) bool, cbData []byte) {
 	// TODO.

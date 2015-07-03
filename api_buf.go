@@ -111,19 +111,25 @@ type ItemBufRef interface {
 	PartitionId(bm BufManager) PartitionId
 	SetPartitionId(bm BufManager, partitionId PartitionId)
 
-	// Key returns the Key, optionally appending to a non-nil out
-	// parameter so the caller can leverage pre-allocated memory.
-	Key(bm BufManager, out Key) Key
 	KeyLen(bm BufManager) int
+	KeyVisit(bm BufManager, from, to int,
+		partVisitor func(cbData, partBuf []byte,
+			partFrom, partTo int) bool,
+		cbData []byte)
+	KeyUpdate(bm BufManager, from, to int,
+		partUpdater func(cbData, partBuf []byte,
+			partFrom, partTo int) bool,
+		cbData []byte)
 
 	Seq(bm BufManager) Seq
 	SetSeq(bm BufManager, seq Seq)
 
-	// Val returns the Val, optionally appending to a non-nil out
-	// parameter so the caller can leverage pre-allocated memory.
-	Val(bm BufManager, out Val) Val
 	ValLen(bm BufManager) int
 	ValVisit(bm BufManager, from, to int,
 		partVisitor func(cbData, partBuf []byte,
 			partFrom, partTo int) bool, cbData []byte)
+	ValUpdate(bm BufManager, from, to int,
+		partUpdater func(cbData, partBuf []byte,
+			partFrom, partTo int) bool,
+		cbData []byte)
 }
