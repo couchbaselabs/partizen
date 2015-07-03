@@ -145,8 +145,9 @@ func (dbr *DefaultBufRef) Visit(bm BufManager, from, to int,
 
 	dbm.m.Lock()
 	buf := dbm.arena.LocToBuf(dbr.slabLoc)
-	partVisitor(cbData, buf[from:to], from, to)
 	dbm.m.Unlock()
+
+	partVisitor(cbData, buf[from:to], from, to)
 
 	return dbr
 }
@@ -236,13 +237,25 @@ func (dbr *DefaultBufRef) KeyLen(bm BufManager) int {
 func (dbr *DefaultBufRef) KeyVisit(bm BufManager, from, to int,
 	partVisitor func(cbData, partBuf []byte,
 		partFrom, partTo int) bool, cbData []byte) {
-	// TODO.
+	dbm := bm.(*DefaultBufManager)
+
+	dbm.m.Lock()
+	buf := dbm.arena.LocToBuf(dbr.slabLoc)
+	dbm.m.Unlock()
+
+	partVisitor(cbData, buf[itemHdr+from:itemHdr+to], from, to)
 }
 
 func (dbr *DefaultBufRef) KeyUpdate(bm BufManager, from, to int,
-	partVisitor func(cbData, partBuf []byte,
+	partUpdater func(cbData, partBuf []byte,
 		partFrom, partTo int) bool, cbData []byte) {
-	// TODO.
+	dbm := bm.(*DefaultBufManager)
+
+	dbm.m.Lock()
+	buf := dbm.arena.LocToBuf(dbr.slabLoc)
+	dbm.m.Unlock()
+
+	partUpdater(cbData, buf[itemHdr+from:itemHdr+to], from, to)
 }
 
 func (dbr *DefaultBufRef) Seq(bm BufManager) Seq {
@@ -278,11 +291,31 @@ func (dbr *DefaultBufRef) ValLen(bm BufManager) int {
 func (dbr *DefaultBufRef) ValVisit(bm BufManager, from, to int,
 	partVisitor func(cbData, partBuf []byte,
 		partFrom, partTo int) bool, cbData []byte) {
-	// TODO.
+	dbm := bm.(*DefaultBufManager)
+
+	dbm.m.Lock()
+	buf := dbm.arena.LocToBuf(dbr.slabLoc)
+	dbm.m.Unlock()
+
+	keyLen := int(binary.BigEndian.Uint32(buf[itemKeyLenBeg:itemKeyLenEnd]))
+
+	beg := itemHdr + keyLen
+
+	partVisitor(cbData, buf[beg+from:beg+to], from, to)
 }
 
 func (dbr *DefaultBufRef) ValUpdate(bm BufManager, from, to int,
-	partVisitor func(cbData, partBuf []byte,
+	partUpdater func(cbData, partBuf []byte,
 		partFrom, partTo int) bool, cbData []byte) {
-	// TODO.
+	dbm := bm.(*DefaultBufManager)
+
+	dbm.m.Lock()
+	buf := dbm.arena.LocToBuf(dbr.slabLoc)
+	dbm.m.Unlock()
+
+	keyLen := int(binary.BigEndian.Uint32(buf[itemKeyLenBeg:itemKeyLenEnd]))
+
+	beg := itemHdr + keyLen
+
+	partUpdater(cbData, buf[beg+from:beg+to], from, to)
 }
