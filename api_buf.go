@@ -70,7 +70,7 @@ func FromBufRef(dst []byte,
 	bufLen := bufRef.Len(bufManager)
 
 	if dst == nil {
-		dst = make([]byte, bufLen)
+		dst = make([]byte, bufLen, bufLen)
 	}
 
 	bufRef.Visit(bufManager, 0, len(dst), CopyFromBufRef, dst)
@@ -132,4 +132,54 @@ type ItemBufRef interface {
 		partUpdater func(cbData, partBuf []byte,
 			partFrom, partTo int) bool,
 		cbData []byte)
+}
+
+// -------------------------------------------------
+
+// FromItemBufRef helper function copies the key or val bytes from an
+// ItemBufRef to a caller-supplied byte slice, and allocates a new
+// byte slice if dst is nil.
+func FromItemBufRef(dst []byte, wantKey bool,
+	itemBufRef ItemBufRef, bm BufManager) []byte {
+	if itemBufRef == nil || itemBufRef.IsNil() {
+		return dst
+	}
+
+	var n int
+	if wantKey {
+		n = itemBufRef.KeyLen(bm)
+	} else {
+		n = itemBufRef.ValLen(bm)
+	}
+
+	if dst == nil {
+		dst = make([]byte, n, n)
+	}
+
+	ItemBufRefAccess(itemBufRef, wantKey, false, bm,
+		0, len(dst), CopyFromBufRef, dst)
+
+	return dst
+}
+
+// ItemBufRefAccess invokes a visitor or updater callback on either
+// the key or val of an itemBufRef.
+func ItemBufRefAccess(itemBufRef ItemBufRef, wantKey bool, update bool,
+	bm BufManager,
+	from, to int,
+	cb func(cbData, partBuf []byte,
+		partFrom, partTo int) bool, cbData []byte) {
+	if wantKey {
+		if update {
+			itemBufRef.KeyUpdate(bm, from, to, cb, cbData)
+		} else {
+			itemBufRef.KeyVisit(bm, from, to, cb, cbData)
+		}
+	} else {
+		if update {
+			itemBufRef.ValUpdate(bm, from, to, cb, cbData)
+		} else {
+			itemBufRef.ValVisit(bm, from, to, cb, cbData)
+		}
+	}
 }
