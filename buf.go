@@ -319,3 +319,26 @@ func (dbr *DefaultBufRef) ValUpdate(bm BufManager, from, to int,
 
 	partUpdater(cbData, buf[beg+from:beg+to], from, to)
 }
+
+// -------------------------------------------------
+
+func NewItemBufRef(bm BufManager,
+	partitionId PartitionId, key []byte, seq Seq, val []byte) (
+	ItemBufRef, error) {
+	itemBufRef := bm.AllocItem(len(key), len(val))
+	if itemBufRef == nil || itemBufRef.IsNil() {
+		return nil, ErrAlloc
+	}
+
+	itemBufRef.SetPartitionId(bm, partitionId)
+
+	ItemBufRefAccess(itemBufRef, true, true, bm, 0, len(key),
+		CopyToBufRef, key)
+
+	itemBufRef.SetSeq(bm, seq)
+
+	ItemBufRefAccess(itemBufRef, false, true, bm, 0, len(val),
+		CopyToBufRef, val)
+
+	return itemBufRef, nil
+}

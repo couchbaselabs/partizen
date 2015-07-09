@@ -1,7 +1,6 @@
 package partizen
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"sort"
@@ -226,7 +225,7 @@ func mergeMutations(
 
 	for eok && mok {
 		// TODO: See if binary search to skip past keys here is faster?
-		c := bytes.Compare(existing.Key, mutation.Key)
+		c := CompareKeyItemBufRef(existing.Key, mutation.ItemBufRef, bufManager)
 		if c < 0 {
 			builder.AddExisting(existing)
 			existing, eok, ecur = nextChildLoc(ecur+1, eend, existings)
@@ -338,19 +337,22 @@ func (b *ValsBuilder) Done(mutations []Mutation, cb MutationCallback,
 	return b.s, nil
 }
 
-func mutationToValChildLoc(m *Mutation, bufManager BufManager) *ChildLoc {
-	m.ValBufRef.AddRef(bufManager)
+func mutationToValChildLoc(m *Mutation, bm BufManager) *ChildLoc {
+	m.ItemBufRef.AddRef(bm)
 
-	bufLen := m.ValBufRef.Len(bufManager)
+	key := FromItemBufRef(nil, true, m.ItemBufRef, bm) // TODO: mem-mgmt.
+
+	seq := m.ItemBufRef.Seq(bm)
+
+	size := m.ItemBufRef.Len(bm)
 
 	return &ChildLoc{
-		Key: m.Key, // NOTE: We copy key in groupChildLocs/childLocsSlice.
-		Seq: m.Seq,
+		Key: key, // NOTE: We copy key in groupChildLocs/childLocsSlice.
+		Seq: seq,
 		Loc: Loc{
-			Type:            LocTypeVal,
-			Size:            uint32(bufLen),
-			leafValBufRef:   m.ValBufRef,
-			leafPartitionId: m.PartitionId,
+			Type:       LocTypeVal,
+			Size:       uint32(size),
+			itemBufRef: m.ItemBufRef,
 		},
 	}
 }

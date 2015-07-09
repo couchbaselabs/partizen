@@ -75,9 +75,9 @@ type Collection interface {
 
 	// GetBufRef is a lower-level Get() API, where the caller
 	// participates in memory management and must DecRef() the
-	// returned valBufRef.
-	GetBufRef(key Key, matchSeq Seq, withValue bool) (
-		seq Seq, valBufRef BufRef, err error)
+	// returned itemBufRef.
+	GetItemBufRef(key Key, matchSeq Seq, withValue bool) (
+		itemBufRef ItemBufRef, err error)
 
 	// Set takes a newSeq that should be monotonically increasing.
 	// The newSeq represents the new mutation's seq.  Use matchSeq of
@@ -86,12 +86,11 @@ type Collection interface {
 	Set(partitionId PartitionId, key Key, matchSeq Seq,
 		newSeq Seq, val Val) error
 
-	// SetBufRef is a lower-level Set() API, where the valBufRef
+	// SetItemBufRef is a lower-level Set() API, where the itemBufRef
 	// should be immutable and will be ref-count incremented for a
-	// potentially long-lived period of time.  The same valBufRef may
-	// be returned from a later call to GetBufRef().
-	SetBufRef(partitionId PartitionId, key Key, matchSeq Seq,
-		newSeq Seq, valBufRef BufRef) error
+	// potentially long-lived period of time.  The same itemBufRef may
+	// be returned from a later call to GetItemBufRef().
+	SetItemBufRef(matchSeq Seq, itemBufRef ItemBufRef) error
 
 	// Del takes a newSeq that should be monotonically increasing.
 	// The newSeq represents the new mutation, not the seq of the
@@ -154,19 +153,16 @@ type Cursor interface {
 	// Next returns a nil Key if the Cursor is done.
 	Next() (PartitionId, Key, Seq, Val, error)
 
-	// NextBufRef is a lower-level Next() API, where the caller
-	// participates in memory management and must DecRef() the
-	// returned BufRef.
-	NextBufRef() (PartitionId, Key, Seq, BufRef, error)
+	// NextItemBufRef is lower-level than the Next() API, where the
+	// caller participates in memory management and must DecRef() the
+	// returned ItemBufRef.
+	NextItemBufRef() (ItemBufRef, error)
 }
 
 // A Mutation represents a mutation request on a key.
 type Mutation struct {
-	PartitionId PartitionId
-	Key         Key
-	Seq         Seq
-	ValBufRef   BufRef
-	Op          MutationOp
+	ItemBufRef ItemBufRef
+	Op         MutationOp
 
 	// A MatchSeq of NO_MATCH_SEQ is allowed.
 	MatchSeq Seq

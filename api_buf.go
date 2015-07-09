@@ -1,5 +1,9 @@
 package partizen
 
+import (
+	"bytes"
+)
+
 // A BufManager represents the functionality needed for memory
 // management.
 type BufManager interface {
@@ -182,4 +186,31 @@ func ItemBufRefAccess(itemBufRef ItemBufRef, wantKey bool, update bool,
 			itemBufRef.ValVisit(bm, from, to, cb, cbData)
 		}
 	}
+}
+
+func CompareKeyItemBufRef(key []byte, itemBufRef ItemBufRef, bm BufManager) int {
+	kLen := len(key)
+	rLen := itemBufRef.KeyLen(bm)
+
+	n := kLen
+	if n > rLen {
+		n = rLen
+	}
+
+	c := 0
+
+	ItemBufRefAccess(itemBufRef, true, false, bm, 0, n,
+		func(key, partBuf []byte, partFrom, partTo int) bool {
+			c = bytes.Compare(key, partBuf)
+			if c == 0 {
+				return true
+			}
+			return false
+		}, key)
+
+	if c == 0 {
+		return kLen - rLen
+	}
+
+	return c
 }

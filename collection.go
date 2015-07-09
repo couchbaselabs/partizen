@@ -52,27 +52,29 @@ func (c *collection) rootDecRef(ilr *ChildLocRef) {
 
 func (c *collection) Get(key Key, matchSeq Seq, withValue bool) (
 	seq Seq, val Val, err error) {
-	seq, bufRef, err := c.GetBufRef(key, matchSeq, withValue)
-	if err != nil || bufRef == nil {
+	itemBufRef, err := c.GetItemBufRef(key, matchSeq, withValue)
+	if err != nil || itemBufRef == nil {
 		return seq, nil, err
 	}
 
+	seq = itemBufRef.Seq(c.store.bufManager)
+
 	if withValue {
-		val = FromBufRef(nil, bufRef, c.store.bufManager)
+		val = FromItemBufRef(nil, false, itemBufRef, c.store.bufManager)
 	}
 
-	bufRef.DecRef(c.store.bufManager)
+	itemBufRef.DecRef(c.store.bufManager)
 
 	return seq, val, nil
 }
 
-func (c *collection) GetBufRef(key Key, matchSeq Seq, withValue bool) (
-	Seq, BufRef, error) {
+func (c *collection) GetItemBufRef(key Key, matchSeq Seq, withValue bool) (
+	ItemBufRef, error) {
 	bufManager := c.store.bufManager
 
 	var hitSeq Seq
 	var hitType uint8
-	var hitBufRef BufRef
+	var hitItemBufRef ItemBufRef
 
 	ilr, il := c.rootAddRef()
 
@@ -81,83 +83,94 @@ func (c *collection) GetBufRef(key Key, matchSeq Seq, withValue bool) (
 	if err == nil && hit != nil {
 		hitSeq, hitType = hit.Seq, hit.Loc.Type
 		if withValue {
-			hitBufRef = hit.Loc.LeafValBufRef(bufManager)
+			hitItemBufRef = hit.Loc.ItemBufRef(bufManager)
 		}
 	}
 
 	c.rootDecRef(ilr)
 
 	if err != nil {
-		if hitBufRef != nil {
-			hitBufRef.DecRef(bufManager)
+		if hitItemBufRef != nil {
+			hitItemBufRef.DecRef(bufManager)
 		}
-		return 0, nil, err
+		return nil, err
 	}
 
 	if matchSeq != NO_MATCH_SEQ {
 		if hit != nil && matchSeq != hitSeq {
-			if hitBufRef != nil {
-				hitBufRef.DecRef(bufManager)
+			if hitItemBufRef != nil {
+				hitItemBufRef.DecRef(bufManager)
 			}
-			return 0, nil, ErrMatchSeq
+			return nil, ErrMatchSeq
 		}
 		if hit == nil && matchSeq != CREATE_MATCH_SEQ {
-			if hitBufRef != nil {
-				hitBufRef.DecRef(bufManager)
+			if hitItemBufRef != nil {
+				hitItemBufRef.DecRef(bufManager)
 			}
-			return 0, nil, ErrMatchSeq
+			return nil, ErrMatchSeq
 		}
 	}
 
 	if hit != nil && hitType != LocTypeVal {
-		if hitBufRef != nil {
-			hitBufRef.DecRef(bufManager)
+		if hitItemBufRef != nil {
+			hitItemBufRef.DecRef(bufManager)
 		}
-		return 0, nil, fmt.Errorf("collection.Get: bad type: %#v", hitType)
+		return nil, fmt.Errorf("collection.Get: bad type: %#v", hitType)
 	}
 
-	return hitSeq, hitBufRef, nil
+	return hitItemBufRef, nil
 }
 
 func (c *collection) Set(partitionId PartitionId, key Key,
 	matchSeq Seq, newSeq Seq, val Val) error {
-	bufManager := c.store.bufManager
-
-	valBufRef := bufManager.Alloc(len(val), CopyToBufRef, val)
-	if valBufRef == nil || valBufRef.IsNil() {
-		return ErrAlloc
+	itemBufRef, err :=
+		NewItemBufRef(c.store.bufManager, partitionId, key, newSeq, val)
+	if err != nil {
+		return err
 	}
 
-	err := c.SetBufRef(partitionId, key, matchSeq, newSeq, valBufRef)
+	err = c.SetItemBufRef(matchSeq, itemBufRef)
 
-	valBufRef.DecRef(bufManager)
+	itemBufRef.DecRef(c.store.bufManager)
 
 	return err
 }
 
-func (c *collection) SetBufRef(partitionId PartitionId, key Key,
-	matchSeq Seq, newSeq Seq, valBufRef BufRef) error {
-	if valBufRef == nil || valBufRef.IsNil() {
+func (c *collection) SetItemBufRef(matchSeq Seq,
+	itemBufRef ItemBufRef) error {
+	if itemBufRef == nil || itemBufRef.IsNil() {
 		return ErrAlloc
 	}
 
 	return c.mutate([]Mutation{Mutation{
-		PartitionId: partitionId,
-		Key:         key,
-		Seq:         newSeq,
-		ValBufRef:   valBufRef,
-		Op:          MUTATION_OP_UPDATE,
-		MatchSeq:    matchSeq,
+		ItemBufRef: itemBufRef,
+		Op:         MUTATION_OP_UPDATE,
+		MatchSeq:   matchSeq,
 	}}, c.store.bufManager)
 }
 
 func (c *collection) Del(key Key, matchSeq Seq, newSeq Seq) error {
-	return c.mutate([]Mutation{Mutation{
-		Key:      key,
-		Seq:      newSeq,
-		Op:       MUTATION_OP_DELETE,
-		MatchSeq: matchSeq,
+	bufManager := c.store.bufManager
+
+	itemBufRef := bufManager.AllocItem(len(key), 0)
+	if itemBufRef == nil || itemBufRef.IsNil() {
+		return ErrAlloc
+	}
+
+	ItemBufRefAccess(itemBufRef, true, true, bufManager,
+		0, len(key), CopyToBufRef, key)
+
+	itemBufRef.SetSeq(bufManager, newSeq)
+
+	err := c.mutate([]Mutation{Mutation{
+		ItemBufRef: itemBufRef,
+		Op:         MUTATION_OP_DELETE,
+		MatchSeq:   matchSeq,
 	}}, c.store.bufManager)
+
+	itemBufRef.DecRef(bufManager)
+
+	return err
 }
 
 func (c *collection) Batch(mutations []Mutation) error {
@@ -298,54 +311,53 @@ func (c *collection) mutate(
 
 func (c *collection) minMax(locateMax bool, withValue bool) (
 	partitionId PartitionId, key Key, seq Seq, val Val, err error) {
-	var bufRef BufRef
-
-	partitionId, key, seq, bufRef, err =
-		c.minMaxBufRef(locateMax, withValue)
-	if err != nil || bufRef == nil {
+	itemBufRef, err := c.minMaxItemBufRef(locateMax)
+	if err != nil || itemBufRef == nil {
 		return 0, nil, 0, nil, err
 	}
 
+	partitionId = itemBufRef.PartitionId(c.store.bufManager)
+
+	key = FromItemBufRef(nil, true, itemBufRef, c.store.bufManager)
+
+	seq = itemBufRef.Seq(c.store.bufManager)
+
 	if withValue {
-		val = FromBufRef(nil, bufRef, c.store.bufManager)
+		val = FromItemBufRef(nil, false, itemBufRef, c.store.bufManager)
 	}
 
-	bufRef.DecRef(c.store.bufManager)
+	itemBufRef.DecRef(c.store.bufManager)
 
 	return partitionId, key, seq, val, nil
 }
 
-func (c *collection) minMaxBufRef(wantMax bool, withValue bool) (
-	PartitionId, Key, Seq, BufRef, error) {
+func (c *collection) minMaxItemBufRef(wantMax bool) (
+	ItemBufRef, error) {
 	bufManager := c.store.bufManager
 
 	ilr, il := c.rootAddRef()
 	if ilr == nil || il == nil {
 		c.rootDecRef(ilr)
-		return 0, nil, 0, nil, nil
+		return nil, nil
 	}
 
 	ilMM, err := locateMinMax(il, wantMax, bufManager, io.ReaderAt(nil))
 	if err != nil {
 		c.rootDecRef(ilr)
-		return 0, nil, 0, nil, err
+		return nil, err
 	}
 	if ilMM == nil {
 		c.rootDecRef(ilr)
-		return 0, nil, 0, nil, err
+		return nil, err
 	}
 	if ilMM.Loc.Type != LocTypeVal {
 		c.rootDecRef(ilr)
-		return 0, nil, 0, nil,
-			fmt.Errorf("collection.minMax: unexpected type,"+
-				" ilMM: %#v", ilMM)
+		return nil, fmt.Errorf("collection.minMaxItemBufRef:"+
+			" unexpected type, ilMM: %#v", ilMM)
 	}
 
-	var val BufRef
-	if withValue {
-		val = ilMM.Loc.LeafValBufRef(bufManager)
-	}
+	itemBufRef := ilMM.Loc.ItemBufRef(bufManager)
 
 	c.rootDecRef(ilr)
-	return 0, ilMM.Key, ilMM.Seq, val, nil
+	return itemBufRef, nil
 }

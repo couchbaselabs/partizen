@@ -34,7 +34,7 @@ func (loc *Loc) Read(bufManager BufManager, r io.ReaderAt) (
 	}
 
 	if loc.Type == LocTypeVal {
-		if loc.leafValBufRef == nil || loc.leafValBufRef.IsNil() {
+		if loc.itemBufRef == nil || loc.itemBufRef.IsNil() {
 			return nil, fmt.Errorf("node: Read loc type val TODO")
 		}
 		return loc, nil

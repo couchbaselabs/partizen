@@ -28,36 +28,41 @@ func (c *cursorImpl) Close() error {
 
 func (c *cursorImpl) Next() (
 	PartitionId, Key, Seq, Val, error) {
-	partitionId, key, seq, bufRef, err := c.NextBufRef()
-	if err != nil || bufRef == nil {
+	itemBufRef, err := c.NextItemBufRef()
+	if err != nil || itemBufRef == nil {
 		return 0, nil, 0, nil, err
 	}
 
-	val := FromBufRef(nil, bufRef, c.bufManager)
+	partitionId := itemBufRef.PartitionId(c.bufManager)
 
-	bufRef.DecRef(c.bufManager)
+	key := FromItemBufRef(nil, true, itemBufRef, c.bufManager)
+
+	seq := itemBufRef.Seq(c.bufManager)
+
+	val := FromItemBufRef(nil, false, itemBufRef, c.bufManager)
+
+	itemBufRef.DecRef(c.bufManager)
 
 	return partitionId, key, seq, val, nil
 }
 
-func (c *cursorImpl) NextBufRef() (
-	PartitionId, Key, Seq, BufRef, error) {
+func (c *cursorImpl) NextItemBufRef() (ItemBufRef, error) {
 	r, ok := <-c.resultsCh
 	if !ok || r.err != nil {
-		return 0, nil, 0, nil, r.err // TODO: zero/nil PartitionId.
+		return nil, r.err // TODO: zero/nil PartitionId.
 	}
 
 	loc, err := r.childLoc.Loc.Read(c.bufManager, c.readerAt)
 	if err != nil {
-		return 0, nil, 0, nil, err
+		return nil, err
 	}
 
-	var val BufRef
+	var itemBufRef ItemBufRef
 	if c.withValue {
-		val = loc.LeafValBufRef(c.bufManager)
+		itemBufRef = loc.ItemBufRef(c.bufManager)
 	}
 
-	return loc.leafPartitionId, r.childLoc.Key, r.childLoc.Seq, val, nil
+	return itemBufRef, nil
 }
 
 // --------------------------------------------

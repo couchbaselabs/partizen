@@ -18,8 +18,19 @@ func makeTestBufManager() BufManager {
 	return NewDefaultBufManager(32, 1024*1024, 1.5, nil)
 }
 
-func locBuf(loc *Loc) []byte {
-	return FromBufRef(nil, loc.leafValBufRef, testBufManager)
+func locValBuf(loc *Loc) []byte {
+	if loc.itemBufRef == nil {
+		return nil
+	}
+
+	n := loc.itemBufRef.ValLen(testBufManager)
+
+	dst := make([]byte, n, n)
+
+	ItemBufRefAccess(loc.itemBufRef, false, false, testBufManager, 0, n,
+		CopyFromBufRef, dst)
+
+	return dst
 }
 
 func printPrefix(n int) {
@@ -37,7 +48,7 @@ func printTree(il *ChildLoc, depth int) {
 		cil := a.ChildLoc(i)
 		if cil.Loc.Type == LocTypeVal {
 			fmt.Printf("%s = %s\n",
-				cil.Key, locBuf(&cil.Loc))
+				cil.Key, locValBuf(&cil.Loc))
 		} else if cil.Loc.Type == LocTypeNode {
 			fmt.Printf("%s:\n", cil.Key)
 			printTree(cil, depth1)
@@ -54,11 +65,7 @@ func isSomeMemLoc(loc *Loc, expectedLocType uint8) bool {
 	if loc.Type != expectedLocType {
 		return false
 	}
-	if loc.Type == LocTypeVal &&
-		loc.Size != uint32(len(locBuf(loc))) {
-		return false
-	}
-	if locBuf(loc) != nil {
+	if locValBuf(loc) != nil {
 		return true
 	}
 	return loc.node != nil
@@ -115,12 +122,11 @@ func TestEmptyMutate(t *testing.T) {
 		t.Errorf("expected nil keyloc on nil, nil")
 	}
 
-	m = []Mutation{
-		Mutation{
-			Key: []byte("x"),
-			Op:  MUTATION_OP_DELETE,
-		},
-	}
+	mutation, _ := NewMutation(testBufManager, MUTATION_OP_DELETE,
+		0, []byte("x"), 0, nil, NO_MATCH_SEQ)
+
+	m = []Mutation{mutation}
+
 	il, err = rootProcessMutations(nil, m, nil, 15, 32,
 		&PtrChildLocsArrayHolder{},
 		testBufManager, nil)
@@ -133,13 +139,11 @@ func TestEmptyMutate(t *testing.T) {
 }
 
 func TestMutationsOn1Val(t *testing.T) {
-	m := []Mutation{
-		Mutation{
-			Key:       []byte("a"),
-			ValBufRef: testBufManager.Alloc(1, CopyToBufRef, []byte("A")),
-			Op:        MUTATION_OP_UPDATE,
-		},
-	}
+	mutation, _ := NewMutation(testBufManager, MUTATION_OP_UPDATE,
+		0, []byte("a"), 0, []byte("A"), NO_MATCH_SEQ)
+
+	m := []Mutation{mutation}
+
 	il, err := rootProcessMutations(nil, m, nil, 15, 32,
 		&PtrChildLocsArrayHolder{},
 		testBufManager, nil)
@@ -155,7 +159,7 @@ func TestMutationsOn1Val(t *testing.T) {
 	if !isSomeMemLoc(&il.Loc, LocTypeNode) {
 		t.Errorf("expected some keyLoc")
 	}
-	if il.Loc.node == nil || locBuf(&il.Loc) != nil {
+	if il.Loc.node == nil || locValBuf(&il.Loc) != nil {
 		t.Errorf("expected a keyLoc with node, no buf")
 	}
 	if il.Loc.node.childLocs.Len() != 1 {
@@ -165,10 +169,10 @@ func TestMutationsOn1Val(t *testing.T) {
 		t.Errorf("expected 1 child")
 	}
 	if !isSomeMemLoc(il.Loc.node.childLocs.Loc(0), LocTypeVal) {
-		t.Errorf("expected val child")
+		t.Errorf("expected val child, loc: %#v", il.Loc.node.childLocs.Loc(0))
 	}
 
-	astr := locBuf(il.Loc.node.childLocs.Loc(0))
+	astr := locValBuf(il.Loc.node.childLocs.Loc(0))
 	if string(astr) != "A" {
 		t.Errorf("expected val child is A")
 	}
@@ -176,12 +180,11 @@ func TestMutationsOn1Val(t *testing.T) {
 	// Try some DELETE's of key that's not in the tree.
 	il2 := il
 	for _, keyNotThere := range []string{"x", "0", "aa", ""} {
-		m = []Mutation{
-			Mutation{
-				Key: []byte(keyNotThere),
-				Op:  MUTATION_OP_DELETE,
-			},
-		}
+		mutation, _ := NewMutation(testBufManager, MUTATION_OP_DELETE,
+			0, []byte(keyNotThere), 0, nil, NO_MATCH_SEQ)
+
+		m = []Mutation{mutation}
+
 		il2, err := rootProcessMutations(il2, m, nil, 15, 32,
 			&PtrChildLocsArrayHolder{},
 			testBufManager, nil)
@@ -197,7 +200,7 @@ func TestMutationsOn1Val(t *testing.T) {
 		if !isSomeMemLoc(&il2.Loc, LocTypeNode) {
 			t.Errorf("expected some il")
 		}
-		if il2.Loc.node == nil || locBuf(&il2.Loc) != nil {
+		if il2.Loc.node == nil || locValBuf(&il2.Loc) != nil {
 			t.Errorf("expected a il with node, no buf")
 		}
 		if il2.Loc.node.childLocs.Len() != 1 {
@@ -206,23 +209,23 @@ func TestMutationsOn1Val(t *testing.T) {
 		if string(il2.Loc.node.childLocs.Key(0)) != "a" {
 			t.Errorf("expected 1 child")
 		}
-		if !isSomeMemLoc(il2.Loc.node.childLocs.Loc(0),
-			LocTypeVal) {
-			t.Errorf("expected val child")
+		if !isSomeMemLoc(il2.Loc.node.childLocs.Loc(0), LocTypeVal) {
+			t.Errorf("expected val child, loc: %#v, %#v",
+				il2.Loc.node.childLocs.Loc(0),
+				il2.Loc.node.childLocs.Loc(0).itemBufRef)
 		}
 
-		astr := locBuf(il2.Loc.node.childLocs.Loc(0))
+		astr := locValBuf(il2.Loc.node.childLocs.Loc(0))
 		if string(astr) != "A" {
 			t.Errorf("expected val child is A")
 		}
 	}
 
-	m = []Mutation{ // Delete the only key.
-		Mutation{
-			Key: []byte("a"),
-			Op:  MUTATION_OP_DELETE,
-		},
-	}
+	mutation, _ = NewMutation(testBufManager, MUTATION_OP_DELETE,
+		0, []byte("a"), 0, nil, NO_MATCH_SEQ)
+
+	m = []Mutation{mutation}
+
 	il3, err := rootProcessMutations(il2, m, nil, 15, 32,
 		&PtrChildLocsArrayHolder{},
 		testBufManager, nil)
@@ -235,18 +238,14 @@ func TestMutationsOn1Val(t *testing.T) {
 }
 
 func TestMutationsOn2Vals(t *testing.T) {
-	m := []Mutation{
-		Mutation{
-			Key:       []byte("a"),
-			ValBufRef: testBufManager.Alloc(1, CopyToBufRef, []byte("A")),
-			Op:        MUTATION_OP_UPDATE,
-		},
-		Mutation{
-			Key:       []byte("b"),
-			ValBufRef: testBufManager.Alloc(1, CopyToBufRef, []byte("B")),
-			Op:        MUTATION_OP_UPDATE,
-		},
-	}
+	mutationA, _ := NewMutation(testBufManager, MUTATION_OP_UPDATE,
+		0, []byte("a"), 0, []byte("A"), NO_MATCH_SEQ)
+
+	mutationB, _ := NewMutation(testBufManager, MUTATION_OP_UPDATE,
+		0, []byte("b"), 0, []byte("A"), NO_MATCH_SEQ)
+
+	m := []Mutation{mutationA, mutationB}
+
 	il, err := rootProcessMutations(nil, m, nil, 15, 32,
 		&PtrChildLocsArrayHolder{},
 		testBufManager, nil)
@@ -264,7 +263,7 @@ func TestMutationsOn2Vals(t *testing.T) {
 		if !isSomeMemLoc(&il.Loc, LocTypeNode) {
 			t.Errorf("expected some il")
 		}
-		if il.Loc.node == nil || locBuf(&il.Loc) != nil {
+		if il.Loc.node == nil || locValBuf(&il.Loc) != nil {
 			t.Errorf("expected a il with node, no buf")
 		}
 		if il.Loc.node.childLocs.Len() != numVals {
@@ -280,7 +279,7 @@ func TestMutationsOn2Vals(t *testing.T) {
 			t.Errorf("expected val child")
 		}
 
-		astr := locBuf(il.Loc.node.childLocs.Loc(0))
+		astr := locValBuf(il.Loc.node.childLocs.Loc(0))
 		if string(astr) != "A" {
 			t.Errorf("expected val child is A")
 		}
@@ -294,7 +293,7 @@ func TestMutationsOn2Vals(t *testing.T) {
 			t.Errorf("expected val child")
 		}
 
-		bstr := locBuf(il.Loc.node.childLocs.Loc(1))
+		bstr := locValBuf(il.Loc.node.childLocs.Loc(1))
 		if string(bstr) != "B" {
 			t.Errorf("expected val child is B")
 		}
@@ -305,12 +304,11 @@ func TestMutationsOn2Vals(t *testing.T) {
 	// Try some DELETE's of key that's not in the tree.
 	il2 := il
 	for _, keyNotThere := range []string{"x", "0", "aa", ""} {
-		m = []Mutation{
-			Mutation{
-				Key: []byte(keyNotThere),
-				Op:  MUTATION_OP_DELETE,
-			},
-		}
+		mutation, _ := NewMutation(testBufManager, MUTATION_OP_DELETE,
+			0, []byte(keyNotThere), 0, nil, NO_MATCH_SEQ)
+
+		m = []Mutation{mutation}
+
 		il2, err := rootProcessMutations(il2, m, nil, 15, 32,
 			&PtrChildLocsArrayHolder{},
 			testBufManager, nil)
@@ -320,12 +318,11 @@ func TestMutationsOn2Vals(t *testing.T) {
 		checkHasNVals(il2, 2)
 	}
 
-	m = []Mutation{ // Delete the key b.
-		Mutation{
-			Key: []byte("b"),
-			Op:  MUTATION_OP_DELETE,
-		},
-	}
+	mutation, _ := NewMutation(testBufManager, MUTATION_OP_DELETE,
+		0, []byte("b"), 0, nil, NO_MATCH_SEQ)
+
+	m = []Mutation{mutation}
+
 	il3, err := rootProcessMutations(il2, m, nil, 15, 32,
 		&PtrChildLocsArrayHolder{},
 		testBufManager, nil)
@@ -335,12 +332,11 @@ func TestMutationsOn2Vals(t *testing.T) {
 
 	checkHasNVals(il3, 1)
 
-	m = []Mutation{ // Delete the key a.
-		Mutation{
-			Key: []byte("a"),
-			Op:  MUTATION_OP_DELETE,
-		},
-	}
+	mutation, _ = NewMutation(testBufManager, MUTATION_OP_DELETE,
+		0, []byte("a"), 0, nil, NO_MATCH_SEQ)
+
+	m = []Mutation{mutation}
+
 	il4, err := rootProcessMutations(il3, m, nil, 15, 32,
 		&PtrChildLocsArrayHolder{},
 		testBufManager, nil)
@@ -373,11 +369,12 @@ func TestMutationsDepth(t *testing.T) {
 	var rootChildLoc *ChildLoc
 	var err error
 	m := make([]Mutation, 1, 1)
-	m[0].Op = MUTATION_OP_UPDATE
 	for c, i := 0, iStart; c < n; c, i = c+1, delta(c, i) {
-		m[0].Key = []byte(fmt.Sprintf("%4d", i))
-		m[0].ValBufRef = testBufManager.Alloc(len(m[0].Key),
-			CopyToBufRef, m[0].Key)
+		key := []byte(fmt.Sprintf("%4d", i))
+		mutation, _ := NewMutation(testBufManager, MUTATION_OP_UPDATE,
+			0, key, 0, key, NO_MATCH_SEQ)
+		m[0] = mutation
+
 		rootChildLoc, err =
 			rootProcessMutations(rootChildLoc, m, nil, 2, 4,
 				&PtrChildLocsArrayHolder{},

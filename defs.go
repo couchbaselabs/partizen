@@ -180,12 +180,14 @@ func (ksl *ChildLoc) GetPartitions(
 		return nil, fmt.Errorf("defs: GetPartitions type, ksl: %v", ksl)
 	}
 
-	if loc.leafValBufRef == nil || loc.leafValBufRef.IsNil() {
-		return nil, fmt.Errorf("defs: GetPartitions leafValBufRef nil")
+	if loc.itemBufRef == nil || loc.itemBufRef.IsNil() {
+		return nil, fmt.Errorf("defs: GetPartitions itemBufRef nil")
 	}
 
+	partitionId := loc.itemBufRef.PartitionId(bufManager)
+
 	return &Partitions{
-		PartitionIds: []PartitionId{loc.leafPartitionId},
+		PartitionIds: []PartitionId{partitionId},
 		KeyChildLocs: [][]KeyChildLoc{[]KeyChildLoc{KeyChildLoc{
 			Key:      ksl.Key,
 			ChildLoc: ksl,
@@ -212,13 +214,7 @@ type Loc struct {
 	// it might be dirty (not yet persisted, Offset == 0).
 	//
 	// TODO: Need lock to protect swizzling?
-	leafValBufRef BufRef
-
-	// Transient; only used when Type is LocTypeVal and when
-	// leafValBufRef is non-nil.
-	//
-	// TODO: Need lock to protect swizzling?
-	leafPartitionId PartitionId
+	itemBufRef ItemBufRef
 
 	// Transient; only used when Type is LocTypeNode.  If nil,
 	// in-memory representation hasn't been loaded yet.  When non-nil,
@@ -236,16 +232,16 @@ const (
 	LocTypeStoreDef uint8 = 0x03
 )
 
-// Returns the Loc's leafValBufRef, adding an additional ref-count
-// that must be DecRef()'ed by the caller.
-func (loc *Loc) LeafValBufRef(bm BufManager) BufRef {
-	if loc.leafValBufRef == nil || loc.leafValBufRef.IsNil() {
+// ItemBufRef returns the Loc's itemBufRef, adding an additional
+// ref-count that must be DecRef()'ed by the caller.
+func (loc *Loc) ItemBufRef(bm BufManager) ItemBufRef {
+	if loc.itemBufRef == nil || loc.itemBufRef.IsNil() {
 		return nil
 	}
 
-	loc.leafValBufRef.AddRef(bm)
+	loc.itemBufRef.AddRef(bm)
 
-	return loc.leafValBufRef
+	return loc.itemBufRef
 }
 
 // ----------------------------------------
@@ -368,9 +364,8 @@ func (a *PtrChildLocsArrayHolder) Reset(bufManager BufManager) {
 	}
 
 	for i, il := range a.a {
-		il.Loc.leafValBufRef.DecRef(bufManager)
-		il.Loc.leafValBufRef = nil
-		il.Loc.leafPartitionId = 0
+		il.Loc.itemBufRef.DecRef(bufManager)
+		il.Loc.itemBufRef = nil
 		il.Loc.node = nil
 
 		a.a[i] = nil
@@ -407,3 +402,18 @@ type MutationCallback func(existing *ChildLoc, isVal bool,
 	mutation *Mutation) bool
 
 var NilMutation Mutation
+
+func NewMutation(bm BufManager, op MutationOp,
+	partitionId PartitionId, key []byte, seq Seq, val []byte,
+	matchSeq Seq) (Mutation, error) {
+	itemBufRef, err := NewItemBufRef(bm, partitionId, key, seq, val)
+	if err != nil {
+		return NilMutation, err
+	}
+
+	return Mutation{
+		ItemBufRef: itemBufRef,
+		Op:         op,
+		MatchSeq:   matchSeq,
+	}, nil
+}
