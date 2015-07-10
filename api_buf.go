@@ -140,6 +140,29 @@ type ItemBufRef interface {
 
 // -------------------------------------------------
 
+// NewItemBufRef creates an ItemBufRef with copies of the given key,
+// val and metadata.
+func NewItemBufRef(bm BufManager,
+	partitionId PartitionId, key []byte, seq Seq, val []byte) (
+	ItemBufRef, error) {
+	itemBufRef := bm.AllocItem(len(key), len(val))
+	if itemBufRef == nil || itemBufRef.IsNil() {
+		return nil, ErrAlloc
+	}
+
+	itemBufRef.SetPartitionId(bm, partitionId)
+
+	ItemBufRefAccess(itemBufRef, true, true, bm, 0, len(key),
+		CopyToBufRef, key)
+
+	itemBufRef.SetSeq(bm, seq)
+
+	ItemBufRefAccess(itemBufRef, false, true, bm, 0, len(val),
+		CopyToBufRef, val)
+
+	return itemBufRef, nil
+}
+
 // FromItemBufRef helper function copies the key or val bytes from an
 // ItemBufRef to a caller-supplied byte slice, and allocates a new
 // byte slice if dst is nil.

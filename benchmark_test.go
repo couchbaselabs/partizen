@@ -170,7 +170,11 @@ func TODO_BenchmarkSortedInsert_ReplaceOrInsert(b *testing.B) {
 }
 
 func BenchmarkIterate(b *testing.B) {
-	s, _ := StoreOpen(nil, nil)
+	so := &StoreOptions{
+		BufManager: testBufManager,
+	}
+
+	s, _ := StoreOpen(nil, so)
 	c, _ := s.AddCollection("x", "")
 
 	batchSize := 10000
@@ -202,5 +206,31 @@ func BenchmarkIterate(b *testing.B) {
 		for key != nil {
 			_, key, _, _, _ = cur.Next()
 		}
+	}
+}
+
+func BenchmarkItemBufRefSets(b *testing.B) {
+	bm := NewDefaultBufManager(1, 1024, 1.1, nil)
+
+	so := &StoreOptions{
+		BufManager: bm,
+	}
+
+	s, _ := StoreOpen(nil, so)
+	if s.(*store).bufManager != bm {
+		panic("wrong bm")
+	}
+
+	c, _ := s.AddCollection("x", "")
+
+	key := []byte("hi")
+	val := []byte("world")
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		ibr, _ := NewItemBufRef(bm, 0, key, Seq(i), val)
+		c.SetItemBufRef(NO_MATCH_SEQ, ibr)
+		ibr.DecRef(bm)
 	}
 }

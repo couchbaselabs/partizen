@@ -168,6 +168,8 @@ type Mutation struct {
 	MatchSeq Seq
 }
 
+var NilMutation Mutation
+
 type MutationOp uint8
 
 const (
@@ -177,6 +179,21 @@ const (
 
 	// FUTURE MutationOp's might include merging, visiting, etc.
 )
+
+func NewMutation(bm BufManager, op MutationOp,
+	partitionId PartitionId, key []byte, seq Seq, val []byte,
+	matchSeq Seq) (Mutation, error) {
+	itemBufRef, err := NewItemBufRef(bm, partitionId, key, seq, val)
+	if err != nil {
+		return NilMutation, err
+	}
+
+	return Mutation{
+		ItemBufRef: itemBufRef,
+		Op:         op,
+		MatchSeq:   matchSeq,
+	}, nil
+}
 
 // ------------------------------------------------------------
 

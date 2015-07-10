@@ -400,20 +400,3 @@ type KeyChildLoc struct {
 // the existing is for a leaf level ChildLoc (e.g., LocTypeVal).
 type MutationCallback func(existing *ChildLoc, isVal bool,
 	mutation *Mutation) bool
-
-var NilMutation Mutation
-
-func NewMutation(bm BufManager, op MutationOp,
-	partitionId PartitionId, key []byte, seq Seq, val []byte,
-	matchSeq Seq) (Mutation, error) {
-	itemBufRef, err := NewItemBufRef(bm, partitionId, key, seq, val)
-	if err != nil {
-		return NilMutation, err
-	}
-
-	return Mutation{
-		ItemBufRef: itemBufRef,
-		Op:         op,
-		MatchSeq:   matchSeq,
-	}, nil
-}
