@@ -1,6 +1,8 @@
 package partizen
 
 import (
+	"fmt"
+	"math/rand"
 	"strconv"
 	"testing"
 
@@ -210,6 +212,11 @@ func BenchmarkIterate(b *testing.B) {
 }
 
 func BenchmarkItemBufRefSets(b *testing.B) {
+	kvs := make([][]byte, 300)
+	for i := 0; i < len(kvs); i++ {
+		kvs[i] = []byte(fmt.Sprintf("%d", rand.Int()))
+	}
+
 	bm := NewDefaultBufManager(1, 1024, 1.1, nil)
 
 	so := &StoreOptions{
@@ -223,13 +230,12 @@ func BenchmarkItemBufRefSets(b *testing.B) {
 
 	c, _ := s.AddCollection("x", "")
 
-	key := []byte("hi")
-	val := []byte("world")
-
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		ibr, _ := NewItemBufRef(bm, 0, key, Seq(i), val)
+		kv := kvs[i % len(kvs)]
+
+		ibr, _ := NewItemBufRef(bm, 0, kv, Seq(i), kv)
 		c.SetItemBufRef(NO_MATCH_SEQ, ibr)
 		ibr.DecRef(bm)
 	}
