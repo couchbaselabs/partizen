@@ -364,12 +364,19 @@ func (a *PtrChildLocsArrayHolder) Reset(bufManager BufManager) {
 	}
 
 	for i, il := range a.a {
-		il.Loc.itemBufRef.DecRef(bufManager)
-		il.Loc.itemBufRef = nil
-		il.Loc.node = nil
+		if il.Loc.itemBufRef != nil { // TODO: recycle il.
+			il.Loc.itemBufRef.DecRef(bufManager)
+			il.Loc.itemBufRef = nil
+		}
+
+		if il.Loc.node != nil { // TODO: recycle node.
+			il.Loc.node = nil
+		}
 
 		a.a[i] = nil
 	}
+
+	a.a = a.a[0:0]
 }
 
 // ----------------------------------------

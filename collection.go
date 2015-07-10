@@ -242,8 +242,7 @@ func (c *collection) Rollback(partitionId PartitionId, seq Seq,
 
 // --------------------------------------------
 
-func (c *collection) mutate(
-	mutations []Mutation, bufManager BufManager) error {
+func (c *collection) mutate(mutations []Mutation, bm BufManager) error {
 	if c.readOnly {
 		return ErrReadOnly
 	}
@@ -269,8 +268,8 @@ func (c *collection) mutate(
 	ilr, il := c.rootAddRef()
 
 	il2, err := rootProcessMutations(il, mutations, cb,
-		int(c.minFanOut), int(c.maxFanOut), reclaimables,
-		bufManager, io.ReaderAt(nil))
+		int(c.minFanOut), int(c.maxFanOut),
+		reclaimables, bm, io.ReaderAt(nil))
 	if err != nil {
 		c.rootDecRef(ilr)
 		return err
@@ -284,17 +283,23 @@ func (c *collection) mutate(
 	if ilr != c.root {
 		err = ErrConcurrentMutation
 	} else if ilr != nil && ilr.next != nil {
-		err = ErrConcurrentMutationChain
+		err = ErrConcurrentMutationRootNext
+	} else if ilr != nil && ilr.reclaimables != nil {
+		err = ErrConcurrentMutationRootReclaimables
 	} else {
 		err = nil
 
 		c.root = &ChildLocRef{il: il2, refs: 1}
 
-		// If the previous root was in-use, hook it up with a
-		// ref-count on the new root to prevent the new root's nodes
-		// from being reclaimed until the previous is done.
-		if ilr != nil && ilr.refs > 2 {
-			ilr.next, _ = c.root.addRef()
+		if ilr != nil {
+			ilr.reclaimables = reclaimables
+
+			// If the previous root was in-use, hook it up with a
+			// ref-count on the new root to prevent the new root's
+			// nodes from being reclaimed until the previous is done.
+			if ilr.refs > 2 {
+				ilr.next, _ = c.root.addRef()
+			}
 		}
 	}
 	c.store.m.Unlock()

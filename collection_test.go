@@ -2,6 +2,7 @@ package partizen
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 	"testing"
 )
@@ -433,4 +434,41 @@ func TestSimpleMemOps(t *testing.T) {
 	testSimpleCursorKeys(t, c, "3 key after del 0", false, "z", "x,b,a")
 
 	testSnapshotIsUnchanged()
+}
+
+func TestItemBufRefDeallocs300x1000(t *testing.T) {
+	testItemBufRefDeallocs(t, NewDefaultBufManager(128, 1024*1024, 1.5, nil), 300, 1000)
+}
+
+func TestItemBufRefDeallocs300x10000(t *testing.T) {
+	testItemBufRefDeallocs(t, NewDefaultBufManager(128, 1024*1024, 1.5, nil), 300, 10000)
+}
+
+func testItemBufRefDeallocs(t *testing.T, bm *DefaultBufManager, totKeys, totMutates int) {
+	kvs := make([][]byte, totKeys)
+	for i := 0; i < len(kvs); i++ {
+		kvs[i] = []byte(fmt.Sprintf("%d", rand.Int()))
+	}
+
+	so := &StoreOptions{
+		BufManager: bm,
+	}
+
+	s, _ := StoreOpen(nil, so)
+	if s.(*store).bufManager != bm {
+		panic("wrong bm")
+	}
+
+	c, _ := s.AddCollection("x", "")
+
+	for i := 0; i < totMutates; i++ {
+		kv := kvs[i%len(kvs)]
+
+		ibr, _ := NewItemBufRef(bm, 0, kv, Seq(i), kv)
+		c.SetItemBufRef(NO_MATCH_SEQ, ibr)
+		ibr.DecRef(bm)
+	}
+
+	fmt.Printf("totKeys: %d, totMutates: %d, arena: %#v\n",
+		totKeys, totMutates, bm.arena)
 }

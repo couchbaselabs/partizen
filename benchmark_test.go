@@ -217,7 +217,7 @@ func BenchmarkItemBufRefSets(b *testing.B) {
 		kvs[i] = []byte(fmt.Sprintf("%d", rand.Int()))
 	}
 
-	bm := NewDefaultBufManager(1, 1024, 1.1, nil)
+	bm := NewDefaultBufManager(128, 1024*1024, 1.5, nil)
 
 	so := &StoreOptions{
 		BufManager: bm,
@@ -233,10 +233,12 @@ func BenchmarkItemBufRefSets(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		kv := kvs[i % len(kvs)]
+		kv := kvs[i%len(kvs)]
 
 		ibr, _ := NewItemBufRef(bm, 0, kv, Seq(i), kv)
 		c.SetItemBufRef(NO_MATCH_SEQ, ibr)
 		ibr.DecRef(bm)
 	}
+
+	fmt.Printf("b.N: %d, arena: %#v\n", b.N, bm.arena)
 }

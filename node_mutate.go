@@ -448,7 +448,9 @@ func (b *NodesBuilder) Done(mutations []Mutation, cb MutationCallback,
 
 			rv = rvx.(PtrChildLocsArray)
 
-			b.reclaimables.Append(nm.BaseChildLoc)
+			if nm.BaseChildLoc != nil {
+				b.reclaimables.Append(nm.BaseChildLoc)
+			}
 		}
 	}
 
