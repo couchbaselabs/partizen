@@ -36,8 +36,10 @@ func storeOpen(storeFile StoreFile, storeOptions *StoreOptions) (
 }
 
 func initStoreOptions(o *StoreOptions) *StoreOptions {
+	dso := DefaultStoreOptions
+
 	if o == nil {
-		o = &DefaultOptions
+		o = &dso
 	}
 
 	rv := &StoreOptions{
@@ -48,28 +50,28 @@ func initStoreOptions(o *StoreOptions) *StoreOptions {
 		BufManager:       o.BufManager,
 	}
 	if rv.CompareFuncs == nil {
-		rv.CompareFuncs = DefaultOptions.CompareFuncs
+		rv.CompareFuncs = dso.CompareFuncs
 	}
 	if rv.CompareFuncs[""] == nil {
-		rv.CompareFuncs[""] = DefaultOptions.CompareFuncs[""]
+		rv.CompareFuncs[""] = dso.CompareFuncs[""]
 	}
 	if rv.DefaultPageSize <= 0 {
-		rv.DefaultPageSize = DefaultOptions.DefaultPageSize
+		rv.DefaultPageSize = dso.DefaultPageSize
 	}
 	if rv.DefaultMinFanOut <= 0 {
-		rv.DefaultMinFanOut = DefaultOptions.DefaultMinFanOut
+		rv.DefaultMinFanOut = dso.DefaultMinFanOut
 	}
 	if rv.DefaultMaxFanOut <= 0 {
-		rv.DefaultMaxFanOut = DefaultOptions.DefaultMaxFanOut
+		rv.DefaultMaxFanOut = dso.DefaultMaxFanOut
 	}
 	if rv.BufManager == nil {
-		rv.BufManager = DefaultOptions.BufManager
+		rv.BufManager = dso.BufManager
 	}
 
 	return rv
 }
 
-var DefaultOptions = StoreOptions{
+var DefaultStoreOptions = StoreOptions{
 	CompareFuncs:     map[string]CompareFunc{"": bytes.Compare},
 	DefaultPageSize:  4096,
 	DefaultMinFanOut: 15, // TODO: Better DefaultMinFanOut.
