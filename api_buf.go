@@ -65,8 +65,7 @@ func ToBufRef(bufManager BufManager, src []byte) BufRef {
 // FromBufRef helper function copies the bytes from a BufRef to a
 // caller-supplied byte slice, and allocates a new byte slice if dst
 // is nil.
-func FromBufRef(dst []byte,
-	bufRef BufRef, bufManager BufManager) []byte {
+func FromBufRef(dst []byte, bufRef BufRef, bufManager BufManager) []byte {
 	if bufRef == nil || bufRef.IsNil() {
 		return dst
 	}
