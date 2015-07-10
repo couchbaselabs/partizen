@@ -13,7 +13,7 @@ func testCompareKeyItemBufRef(t *testing.T, label string, testBufManager BufMana
 	partitionId := PartitionId(0)
 	seq := Seq(0)
 
-	tests := []struct{
+	tests := []struct {
 		k   string
 		s   string
 		exp int
