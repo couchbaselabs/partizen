@@ -445,9 +445,15 @@ func TestItemBufRefDeallocs300x10000(t *testing.T) {
 }
 
 func testItemBufRefDeallocs(t *testing.T, bm *DefaultBufManager, totKeys, totMutates int) {
-	kvs := make([][]byte, totKeys)
-	for i := 0; i < len(kvs); i++ {
-		kvs[i] = []byte(fmt.Sprintf("%d", rand.Int()))
+	seen := map[int]bool{}
+
+	kvs := make([][]byte, 0, totKeys)
+	for len(kvs) < totKeys {
+		r := rand.Int()
+		if !seen[r] {
+			kvs = append(kvs, []byte(fmt.Sprintf("%d", r)))
+			seen[r] = true
+		}
 	}
 
 	so := &StoreOptions{
